@@ -16,11 +16,26 @@ const PRECACHE_URLS = [
   './favicon.ico',
 ];
 
+// Firebase SDK files are static and safe to cache-first across origins so
+// the app shell (incl. the login screen) can still boot offline. Firestore
+// and Auth API calls themselves are left untouched — the SDK's own offline
+// queue and network logic handle those.
+const PRECACHE_CROSS_ORIGIN_URLS = [
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js',
+];
+const CACHEABLE_CROSS_ORIGIN = (url) =>
+  url.origin === 'https://www.gstatic.com' && url.pathname.startsWith('/firebasejs/');
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(PRECACHE_URLS);
+    // Best-effort: don't fail install if the CDN is unreachable at build time.
+    await Promise.allSettled(PRECACHE_CROSS_ORIGIN_URLS.map((url) => cache.add(url)));
+  })());
 });
 
 self.addEventListener('activate', (event) => {
@@ -36,9 +51,10 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
+  const sameOrigin = url.origin === self.location.origin;
+  if (!sameOrigin && !CACHEABLE_CROSS_ORIGIN(url)) return;
 
-  if (request.mode === 'navigate' || request.destination === 'document') {
+  if (sameOrigin && (request.mode === 'navigate' || request.destination === 'document')) {
     event.respondWith(networkFirst(request));
     return;
   }
