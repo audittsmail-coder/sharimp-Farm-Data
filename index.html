@@ -133,6 +133,13 @@
   }
   .farm-title-row button:hover{ color:var(--heading); border-color:var(--teal-500); }
 
+  .overview-group{ margin-bottom:20px; }
+  .overview-group:last-child{ margin-bottom:0; }
+  .overview-farm-label{
+    font-size:12px; font-weight:700; color:var(--ink-faint); text-transform:uppercase;
+    letter-spacing:.05em; margin:0 0 8px 2px;
+  }
+
   .pond-grid{ display:grid; grid-template-columns:1fr; gap:10px; }
   .pond-card{
     background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
@@ -311,7 +318,7 @@ db.enablePersistence({ synchronizeTabs: true }).catch((e)=>console.warn('Firesto
 // first person types the password. Track last-activity in localStorage
 // (survives reloads) and sign out once it's stale — checked at boot, on
 // tab focus, and via a rolling timer while the app is open.
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes idle
+const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes idle
 const LAST_ACTIVE_KEY = 'shrimp-farm-last-active';
 let idleTimer = null;
 
@@ -352,7 +359,7 @@ const FARM_SEED = ['ฟาร์ม 1','ฟาร์ม 2','ฟาร์ม 3','
 const SPECIES_OPTIONS = ['กุ้งขาว (Vannamei)','กุ้งกุลาดำ (Black Tiger)','อื่นๆ'];
 
 let state = { farms: [], ponds: [], records: [] };
-let currentFarmId = null;
+let currentFarmId = 'overview';
 let currentPondId = null;
 let showSettingsSheet = false;
 let showPondFormSheet = false;
@@ -393,7 +400,6 @@ async function ensureFarmsSeeded(){
 function attachFirestoreListeners(){
   unsubFarms = db.collection('farms').orderBy('order').onSnapshot((snap)=>{
     state.farms = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-    if(!currentFarmId && state.farms.length) currentFarmId = state.farms[0].id;
     render();
   }, (e)=>console.error('farms listener error', e));
 
@@ -414,7 +420,7 @@ function detachFirestoreListeners(){
   if(unsubRecords) unsubRecords();
   unsubFarms = unsubPonds = unsubRecords = null;
   state = { farms: [], ponds: [], records: [] };
-  currentFarmId = null;
+  currentFarmId = 'overview';
   currentPondId = null;
 }
 
@@ -542,9 +548,12 @@ function render(){
 }
 
 function renderFarmDashboard(){
-  const tabs = state.farms.map(f => `
+  const tabs = `<button class="farm-tab ${currentFarmId==='overview'?'active':''}" data-farm="overview">ภาพรวม</button>` +
+    state.farms.map(f => `
     <button class="farm-tab ${f.id===currentFarmId?'active':''}" data-farm="${f.id}">${escapeHtml(f.name)}</button>
   `).join('');
+
+  if(currentFarmId === 'overview') return renderOverviewDashboard(tabs);
 
   const farm = state.farms.find(f=>f.id===currentFarmId);
   const ponds = pondsForFarm(currentFarmId);
@@ -569,6 +578,36 @@ function renderFarmDashboard(){
       </div>
       ${pondsHtml}
       <button class="fab" id="btn-add-pond">${ICONS.plus} เพิ่มบ่อใหม่</button>
+    </main>
+  `;
+}
+
+function renderOverviewDashboard(tabs){
+  const groups = state.farms
+    .map(farm => ({ farm, ponds: pondsForFarm(farm.id) }))
+    .filter(g => g.ponds.length > 0);
+
+  const bodyHtml = state.ponds.length === 0
+    ? `
+      <div class="empty-state">
+        ${ICONS.shrimp}
+        <p><b>ยังไม่มีบ่อในระบบ</b></p>
+        <p>เลือกฟาร์มด้านบนแล้วกด "+ เพิ่มบ่อ" เพื่อเริ่มบันทึกข้อมูล</p>
+      </div>`
+    : groups.map(({farm, ponds}) => `
+        <div class="overview-group">
+          <div class="overview-farm-label">${escapeHtml(farm.name)}</div>
+          <div class="pond-grid">${ponds.map(p => renderPondCard(p)).join('')}</div>
+        </div>
+      `).join('');
+
+  return `
+    <div class="farm-tabs">${tabs}</div>
+    <main>
+      <div class="farm-title-row">
+        <h2>ภาพรวมทุกฟาร์ม</h2>
+      </div>
+      ${bodyHtml}
     </main>
   `;
 }
