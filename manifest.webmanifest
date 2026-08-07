@@ -1,0 +1,20 @@
+{
+  "name": "บันทึกฟาร์มกุ้งรายสัปดาห์",
+  "short_name": "ฟาร์มกุ้ง",
+  "description": "แอปบันทึกข้อมูลฟาร์มกุ้งรายสัปดาห์ ติดตามไซส์กุ้ง อาหาร และ ADG ใช้งานได้แบบออฟไลน์",
+  "id": "/sharimp-Farm-Data/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0C1917",
+  "theme_color": "#1F6E5F",
+  "orientation": "portrait-primary",
+  "lang": "th",
+  "dir": "ltr",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

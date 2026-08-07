@@ -1,0 +1,46 @@
+name: Deploy PWA to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - claude/github-wpa-offline-j2piwv
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Stamp build version (forces PWA clients to fetch the new version)
+        run: |
+          BUILD_VERSION="${GITHUB_SHA::7}-$(date -u +%Y%m%d%H%M%S)"
+          echo "Build version: $BUILD_VERSION"
+          sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g" index.html sw.js
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
