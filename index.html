@@ -305,6 +305,39 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 db.enablePersistence({ synchronizeTabs: true }).catch((e)=>console.warn('Firestore offline persistence unavailable', e));
 
+/* ---------------- Auto sign-out after inactivity ---------------- */
+// Firebase Auth remembers the session across visits/reloads by default,
+// so without this a shared device would stay logged in forever after the
+// first person types the password. Track last-activity in localStorage
+// (survives reloads) and sign out once it's stale — checked at boot, on
+// tab focus, and via a rolling timer while the app is open.
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes idle
+const LAST_ACTIVE_KEY = 'shrimp-farm-last-active';
+let idleTimer = null;
+
+function markActive(){
+  try{ localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now())); }catch(e){}
+}
+function idleMs(){
+  try{
+    const last = parseInt(localStorage.getItem(LAST_ACTIVE_KEY) || '0', 10);
+    return last ? Date.now() - last : 0;
+  }catch(e){ return 0; }
+}
+function resetIdleTimer(){
+  markActive();
+  if(idleTimer) clearTimeout(idleTimer);
+  if(authUser) idleTimer = setTimeout(()=>auth.signOut(), SESSION_TIMEOUT_MS);
+}
+['click','touchstart','keydown','mousemove','scroll'].forEach((evt)=>{
+  window.addEventListener(evt, ()=>{ if(authUser) resetIdleTimer(); }, { passive:true });
+});
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && authUser && idleMs() > SESSION_TIMEOUT_MS){
+    auth.signOut();
+  }
+});
+
 const APP_VERSION = '__BUILD_VERSION__';
 
 const ICONS = {
@@ -411,12 +444,18 @@ function computeAdgForPond(p, recs){
 function boot(){
   auth.onAuthStateChanged(async (user)=>{
     authReady = true;
+    if(user && idleMs() > SESSION_TIMEOUT_MS){
+      auth.signOut(); // triggers this listener again with user=null
+      return;
+    }
     authUser = user;
     if(user){
       loginError = '';
+      resetIdleTimer();
       await ensureFarmsSeeded();
       attachFirestoreListeners();
     } else {
+      if(idleTimer){ clearTimeout(idleTimer); idleTimer = null; }
       detachFirestoreListeners();
     }
     render();
