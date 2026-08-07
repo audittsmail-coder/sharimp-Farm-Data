@@ -386,7 +386,10 @@ async function ensureFarmsSeeded(){
   if(seededFarms) return;
   seededFarms = true;
   try{
-    const snap = await db.collection('farms').limit(1).get();
+    const snap = await Promise.race([
+      db.collection('farms').limit(1).get(),
+      new Promise((_, reject)=>setTimeout(()=>reject(new Error('timed out')), 10000)),
+    ]);
     if(snap.empty){
       const batch = db.batch();
       FARM_SEED.forEach((name,i)=>{
@@ -394,7 +397,10 @@ async function ensureFarmsSeeded(){
       });
       await batch.commit();
     }
-  }catch(e){ console.error('seed farms failed', e); }
+  }catch(e){
+    console.error('seed farms failed', e);
+    seededFarms = false; // allow a retry on the next auth state change (e.g. reconnect)
+  }
 }
 
 function attachFirestoreListeners(){
@@ -448,7 +454,7 @@ function computeAdgForPond(p, recs){
 
 /* ---------------- Bootstrap ---------------- */
 function boot(){
-  auth.onAuthStateChanged(async (user)=>{
+  auth.onAuthStateChanged((user)=>{
     authReady = true;
     if(user && idleMs() > SESSION_TIMEOUT_MS){
       auth.signOut(); // triggers this listener again with user=null
@@ -457,9 +463,10 @@ function boot(){
     authUser = user;
     if(user){
       loginError = '';
+      loginBusy = false;
       resetIdleTimer();
-      await ensureFarmsSeeded();
       attachFirestoreListeners();
+      ensureFarmsSeeded(); // fire-and-forget: don't block the UI on a Firestore round-trip
     } else {
       if(idleTimer){ clearTimeout(idleTimer); idleTimer = null; }
       detachFirestoreListeners();
