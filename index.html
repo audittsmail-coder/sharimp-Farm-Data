@@ -133,12 +133,6 @@
   }
   .farm-title-row button:hover{ color:var(--heading); border-color:var(--teal-500); }
 
-  .overview-group{ margin-bottom:20px; }
-  .overview-group:last-child{ margin-bottom:0; }
-  .overview-farm-label{
-    font-size:12px; font-weight:700; color:var(--ink-faint); text-transform:uppercase;
-    letter-spacing:.05em; margin:0 0 8px 2px;
-  }
 
   .pond-grid{ display:grid; grid-template-columns:1fr; gap:10px; }
   .pond-card{
@@ -235,6 +229,12 @@
   table.rec-table tr:last-child td{ border-bottom:none; }
   table.rec-table tr:hover td{ background:var(--surface-soft); }
   .row-del{ color:var(--danger); font-size:11px; background:none; border:none; cursor:pointer; text-decoration:underline;}
+
+  .overview-table tbody tr{ cursor:pointer; }
+  .overview-table th:nth-child(n+2), .overview-table td:nth-child(n+2){ text-align:right; }
+  .ov-pond-name{ font-weight:600; color:var(--heading); font-size:13.5px; }
+  .ov-pond-farm{ font-size:11px; color:var(--ink-faint); margin-top:1px; }
+  .ov-adg{ color:var(--coral); font-weight:700; }
 
   .panel-card{ border-color:var(--teal-500); box-shadow:0 0 0 3px rgba(47,163,140,.14), var(--shadow-sm); }
 
@@ -590,23 +590,46 @@ function renderFarmDashboard(){
 }
 
 function renderOverviewDashboard(tabs){
-  const groups = state.farms
-    .map(farm => ({ farm, ponds: pondsForFarm(farm.id) }))
-    .filter(g => g.ponds.length > 0);
+  const rows = [];
+  state.farms.forEach(farm=>{
+    pondsForFarm(farm.id).forEach(pond=>rows.push({ farm, pond }));
+  });
 
-  const bodyHtml = state.ponds.length === 0
-    ? `
+  let bodyHtml;
+  if(rows.length === 0){
+    bodyHtml = `
       <div class="empty-state">
         ${ICONS.shrimp}
         <p><b>ยังไม่มีบ่อในระบบ</b></p>
         <p>เลือกฟาร์มด้านบนแล้วกด "+ เพิ่มบ่อ" เพื่อเริ่มบันทึกข้อมูล</p>
-      </div>`
-    : groups.map(({farm, ponds}) => `
-        <div class="overview-group">
-          <div class="overview-farm-label">${escapeHtml(farm.name)}</div>
-          <div class="pond-grid">${ponds.map(p => renderPondCard(p)).join('')}</div>
+      </div>`;
+  } else {
+    const trs = rows.map(({farm, pond})=>{
+      const doc = pond.releaseDate ? daysBetween(pond.releaseDate, todayISO()) : null;
+      const recs = recordsForPond(pond.id);
+      const last = recs[recs.length-1];
+      const adg = computeAdgForPond(pond, recs);
+      return `
+        <tr data-open-pond="${pond.id}">
+          <td>
+            <div class="ov-pond-name">${escapeHtml(pond.name)}</div>
+            <div class="ov-pond-farm">${escapeHtml(farm.name)}</div>
+          </td>
+          <td>${last ? last.sizeCount+' ตัว/กก.' : '-'}</td>
+          <td>${doc!==null ? doc+' วัน' : '-'}</td>
+          <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
+        </tr>`;
+    }).join('');
+    bodyHtml = `
+      <div class="card">
+        <div style="overflow-x:auto">
+          <table class="rec-table overview-table">
+            <thead><tr><th>บ่อ</th><th>ไซส์ล่าสุด</th><th>DOC</th><th>ADG</th></tr></thead>
+            <tbody>${trs}</tbody>
+          </table>
         </div>
-      `).join('');
+      </div>`;
+  }
 
   return `
     <div class="farm-tabs">${tabs}</div>
