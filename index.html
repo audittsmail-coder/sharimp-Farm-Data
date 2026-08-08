@@ -508,10 +508,15 @@ function bindLoginEvents(){
     const password = new FormData(form).get('password');
     loginBusy = true; loginError=''; render();
     try{
-      await auth.signInWithEmailAndPassword(LOGIN_EMAIL, password);
+      await Promise.race([
+        auth.signInWithEmailAndPassword(LOGIN_EMAIL, password),
+        new Promise((_, reject)=>setTimeout(()=>reject(new Error('timeout')), 15000)),
+      ]);
     }catch(err){
       loginBusy = false;
-      loginError = 'รหัสผ่านไม่ถูกต้อง หรือเชื่อมต่ออินเทอร์เน็ตไม่ได้';
+      loginError = err && err.message === 'timeout'
+        ? 'เชื่อมต่อช้าเกินไป ลองใหม่อีกครั้ง'
+        : 'รหัสผ่านไม่ถูกต้อง หรือเชื่อมต่ออินเทอร์เน็ตไม่ได้';
       render();
     }
   });
@@ -529,33 +534,45 @@ function render(){
     bindLoginEvents();
     return;
   }
-  let html = `
-    <div class="app-banner">ซิงก์ข้อมูลกับทีมแบบเรียลไทม์ · ใช้งานออฟไลน์ได้</div>
-    <div class="topbar">
-      <div class="wave">${ICONS.wave}</div>
-      <div style="flex:1">
-        <h1>บันทึกฟาร์มกุ้ง</h1>
-        <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม</div>
+  try{
+    let html = `
+      <div class="app-banner">ซิงก์ข้อมูลกับทีมแบบเรียลไทม์ · ใช้งานออฟไลน์ได้</div>
+      <div class="topbar">
+        <div class="wave">${ICONS.wave}</div>
+        <div style="flex:1">
+          <h1>บันทึกฟาร์มกุ้ง</h1>
+          <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม</div>
+        </div>
+        <button class="icon-btn" id="btn-settings" title="ตั้งค่า">${ICONS.gear}</button>
       </div>
-      <button class="icon-btn" id="btn-settings" title="ตั้งค่า">${ICONS.gear}</button>
-    </div>
-  `;
+    `;
 
-  let panelHtml = '';
-  if(showSettingsSheet) panelHtml += renderSettingsPanel();
-  if(showPondFormSheet) panelHtml += renderPondFormPanel();
-  if(panelHtml) html += `<div style="padding:14px 16px 0 16px">${panelHtml}</div>`;
+    let panelHtml = '';
+    if(showSettingsSheet) panelHtml += renderSettingsPanel();
+    if(showPondFormSheet) panelHtml += renderPondFormPanel();
+    if(panelHtml) html += `<div style="padding:14px 16px 0 16px">${panelHtml}</div>`;
 
-  if(currentPondId){
-    html += renderPondDetail();
-  } else {
-    html += renderFarmDashboard();
+    if(currentPondId){
+      html += renderPondDetail();
+    } else {
+      html += renderFarmDashboard();
+    }
+
+    app.innerHTML = html;
+    bindDashboardEvents();
+
+    if(currentPondId) drawCharts();
+  }catch(e){
+    console.error('render() failed', e);
+    app.innerHTML = `
+      <div class="login-wrap">
+        <div class="login-card">
+          <h1>เกิดข้อผิดพลาด</h1>
+          <p>ไม่สามารถแสดงผลข้อมูลได้ ลองโหลดหน้านี้ใหม่อีกครั้ง</p>
+          <button class="btn btn-primary" type="button" onclick="location.reload()">โหลดหน้าใหม่</button>
+        </div>
+      </div>`;
   }
-
-  app.innerHTML = html;
-  bindDashboardEvents();
-
-  if(currentPondId) drawCharts();
 }
 
 function renderFarmDashboard(){
