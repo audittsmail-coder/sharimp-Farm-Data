@@ -868,7 +868,7 @@ function renderPondFormPanel(){
       <form id="pond-form">
         <div class="field"><label>ชื่อบ่อ</label><input required name="name" value="${escapeHtml(p.name||'')}" placeholder="เช่น บ่อ 1"></div>
         <div class="field-row">
-          <div class="field"><label>วันที่ปล่อยกุ้ง</label><input type="date" name="releaseDate" value="${p.releaseDate||''}"></div>
+          <div class="field"><label>วันที่ปล่อยกุ้ง</label><input type="date" name="releaseDate" value="${p.releaseDate || (editingPond ? '' : todayISO())}"></div>
           <div class="field"><label>ชนิดกุ้ง</label>
             <select name="species"><option value="">เลือกชนิด</option>${speciesOpts}</select>
           </div>
