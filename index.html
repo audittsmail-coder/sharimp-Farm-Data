@@ -281,8 +281,6 @@
   }
   .login-card h1{ font-size:20px; margin:0 0 5px 0; color:var(--heading); }
   .login-card p{ font-size:12.5px; color:var(--ink-soft); margin:0 0 20px 0; }
-  .login-card .field{ text-align:left; }
-  .login-error{ color:var(--danger); font-size:12.5px; margin:-6px 0 12px 0; min-height:1em; }
 </style>
 </head>
 <body>
@@ -297,8 +295,10 @@
    Data lives in Firebase (Firestore) and syncs in real time
    across devices. Firestore's offline persistence keeps the app
    usable without a connection; writes made offline sync once
-   back online. A single shared login gates access since this
-   PWA is deployed publicly.
+   back online. Signs in anonymously in the background (no password
+   screen) purely so Firestore's security rules have a request.auth
+   to check — this app has no access gate, anyone with the link can
+   read/write the data.
    ============================================================ */
 
 const firebaseConfig = {
@@ -309,45 +309,11 @@ const firebaseConfig = {
   messagingSenderId: "105951477051",
   appId: "1:105951477051:web:de134a245b683625304b1e",
 };
-const LOGIN_EMAIL = 'team@sharimp-farm-data.local';
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 db.enablePersistence({ synchronizeTabs: true }).catch((e)=>console.warn('Firestore offline persistence unavailable', e));
-
-/* ---------------- Auto sign-out after inactivity ---------------- */
-// Firebase Auth remembers the session across visits/reloads by default,
-// so without this a shared device would stay logged in forever after the
-// first person types the password. Track last-activity in localStorage
-// (survives reloads) and sign out once it's stale — checked at boot, on
-// tab focus, and via a rolling timer while the app is open.
-const SESSION_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes idle
-const LAST_ACTIVE_KEY = 'shrimp-farm-last-active';
-let idleTimer = null;
-
-function markActive(){
-  try{ localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now())); }catch(e){}
-}
-function idleMs(){
-  try{
-    const last = parseInt(localStorage.getItem(LAST_ACTIVE_KEY) || '0', 10);
-    return last ? Date.now() - last : 0;
-  }catch(e){ return 0; }
-}
-function resetIdleTimer(){
-  markActive();
-  if(idleTimer) clearTimeout(idleTimer);
-  if(authUser) idleTimer = setTimeout(()=>auth.signOut(), SESSION_TIMEOUT_MS);
-}
-['click','touchstart','keydown','mousemove','scroll'].forEach((evt)=>{
-  window.addEventListener(evt, ()=>{ if(authUser) resetIdleTimer(); }, { passive:true });
-});
-document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState === 'visible' && authUser && idleMs() > SESSION_TIMEOUT_MS){
-    auth.signOut();
-  }
-});
 
 const APP_VERSION = '__BUILD_VERSION__';
 
@@ -369,10 +335,7 @@ let showSettingsSheet = false;
 let showPondFormSheet = false;
 let editingPond = null;
 let editingRecordId = null;
-let authUser = null;
 let authReady = false;
-let loginError = '';
-let loginBusy = false;
 
 /* ---------------- Utilities ---------------- */
 function fmtDate(iso){ if(!iso) return '-'; const d=new Date(iso+'T00:00:00'); return d.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'2-digit'}); }
@@ -460,66 +423,15 @@ function computeAdgForPond(p, recs){
 function boot(){
   auth.onAuthStateChanged((user)=>{
     authReady = true;
-    if(user && idleMs() > SESSION_TIMEOUT_MS){
-      auth.signOut(); // triggers this listener again with user=null
-      return;
-    }
-    authUser = user;
     if(user){
-      loginError = '';
-      loginBusy = false;
-      resetIdleTimer();
       attachFirestoreListeners();
       ensureFarmsSeeded(); // fire-and-forget: don't block the UI on a Firestore round-trip
     } else {
-      if(idleTimer){ clearTimeout(idleTimer); idleTimer = null; }
       detachFirestoreListeners();
     }
     render();
   });
-}
-
-/* ---------------- Login screen ---------------- */
-function renderLoginScreen(){
-  return `
-    <div class="login-wrap">
-      <div class="login-card">
-        <div class="wave">${ICONS.wave}</div>
-        <h1>บันทึกฟาร์มกุ้ง</h1>
-        <p>ใส่รหัสผ่านของทีมเพื่อเข้าใช้งาน</p>
-        <form id="login-form">
-          <div class="field">
-            <label>รหัสผ่าน</label>
-            <input type="password" name="password" autocomplete="current-password" required autofocus>
-          </div>
-          <div class="login-error">${escapeHtml(loginError)}</div>
-          <button class="btn btn-primary" type="submit" ${loginBusy?'disabled':''}>${loginBusy?'กำลังเข้าสู่ระบบ…':'เข้าใช้งาน'}</button>
-        </form>
-      </div>
-    </div>
-  `;
-}
-
-function bindLoginEvents(){
-  const form = document.getElementById('login-form');
-  if(!form) return;
-  form.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const password = new FormData(form).get('password');
-    loginBusy = true; loginError=''; render();
-    try{
-      await Promise.race([
-        auth.signInWithEmailAndPassword(LOGIN_EMAIL, password),
-        new Promise((_, reject)=>setTimeout(()=>reject(new Error('timeout')), 15000)),
-      ]);
-    }catch(err){
-      loginBusy = false;
-      loginError = err && err.message === 'timeout'
-        ? 'เชื่อมต่อช้าเกินไป ลองใหม่อีกครั้ง'
-        : 'รหัสผ่านไม่ถูกต้อง หรือเชื่อมต่ออินเทอร์เน็ตไม่ได้';
-      render();
-    }
-  });
+  auth.signInAnonymously().catch((e)=>console.error('anonymous sign-in failed', e));
 }
 
 /* ---------------- Rendering ---------------- */
@@ -527,11 +439,6 @@ function render(){
   const app = document.getElementById('app');
   if(!authReady){
     app.innerHTML = `<div class="loading">กำลังโหลด…</div>`;
-    return;
-  }
-  if(!authUser){
-    app.innerHTML = renderLoginScreen();
-    bindLoginEvents();
     return;
   }
   try{
@@ -934,14 +841,12 @@ function renderSettingsPanel(){
       <h3>ตั้งค่า</h3>
       <p style="font-size:13px;color:var(--ink-soft);line-height:1.6;margin-top:-6px">
         ข้อมูลซิงก์กับทีมแบบเรียลไทม์ผ่าน Firebase และแคชไว้ในเครื่องให้ใช้งานออฟไลน์ได้<br>
-        เมื่อกลับมาออนไลน์ ข้อมูลที่แก้ไขระหว่างออฟไลน์จะซิงก์ขึ้นอัตโนมัติ
+        เมื่อกลับมาออนไลน์ ข้อมูลที่แก้ไขระหว่างออฟไลน์จะซิงก์ขึ้นอัตโนมัติ<br>
+        <b>หมายเหตุ:</b> แอปนี้ไม่มีรหัสผ่านป้องกัน ใครก็ตามที่มีลิงก์เข้าดู/แก้ไขข้อมูลได้
       </p>
       <div class="btn-row" style="margin-top:10px">
         <button class="btn btn-secondary" type="button" id="btn-close-settings" style="flex:1">ปิด</button>
         <button class="btn btn-secondary" type="button" id="btn-clear-data" style="flex:2">ล้างข้อมูลทั้งหมด</button>
-      </div>
-      <div class="btn-row" style="margin-top:8px">
-        <button class="btn-danger-text" type="button" id="btn-logout">ออกจากระบบ</button>
       </div>
       <div class="app-version">เวอร์ชันแอป: ${escapeHtml(APP_VERSION)}</div>
     </div>
@@ -982,12 +887,6 @@ function bindDashboardEvents(){
 
   const btnCloseSettings = document.getElementById('btn-close-settings');
   if(btnCloseSettings) btnCloseSettings.onclick = ()=>{ showSettingsSheet=false; render(); };
-
-  const btnLogout = document.getElementById('btn-logout');
-  if(btnLogout) btnLogout.onclick = async ()=>{
-    if(!confirm('ออกจากระบบ?')) return;
-    await auth.signOut();
-  };
 
   const btnClearData = document.getElementById('btn-clear-data');
   if(btnClearData) btnClearData.onclick = async ()=>{
