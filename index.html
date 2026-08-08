@@ -242,6 +242,16 @@
 
   .panel-card{ border-color:var(--teal-500); box-shadow:0 0 0 3px rgba(47,163,140,.14), var(--shadow-sm); }
 
+  .batch-list{ display:flex; flex-direction:column; gap:2px; }
+  .batch-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:10px 2px; border-bottom:1px solid var(--line-soft);
+  }
+  .batch-row:last-child{ border-bottom:none; }
+  .batch-row-title{ font-size:13px; color:var(--ink); font-weight:500; }
+  .batch-row-meta{ font-size:11.5px; color:var(--ink-faint); margin-top:2px; }
+  .batch-row-actions{ display:flex; gap:10px; flex:none; }
+
   .loading{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 0; color:var(--ink-faint); font-size:13px; gap:14px; }
   .loading::before{
     content:''; width:26px; height:26px; border-radius:50%;
@@ -328,9 +338,10 @@ const ICONS = {
 const FARM_SEED = ['ฟาร์ม 1','ฟาร์ม 2','ฟาร์ม 3','ฟาร์ม 4','ฟาร์ม 5'];
 const SPECIES_OPTIONS = ['กุ้งขาว (Vannamei)','กุ้งกุลาดำ (Black Tiger)','อื่นๆ'];
 
-let state = { farms: [], ponds: [], records: [] };
+let state = { farms: [], ponds: [], records: [], batches: [] };
 let currentFarmId = 'overview';
 let currentPondId = null;
+let viewingBatchId = null;
 let showSettingsSheet = false;
 let showPondFormSheet = false;
 let editingPond = null;
@@ -346,7 +357,7 @@ function el(html){ const t=document.createElement('template'); t.innerHTML=html.
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* ---------------- Data layer (Firestore, real-time sync + offline cache) ---------------- */
-let unsubFarms = null, unsubPonds = null, unsubRecords = null;
+let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null;
 let seededFarms = false;
 
 async function ensureFarmsSeeded(){
@@ -385,14 +396,20 @@ function attachFirestoreListeners(){
     state.records = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     render();
   }, (e)=>console.error('records listener error', e));
+
+  unsubBatches = db.collection('batches').onSnapshot((snap)=>{
+    state.batches = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    render();
+  }, (e)=>console.error('batches listener error', e));
 }
 
 function detachFirestoreListeners(){
   if(unsubFarms) unsubFarms();
   if(unsubPonds) unsubPonds();
   if(unsubRecords) unsubRecords();
-  unsubFarms = unsubPonds = unsubRecords = null;
-  state = { farms: [], ponds: [], records: [] };
+  if(unsubBatches) unsubBatches();
+  unsubFarms = unsubPonds = unsubRecords = unsubBatches = null;
+  state = { farms: [], ponds: [], records: [], batches: [] };
   currentFarmId = 'overview';
   currentPondId = null;
 }
@@ -464,7 +481,9 @@ function render(){
     if(showPondFormSheet) panelHtml += renderPondFormPanel();
     if(panelHtml) html += `<div style="padding:14px 16px 0 16px">${panelHtml}</div>`;
 
-    if(currentPondId){
+    if(viewingBatchId){
+      html += renderBatchDetail();
+    } else if(currentPondId){
       html += renderPondDetail();
     } else {
       html += renderFarmDashboard();
@@ -473,7 +492,8 @@ function render(){
     app.innerHTML = html;
     bindDashboardEvents();
 
-    if(currentPondId) drawCharts();
+    if(viewingBatchId) drawBatchCharts();
+    else if(currentPondId) drawCharts();
   }catch(e){
     console.error('render() failed', e);
     app.innerHTML = `
@@ -608,6 +628,10 @@ function renderPondDetail(){
   const p = state.ponds.find(x=>x.id===currentPondId);
   if(!p){ currentPondId = null; return renderFarmDashboard(); }
   const records = recordsForPond(p.id);
+  const pondBatches = state.batches
+    .filter(b=>b.pondId===p.id)
+    .slice()
+    .sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''));
   const editingRecordThisRender = editingRecordId ? records.find(r=>r.id===editingRecordId) : null;
   const doc = p.releaseDate ? daysBetween(p.releaseDate, todayISO()) : null;
   const last = records[records.length-1];
@@ -654,6 +678,7 @@ function renderPondDetail(){
           <button class="btn-danger-text" style="text-decoration:none;color:var(--teal-700)" id="btn-edit-pond">แก้ไขข้อมูลบ่อ</button>
           &nbsp;·&nbsp;
           <button class="btn-danger-text" id="btn-delete-pond">ลบบ่อนี้</button>
+          ${records.length>0 ? `&nbsp;·&nbsp;<button class="btn-danger-text" style="text-decoration:none;color:var(--teal-700)" id="btn-archive-batch">บันทึกรุ่นนี้เก็บไว้</button>` : ''}
         </div>
       </div>
 
@@ -727,6 +752,117 @@ function renderPondDetail(){
         </div>
       </div>
       ` : `<div class="empty-state">${ICONS.shrimp}<p>ยังไม่มีข้อมูลบันทึก เริ่มกรอกข้อมูลสัปดาห์แรกด้านบนได้เลย</p></div>`}
+
+      ${pondBatches.length>0 ? `
+      <div class="card">
+        <h3>ประวัติรุ่นก่อนหน้า</h3>
+        <div class="batch-list">
+          ${pondBatches.map(b=>{
+            const bRecords = b.records || [];
+            const bLast = bRecords[bRecords.length-1];
+            return `
+            <div class="batch-row">
+              <div>
+                <div class="batch-row-title">${b.releaseDate ? 'ปล่อย '+fmtDate(b.releaseDate) : 'ไม่ระบุวันปล่อย'} — บันทึกเมื่อ ${fmtDate(b.savedAt)}</div>
+                <div class="batch-row-meta">${bRecords.length} รายการ ${bLast ? '· ไซส์สุดท้าย '+bLast.sizeCount+' ตัว/กก.' : ''}</div>
+              </div>
+              <div class="batch-row-actions">
+                <button class="row-del" style="color:var(--teal-500)" data-view-batch="${b.id}">ดู</button>
+                <button class="row-del" data-del-batch="${b.id}">ลบ</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+    </main>
+  `;
+}
+
+function renderBatchDetail(){
+  const batch = state.batches.find(b=>b.id===viewingBatchId);
+  if(!batch){ viewingBatchId = null; return renderPondDetail(); }
+  const records = (batch.records || []).slice().sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
+  const last = records[records.length-1];
+  const lastWeight = last ? weightFromCount(last.sizeCount) : null;
+  const doc = (batch.releaseDate && last) ? daysBetween(batch.releaseDate, last.weekDate) : null;
+  const cumAdg = (lastWeight && doc) ? (lastWeight/doc) : null;
+
+  let weeklyAdg = null;
+  if(records.length >= 2){
+    const prev = records[records.length-2];
+    const dDays = daysBetween(prev.weekDate, last.weekDate);
+    const wPrev = weightFromCount(prev.sizeCount), wLast = weightFromCount(last.sizeCount);
+    if(dDays>0 && wPrev!==null && wLast!==null) weeklyAdg = (wLast-wPrev)/dDays;
+  }
+
+  const rows = records.slice().reverse().map(r=>{
+    const w = weightFromCount(r.sizeCount);
+    const recDoc = batch.releaseDate ? daysBetween(batch.releaseDate, r.weekDate) : null;
+    return `
+      <tr>
+        <td>${fmtDate(r.weekDate)}</td>
+        <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
+        <td>${r.sizeCount} ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">${w?w.toFixed(1)+' ก.':''}</span></td>
+        <td>${r.feedPerDay} กก.</td>
+        <td>${r.note ? escapeHtml(r.note) : '-'}</td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div class="backbar">
+      <button class="back-btn" id="btn-back-batch">${ICONS.back} กลับ</button>
+    </div>
+    <main>
+      <div class="pond-head">
+        <h2>${escapeHtml(batch.pondName||'บ่อ')} <span style="font-size:13px;color:var(--ink-faint);font-weight:500">(ประวัติ)</span></h2>
+        <div class="tag-row">
+          <span class="tag">${escapeHtml(batch.species||'ยังไม่ระบุชนิด')}</span>
+          ${batch.brand ? `<span class="tag">แบรนด์: ${escapeHtml(batch.brand)}</span>` : ''}
+          ${batch.releaseDate ? `<span class="tag coral">ปล่อย ${fmtDate(batch.releaseDate)}</span>` : ''}
+          ${batch.releaseCount ? `<span class="tag">จำนวนปล่อย ${Number(batch.releaseCount).toLocaleString('th-TH')} ตัว</span>` : ''}
+          <span class="tag amber">บันทึกเมื่อ ${fmtDate(batch.savedAt)}</span>
+        </div>
+      </div>
+
+      <div class="summary-strip">
+        <div class="summary-box">
+          <div class="n">${last ? last.sizeCount : '-'}</div>
+          <div class="l">ตัว/กก. ล่าสุด</div>
+        </div>
+        <div class="summary-box amber">
+          <div class="n">${last ? last.feedPerDay : '-'}</div>
+          <div class="l">กก. อาหาร/วัน</div>
+        </div>
+        <div class="summary-box coral">
+          <div class="n">${weeklyAdg!==null ? weeklyAdg.toFixed(2) : (cumAdg!==null?cumAdg.toFixed(2):'-')}</div>
+          <div class="l">ADG (ก./วัน)</div>
+        </div>
+      </div>
+
+      ${records.length>0 ? `
+      <div class="card">
+        <h3>แนวโน้มไซส์กุ้ง (น้ำหนักเฉลี่ย กรัม)</h3>
+        <div class="chart-wrap" id="chart-size"></div>
+      </div>
+      <div class="card">
+        <h3>แนวโน้มอาหารต่อวัน (กก.)</h3>
+        <div class="chart-wrap" id="chart-feed"></div>
+      </div>
+      ${records.length>=2 ? `
+      <div class="card">
+        <h3>แนวโน้ม ADG รายสัปดาห์ (กรัม/วัน)</h3>
+        <div class="chart-wrap" id="chart-adg"></div>
+      </div>` : ''}
+      <div class="card">
+        <h3>ประวัติการบันทึก</h3>
+        <div style="overflow-x:auto">
+          <table class="rec-table">
+            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>หมายเหตุ</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+      ` : `<div class="empty-state">${ICONS.shrimp}<p>ไม่มีข้อมูลบันทึกในรุ่นนี้</p></div>`}
     </main>
   `;
 }
@@ -806,12 +942,10 @@ function svgLineChart({labels, values, color, fillColor}){
   </svg>`;
 }
 
-function drawCharts(){
-  const records = recordsForPond(currentPondId);
+function drawChartsFor(records, releaseDate){
   if(records.length===0) return;
-  const pondForChart = state.ponds.find(x=>x.id===currentPondId);
   const labels = records.map(r=>{
-    const d = pondForChart && pondForChart.releaseDate ? daysBetween(pondForChart.releaseDate, r.weekDate) : null;
+    const d = releaseDate ? daysBetween(releaseDate, r.weekDate) : null;
     return d!==null ? `${fmtDate(r.weekDate)} (DOC ${d})` : fmtDate(r.weekDate);
   });
 
@@ -837,6 +971,18 @@ function drawCharts(){
     }
     adgEl.innerHTML = svgLineChart({labels, values: adgData, color:'#E8815F', fillColor:'rgba(232,129,95,.18)'});
   }
+}
+
+function drawCharts(){
+  const records = recordsForPond(currentPondId);
+  const pondForChart = state.ponds.find(x=>x.id===currentPondId);
+  drawChartsFor(records, pondForChart && pondForChart.releaseDate);
+}
+
+function drawBatchCharts(){
+  const batch = state.batches.find(b=>b.id===viewingBatchId);
+  if(!batch) return;
+  drawChartsFor(batch.records || [], batch.releaseDate);
 }
 
 /* ---------------- Settings panel (inline, not a fixed overlay) ---------------- */
@@ -963,13 +1109,54 @@ function bindDashboardEvents(){
   if(btnDeletePond) btnDeletePond.onclick = async ()=>{
     if(!confirm('ลบบ่อนี้และประวัติการบันทึกทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
     const pondId = currentPondId;
-    const batch = db.batch();
-    state.records.filter(r=>r.pondId===pondId).forEach(r=>batch.delete(db.collection('records').doc(r.id)));
-    batch.delete(db.collection('ponds').doc(pondId));
-    await batch.commit().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
+    const writeBatch = db.batch();
+    state.records.filter(r=>r.pondId===pondId).forEach(r=>writeBatch.delete(db.collection('records').doc(r.id)));
+    writeBatch.delete(db.collection('ponds').doc(pondId));
+    await writeBatch.commit().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
     currentPondId = null;
     render();
   };
+
+  const btnArchiveBatch = document.getElementById('btn-archive-batch');
+  if(btnArchiveBatch) btnArchiveBatch.onclick = async ()=>{
+    const pondId = currentPondId;
+    const pond = state.ponds.find(p=>p.id===pondId);
+    if(!pond) return;
+    const pondRecords = recordsForPond(pondId);
+    if(pondRecords.length===0) return;
+    if(!confirm(`บันทึกข้อมูล ${pondRecords.length} รายการของบ่อนี้เก็บไว้เป็นประวัติ แล้วล้างเพื่อเริ่มบันทึกรุ่นใหม่? การกระทำนี้ไม่สามารถย้อนกลับได้`)) return;
+    const archivedRecords = pondRecords.map(r=>({ weekDate:r.weekDate, sizeCount:r.sizeCount, feedPerDay:r.feedPerDay, note:r.note||'' }));
+    try{
+      await db.collection('batches').add({
+        pondId, pondName: pond.name, farmId: pond.farmId,
+        species: pond.species||'', brand: pond.brand||'',
+        releaseCount: pond.releaseCount||null, releaseDate: pond.releaseDate||'',
+        savedAt: todayISO(),
+        records: archivedRecords,
+      });
+      const writeBatch = db.batch();
+      pondRecords.forEach(r=>writeBatch.delete(db.collection('records').doc(r.id)));
+      await writeBatch.commit();
+    }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
+    render();
+  };
+
+  const btnBackBatch = document.getElementById('btn-back-batch');
+  if(btnBackBatch) btnBackBatch.onclick = ()=>{ viewingBatchId=null; render(); };
+
+  document.querySelectorAll('[data-view-batch]').forEach(btn=>{
+    btn.onclick = ()=>{ viewingBatchId = btn.getAttribute('data-view-batch'); render(); };
+  });
+
+  document.querySelectorAll('[data-del-batch]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(!confirm('ลบประวัติรุ่นนี้ถาวร?')) return;
+      const id = btn.getAttribute('data-del-batch');
+      await db.collection('batches').doc(id).delete()
+        .catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
+      render();
+    };
+  });
 
   document.querySelectorAll('[data-edit-record]').forEach(btn=>{
     btn.onclick = ()=>{
