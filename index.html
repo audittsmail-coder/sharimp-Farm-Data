@@ -1139,8 +1139,18 @@ boot();
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     const hadController = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.register('./sw.js').then((reg)=>{
-      setInterval(()=>reg.update(), 60*60*1000);
+    // Stamp the registration URL with the build version. Some browsers are
+    // unreliable about byte-comparing a static './sw.js' URL to notice an
+    // update (can silently keep an old worker in control indefinitely,
+    // even with skipWaiting/clients.claim on the new one). Changing the
+    // URL itself forces a real install check every deploy instead of
+    // depending on that comparison.
+    navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(APP_VERSION)).then((reg)=>{
+      reg.update();
+      setInterval(()=>reg.update(), 30*60*1000);
+      document.addEventListener('visibilitychange', ()=>{
+        if(document.visibilityState === 'visible') reg.update();
+      });
       reg.addEventListener('updatefound', ()=>{
         const newWorker = reg.installing;
         if(!newWorker) return;
