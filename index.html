@@ -397,7 +397,12 @@ function detachFirestoreListeners(){
   currentPondId = null;
 }
 
-function pondsForFarm(farmId){ return state.ponds.filter(p=>p.farmId===farmId); }
+function pondsForFarm(farmId){
+  return state.ponds
+    .filter(p=>p.farmId===farmId)
+    .slice()
+    .sort((a,b)=>(a.name||'').localeCompare(b.name||'', 'th', { numeric:true, sensitivity:'base' }));
+}
 function recordsForPond(pondId){
   return state.records.filter(r=>r.pondId===pondId).slice().sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
 }
