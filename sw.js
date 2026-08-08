@@ -63,7 +63,11 @@ self.addEventListener('fetch', (event) => {
 
 async function networkFirst(request) {
   try {
-    const fresh = await fetch(request);
+    // Bypass the browser's HTTP cache entirely — without this, a network
+    // "fetch" can still silently resolve to a stale disk-cached response
+    // (per the page's Cache-Control headers), defeating the whole point
+    // of network-first and making deploys look like they never landed.
+    const fresh = await fetch(request, { cache: 'no-store' });
     const cache = await caches.open(CACHE_NAME);
     cache.put(request, fresh.clone());
     return fresh;
