@@ -440,6 +440,13 @@ function computeAdgForPond(p, recs){
   }
   return null;
 }
+function estimatedBiomassKg(releaseCount, survivalRate, sizeCount){
+  if(!releaseCount || survivalRate==null || !sizeCount) return null;
+  const weightG = weightFromCount(sizeCount);
+  if(weightG===null) return null;
+  const survivingCount = releaseCount * (survivalRate/100);
+  return survivingCount * weightG / 1000;
+}
 
 /* ---------------- Bootstrap ---------------- */
 function boot(){
@@ -645,6 +652,7 @@ function renderPondDetail(){
     const wPrev = weightFromCount(prev.sizeCount), wLast = weightFromCount(last.sizeCount);
     if(dDays>0 && wPrev!==null && wLast!==null) weeklyAdg = (wLast-wPrev)/dDays;
   }
+  const estimatedYieldKg = last ? estimatedBiomassKg(p.releaseCount, last.survivalRate, last.sizeCount) : null;
 
   const rows = records.slice().reverse().map(r=>{
     const w = weightFromCount(r.sizeCount);
@@ -655,6 +663,7 @@ function renderPondDetail(){
         <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
         <td>${r.sizeCount} ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">${w?w.toFixed(1)+' ก.':''}</span></td>
         <td>${r.feedPerDay} กก.</td>
+        <td>${r.survivalRate!=null ? r.survivalRate+'%' : '-'}</td>
         <td>${r.note ? escapeHtml(r.note) : '-'}</td>
         <td><button class="row-del" data-edit-record="${r.id}" style="color:var(--teal-500)">แก้ไข</button> <button class="row-del" data-del-record="${r.id}">ลบ</button></td>
       </tr>`;
@@ -697,6 +706,13 @@ function renderPondDetail(){
         </div>
       </div>
 
+      ${estimatedYieldKg!==null ? `
+      <div class="card" style="text-align:center; padding:14px 16px;">
+        <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลผลิตโดยประมาณ</div>
+        <div style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})} กก.</div>
+        <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด</div>
+      </div>` : ''}
+
       <div class="card" id="record-form-card">
         <h3>${editingRecordId ? 'แก้ไขข้อมูลบันทึก' : 'บันทึกข้อมูลสัปดาห์นี้'}</h3>
         <form id="record-form">
@@ -717,9 +733,13 @@ function renderPondDetail(){
               <input type="number" inputmode="decimal" step="0.1" name="feedPerDay" placeholder="เช่น 25" value="${editingRecordThisRender ? editingRecordThisRender.feedPerDay : ''}" required>
             </div>
             <div class="field">
-              <label>หมายเหตุ (ถ้ามี)</label>
-              <input type="text" name="note" placeholder="เช่น น้ำขุ่น, ลดอาหาร" value="${editingRecordThisRender ? escapeHtml(editingRecordThisRender.note||'') : ''}">
+              <label>อัตรารอด (%) (ถ้าทราบ)</label>
+              <input type="number" inputmode="decimal" step="0.1" min="0" max="100" name="survivalRate" placeholder="เช่น 85" value="${editingRecordThisRender && editingRecordThisRender.survivalRate!=null ? editingRecordThisRender.survivalRate : ''}">
             </div>
+          </div>
+          <div class="field">
+            <label>หมายเหตุ (ถ้ามี)</label>
+            <input type="text" name="note" placeholder="เช่น น้ำขุ่น, ลดอาหาร" value="${editingRecordThisRender ? escapeHtml(editingRecordThisRender.note||'') : ''}">
           </div>
           <div class="btn-row">
             ${editingRecordId ? `<button class="btn btn-secondary" type="button" id="btn-cancel-edit-record" style="flex:1">ยกเลิก</button>` : ''}
@@ -746,7 +766,7 @@ function renderPondDetail(){
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>หมายเหตุ</th><th></th></tr></thead>
+            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>หมายเหตุ</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -794,6 +814,7 @@ function renderBatchDetail(){
     const wPrev = weightFromCount(prev.sizeCount), wLast = weightFromCount(last.sizeCount);
     if(dDays>0 && wPrev!==null && wLast!==null) weeklyAdg = (wLast-wPrev)/dDays;
   }
+  const estimatedYieldKg = last ? estimatedBiomassKg(batch.releaseCount, last.survivalRate, last.sizeCount) : null;
 
   const rows = records.slice().reverse().map(r=>{
     const w = weightFromCount(r.sizeCount);
@@ -804,6 +825,7 @@ function renderBatchDetail(){
         <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
         <td>${r.sizeCount} ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">${w?w.toFixed(1)+' ก.':''}</span></td>
         <td>${r.feedPerDay} กก.</td>
+        <td>${r.survivalRate!=null ? r.survivalRate+'%' : '-'}</td>
         <td>${r.note ? escapeHtml(r.note) : '-'}</td>
       </tr>`;
   }).join('');
@@ -839,6 +861,13 @@ function renderBatchDetail(){
         </div>
       </div>
 
+      ${estimatedYieldKg!==null ? `
+      <div class="card" style="text-align:center; padding:14px 16px;">
+        <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลผลิตโดยประมาณ</div>
+        <div style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})} กก.</div>
+        <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด</div>
+      </div>` : ''}
+
       ${records.length>0 ? `
       <div class="card">
         <h3>แนวโน้มไซส์กุ้ง (น้ำหนักเฉลี่ย กรัม)</h3>
@@ -857,7 +886,7 @@ function renderBatchDetail(){
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>หมายเหตุ</th></tr></thead>
+            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>หมายเหตุ</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -1125,7 +1154,7 @@ function bindDashboardEvents(){
     const pondRecords = recordsForPond(pondId);
     if(pondRecords.length===0) return;
     if(!confirm(`บันทึกข้อมูล ${pondRecords.length} รายการของบ่อนี้เก็บไว้เป็นประวัติ แล้วล้างเพื่อเริ่มบันทึกรุ่นใหม่? การกระทำนี้ไม่สามารถย้อนกลับได้`)) return;
-    const archivedRecords = pondRecords.map(r=>({ weekDate:r.weekDate, sizeCount:r.sizeCount, feedPerDay:r.feedPerDay, note:r.note||'' }));
+    const archivedRecords = pondRecords.map(r=>({ weekDate:r.weekDate, sizeCount:r.sizeCount, feedPerDay:r.feedPerDay, survivalRate:r.survivalRate!=null?r.survivalRate:null, note:r.note||'' }));
     try{
       await db.collection('batches').add({
         pondId, pondName: pond.name, farmId: pond.farmId,
@@ -1202,6 +1231,7 @@ function bindDashboardEvents(){
         weekDate,
         sizeCount: parseFloat(fd.get('sizeCount')),
         feedPerDay: parseFloat(fd.get('feedPerDay')),
+        survivalRate: fd.get('survivalRate') ? parseFloat(fd.get('survivalRate')) : null,
         note: (fd.get('note')||'').trim(),
       };
       // avoid two records sharing the same date for this pond
