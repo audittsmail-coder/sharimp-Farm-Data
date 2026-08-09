@@ -706,12 +706,11 @@ function renderPondDetail(){
         </div>
       </div>
 
-      ${estimatedYieldKg!==null ? `
       <div class="card" style="text-align:center; padding:14px 16px;">
         <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลผลิตโดยประมาณ</div>
-        <div style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})} กก.</div>
-        <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด</div>
-      </div>` : ''}
+        <div id="yield-value" style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg!==null ? estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-'}</div>
+        <div id="yield-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${estimatedYieldKg!==null ? `คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด` : 'ใส่อัตรารอดด้านล่างเพื่อคำนวณผลผลิตโดยประมาณ'}</div>
+      </div>
 
       <div class="card" id="record-form-card">
         <h3>${editingRecordId ? 'แก้ไขข้อมูลบันทึก' : 'บันทึกข้อมูลสัปดาห์นี้'}</h3>
@@ -861,12 +860,11 @@ function renderBatchDetail(){
         </div>
       </div>
 
-      ${estimatedYieldKg!==null ? `
       <div class="card" style="text-align:center; padding:14px 16px;">
         <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลผลิตโดยประมาณ</div>
-        <div style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})} กก.</div>
-        <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด</div>
-      </div>` : ''}
+        <div style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg!==null ? estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-'}</div>
+        <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${estimatedYieldKg!==null ? `คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด` : 'ไม่มีข้อมูลอัตรารอดในรุ่นนี้'}</div>
+      </div>
 
       ${records.length>0 ? `
       <div class="card">
@@ -1221,6 +1219,28 @@ function bindDashboardEvents(){
           docHint.textContent = 'อายุกุ้ง ณ วันที่บันทึก: ' + daysBetween(pond.releaseDate, dateInput.value) + ' วัน';
         }
       });
+    }
+
+    const sizeCountInput = recordForm.querySelector('input[name=sizeCount]');
+    const survivalRateInput = recordForm.querySelector('input[name=survivalRate]');
+    const yieldValueEl = document.getElementById('yield-value');
+    const yieldCaptionEl = document.getElementById('yield-caption');
+    if(sizeCountInput && survivalRateInput && yieldValueEl && yieldCaptionEl){
+      const updateYieldPreview = ()=>{
+        const pond = state.ponds.find(x=>x.id===currentPondId);
+        const sizeCount = sizeCountInput.value ? parseFloat(sizeCountInput.value) : null;
+        const survivalRate = survivalRateInput.value ? parseFloat(survivalRateInput.value) : null;
+        const kg = pond ? estimatedBiomassKg(pond.releaseCount, survivalRate, sizeCount) : null;
+        if(kg!==null){
+          yieldValueEl.textContent = kg.toLocaleString('th-TH',{maximumFractionDigits:1}) + ' กก.';
+          yieldCaptionEl.textContent = `คำนวณจากจำนวนปล่อย × อัตรารอด ${survivalRate}% × ไซส์ที่กรอก`;
+        } else {
+          yieldValueEl.textContent = '-';
+          yieldCaptionEl.textContent = 'ใส่อัตรารอดด้านล่างเพื่อคำนวณผลผลิตโดยประมาณ';
+        }
+      };
+      sizeCountInput.addEventListener('input', updateYieldPreview);
+      survivalRateInput.addEventListener('input', updateYieldPreview);
     }
     recordForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
