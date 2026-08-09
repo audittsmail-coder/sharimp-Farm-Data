@@ -234,6 +234,11 @@
   .overview-table th:nth-child(n+2), .overview-table td:nth-child(n+2){ text-align:right; }
   .ov-pond-name{ font-weight:600; color:var(--heading); font-size:13.5px; }
   .ov-pond-species{ font-size:11px; color:var(--ink-faint); margin-top:1px; }
+  .ov-update-badge{
+    display:inline-block; font-size:9.5px; font-weight:700; color:var(--coral);
+    background:var(--coral-soft); padding:2px 7px; border-radius:999px; vertical-align:middle;
+    letter-spacing:.02em;
+  }
   .ov-adg{ color:var(--coral); font-weight:700; }
   .overview-table tr.ov-zone-row td{
     background:var(--surface-hi); color:var(--teal-400); font-weight:700; font-size:11.5px;
@@ -421,6 +426,34 @@ function pondsForFarm(farmId){
     .slice()
     .sort((a,b)=>(a.name||'').localeCompare(b.name||'', 'th', { numeric:true, sensitivity:'base' }));
 }
+
+/* ---------------- "Updated recently" badge (per-device, not synced) ---------------- */
+const POND_VIEWED_KEY = 'shrimp-farm-pond-viewed';
+const UPDATE_BADGE_MAX_AGE_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
+
+function pondLastActivityAt(pond){
+  const recs = recordsForPond(pond.id);
+  const recMax = recs.reduce((max,r)=> (r.updatedAt && r.updatedAt>max) ? r.updatedAt : max, 0);
+  return Math.max(pond.updatedAt||0, recMax);
+}
+function getPondViewedMap(){
+  try{ return JSON.parse(localStorage.getItem(POND_VIEWED_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function markPondViewed(pondId){
+  try{
+    const map = getPondViewedMap();
+    map[pondId] = Date.now();
+    localStorage.setItem(POND_VIEWED_KEY, JSON.stringify(map));
+  }catch(e){}
+}
+function isPondRecentlyUpdated(pond){
+  const lastActivity = pondLastActivityAt(pond);
+  if(!lastActivity) return false;
+  if(Date.now() - lastActivity > UPDATE_BADGE_MAX_AGE_MS) return false;
+  const viewedAt = getPondViewedMap()[pond.id] || 0;
+  return lastActivity > viewedAt;
+}
 function recordsForPond(pondId){
   return state.records.filter(r=>r.pondId===pondId).slice().sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
 }
@@ -573,10 +606,11 @@ function renderOverviewDashboard(tabs){
         const last = recs[recs.length-1];
         const adg = computeAdgForPond(pond, recs);
         const speciesShort = pond.species ? pond.species.split('(')[0].trim() : '';
+        const isNew = isPondRecentlyUpdated(pond);
         return `
           <tr data-open-pond="${pond.id}">
             <td>
-              <div class="ov-pond-name">${escapeHtml(pond.name)}</div>
+              <div class="ov-pond-name">${escapeHtml(pond.name)}${isNew ? ` <span class="ov-update-badge">อัปเดตใหม่</span>` : ''}</div>
               ${speciesShort ? `<div class="ov-pond-species">${escapeHtml(speciesShort)}</div>` : ''}
             </td>
             <td>${last ? last.sizeCount+' ตัว/กก.' : '-'}</td>
@@ -1094,7 +1128,8 @@ function bindDashboardEvents(){
         species: fd.get('species') || '',
         releaseCount: fd.get('releaseCount') ? parseFloat(fd.get('releaseCount')) : null,
         brand: fd.get('brand').trim(),
-        farmId: currentFarmId,
+        farmId: editingPond ? editingPond.farmId : currentFarmId,
+        updatedAt: Date.now(),
       };
       const write = editingPond
         ? db.collection('ponds').doc(editingPond.id).update(data)
@@ -1124,7 +1159,12 @@ function bindDashboardEvents(){
   if(btnAddPond) btnAddPond.onclick = ()=>{ editingPond=null; showPondFormSheet=true; render(); };
 
   document.querySelectorAll('[data-open-pond]').forEach(card=>{
-    card.onclick = ()=>{ currentPondId = card.getAttribute('data-open-pond'); editingRecordId=null; render(); };
+    card.onclick = ()=>{
+      currentPondId = card.getAttribute('data-open-pond');
+      editingRecordId = null;
+      markPondViewed(currentPondId);
+      render();
+    };
   });
 
   const btnBack = document.getElementById('btn-back');
@@ -1258,6 +1298,7 @@ function bindDashboardEvents(){
         feedPerDay: parseFloat(fd.get('feedPerDay')),
         survivalRate: fd.get('survivalRate') ? parseFloat(fd.get('survivalRate')) : null,
         note: (fd.get('note')||'').trim(),
+        updatedAt: Date.now(),
       };
       // avoid two records sharing the same date for this pond
       const conflict = state.records.find(r=>r.pondId===currentPondId && r.weekDate===weekDate && r.id!==editingRecordId);
