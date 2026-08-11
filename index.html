@@ -220,6 +220,19 @@
   .pathogen-chip.amber{ background:var(--amber-soft); color:var(--amber); }
   .pathogen-chip.good{ background:var(--teal-100); color:var(--teal-400); }
 
+  .pathogen-list{ display:flex; flex-direction:column; gap:10px; }
+  .pathogen-entry{
+    border-left:3px solid var(--line); padding:9px 12px; border-radius:8px;
+    background:var(--surface-soft);
+  }
+  .pathogen-entry.coral{ border-left-color:var(--coral); }
+  .pathogen-entry.amber{ border-left-color:var(--amber); }
+  .pathogen-entry.good{ border-left-color:var(--teal-500); }
+  .pathogen-entry .pe-head{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:5px; }
+  .pathogen-entry .pe-date{ font-size:11.5px; color:var(--ink-faint); font-weight:600; }
+  .pathogen-entry .pe-worse{ font-size:10.5px; color:var(--coral); font-weight:700; }
+  .pathogen-entry .pe-text{ font-size:13.5px; color:var(--ink); line-height:1.55; }
+
   .summary-strip{ display:flex; gap:10px; margin:16px 0; }
   .summary-box{
     flex:1; background:linear-gradient(150deg, var(--teal-500), var(--teal-700)); color:#fff;
@@ -639,7 +652,7 @@ function renderOverviewDashboard(tabs){
               <div class="ov-pond-name">${escapeHtml(pond.name)}${isNew ? ` <span class="ov-update-badge">อัปเดตใหม่</span>` : ''}</div>
               ${speciesShort ? `<div class="ov-pond-species">${escapeHtml(speciesShort)}</div>` : ''}
             </td>
-            <td>${last ? last.sizeCount+' ตัว/กก.' : '-'}</td>
+            <td>${last && last.sizeCount!=null ? last.sizeCount+' ตัว/กก.' : '-'}</td>
             <td>${doc!==null ? doc+' วัน' : '-'}</td>
             <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
             <td>${pathogenRec ? pathogenChipHtml(pathogenRec) : '-'}</td>
@@ -688,7 +701,7 @@ function renderPondCard(p){
       <div class="stat-row">
         <div class="stat">
           <div class="label">ไซส์ล่าสุด</div>
-          <div class="val">${last ? last.sizeCount+' ตัว/กก.' : '-'}</div>
+          <div class="val">${last && last.sizeCount!=null ? last.sizeCount+' ตัว/กก.' : '-'}</div>
         </div>
         <div class="stat">
           <div class="label">ADG (ก./วัน)</div>
@@ -730,14 +743,31 @@ function renderPondDetail(){
       <tr>
         <td>${fmtDate(r.weekDate)}</td>
         <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
-        <td>${r.sizeCount} ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">${w?w.toFixed(1)+' ก.':''}</span></td>
-        <td>${r.feedPerDay} กก.</td>
+        <td>${r.sizeCount!=null ? r.sizeCount+' ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">'+(w?w.toFixed(1)+' ก.':'')+'</span>' : '-'}</td>
+        <td>${r.feedPerDay!=null ? r.feedPerDay+' กก.' : '-'}</td>
         <td>${r.survivalRate!=null ? r.survivalRate+'%' : '-'}</td>
-        <td>${r.pathogenSeverity ? pathogenChipHtml(r) : '-'}${r.pathogenStatus ? `<div style="color:var(--ink-faint);font-size:11px;margin-top:3px">${escapeHtml(r.pathogenStatus)}</div>` : ''}</td>
         <td>${r.note ? escapeHtml(r.note) : '-'}</td>
         <td><button class="row-del" data-edit-record="${r.id}" style="color:var(--teal-500)">แก้ไข</button> <button class="row-del" data-del-record="${r.id}">ลบ</button></td>
       </tr>`;
   }).join('');
+
+  const pathogenEntries = records.filter(r=>r.pathogenSeverity || r.pathogenStatus).slice().reverse();
+  const pathogenHistoryHtml = pathogenEntries.length ? `
+    <div class="card">
+      <h3>ผลตรวจเชื้อรายสัปดาห์</h3>
+      <div class="pathogen-list">
+        ${pathogenEntries.map(r=>`
+          <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[r.pathogenSeverity]||''}">
+            <div class="pe-head">
+              <span class="pe-date">${fmtDate(r.weekDate)}</span>
+              ${pathogenChipHtml(r)}
+              ${r.pathogenWorsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
+            </div>
+            <div class="pe-text">${escapeHtml(r.pathogenStatus||'-')}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>` : '';
 
   return `
     <div class="backbar">
@@ -770,11 +800,11 @@ function renderPondDetail(){
 
       <div class="summary-strip">
         <div class="summary-box">
-          <div class="n">${last ? last.sizeCount : '-'}</div>
+          <div class="n">${last && last.sizeCount!=null ? last.sizeCount : '-'}</div>
           <div class="l">ตัว/กก. ล่าสุด</div>
         </div>
         <div class="summary-box amber">
-          <div class="n">${last ? last.feedPerDay : '-'}</div>
+          <div class="n">${last && last.feedPerDay!=null ? last.feedPerDay : '-'}</div>
           <div class="l">กก. อาหาร/วัน</div>
         </div>
         <div class="summary-box coral">
@@ -838,11 +868,12 @@ function renderPondDetail(){
         <h3>แนวโน้ม ADG รายสัปดาห์ (กรัม/วัน)</h3>
         <div class="chart-wrap" id="chart-adg"></div>
       </div>` : ''}
+      ${pathogenHistoryHtml}
       <div class="card">
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>ผลเชื้อ</th><th>หมายเหตุ</th><th></th></tr></thead>
+            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>หมายเหตุ</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -899,13 +930,30 @@ function renderBatchDetail(){
       <tr>
         <td>${fmtDate(r.weekDate)}</td>
         <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
-        <td>${r.sizeCount} ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">${w?w.toFixed(1)+' ก.':''}</span></td>
-        <td>${r.feedPerDay} กก.</td>
+        <td>${r.sizeCount!=null ? r.sizeCount+' ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">'+(w?w.toFixed(1)+' ก.':'')+'</span>' : '-'}</td>
+        <td>${r.feedPerDay!=null ? r.feedPerDay+' กก.' : '-'}</td>
         <td>${r.survivalRate!=null ? r.survivalRate+'%' : '-'}</td>
-        <td>${r.pathogenSeverity ? pathogenChipHtml(r) : '-'}</td>
         <td>${r.note ? escapeHtml(r.note) : '-'}</td>
       </tr>`;
   }).join('');
+
+  const batchPathogenEntries = records.filter(r=>r.pathogenSeverity || r.pathogenStatus).slice().reverse();
+  const batchPathogenHistoryHtml = batchPathogenEntries.length ? `
+    <div class="card">
+      <h3>ผลตรวจเชื้อรายสัปดาห์</h3>
+      <div class="pathogen-list">
+        ${batchPathogenEntries.map(r=>`
+          <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[r.pathogenSeverity]||''}">
+            <div class="pe-head">
+              <span class="pe-date">${fmtDate(r.weekDate)}</span>
+              ${pathogenChipHtml(r)}
+              ${r.pathogenWorsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
+            </div>
+            <div class="pe-text">${escapeHtml(r.pathogenStatus||'-')}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>` : '';
 
   return `
     <div class="backbar">
@@ -925,11 +973,11 @@ function renderBatchDetail(){
 
       <div class="summary-strip">
         <div class="summary-box">
-          <div class="n">${last ? last.sizeCount : '-'}</div>
+          <div class="n">${last && last.sizeCount!=null ? last.sizeCount : '-'}</div>
           <div class="l">ตัว/กก. ล่าสุด</div>
         </div>
         <div class="summary-box amber">
-          <div class="n">${last ? last.feedPerDay : '-'}</div>
+          <div class="n">${last && last.feedPerDay!=null ? last.feedPerDay : '-'}</div>
           <div class="l">กก. อาหาร/วัน</div>
         </div>
         <div class="summary-box coral">
@@ -958,11 +1006,12 @@ function renderBatchDetail(){
         <h3>แนวโน้ม ADG รายสัปดาห์ (กรัม/วัน)</h3>
         <div class="chart-wrap" id="chart-adg"></div>
       </div>` : ''}
+      ${batchPathogenHistoryHtml}
       <div class="card">
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>ผลเชื้อ</th><th>หมายเหตุ</th></tr></thead>
+            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>หมายเหตุ</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
