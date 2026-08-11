@@ -480,19 +480,24 @@ function recordsForPond(pondId){
 }
 
 /* ---------------- Pathogen results (written by the weekly culture-log app) ---------------- */
-// Pathogen fields (pathogenStatus/pathogenSeverity/pathogenWorsened) are merged onto the same
-// `records` docs by pondId+weekDate from a separate lab-report import tool — not entered here.
+// Pathogen fields live directly on the pond doc (pathogenStatus/pathogenSeverity/
+// pathogenWorsened/pathogenDate = latest result, pathogenHistory[] = every week's result)
+// written by a separate lab-report import tool — not entered here, and never touching
+// `records` (this app's own weekly growth/feed log).
 const PATHOGEN_SEVERITY_LABEL = { critical:'วิกฤต', watch:'เฝ้าระวัง', normal:'ปกติ' };
 const PATHOGEN_SEVERITY_CLASS = { critical:'coral', watch:'amber', normal:'good' };
-function latestPathogenRecord(pondId){
-  const recs = recordsForPond(pondId).filter(r=>r.pathogenSeverity);
-  return recs.length ? recs[recs.length-1] : null;
+function latestPathogenInfo(pond){
+  if(!pond || !pond.pathogenSeverity) return null;
+  return { weekDate:pond.pathogenDate, status:pond.pathogenStatus, severity:pond.pathogenSeverity, worsened:pond.pathogenWorsened };
 }
-function pathogenChipHtml(rec){
-  if(!rec) return '';
-  const cls = PATHOGEN_SEVERITY_CLASS[rec.pathogenSeverity] || '';
-  const label = PATHOGEN_SEVERITY_LABEL[rec.pathogenSeverity] || rec.pathogenSeverity;
-  return `<span class="pathogen-chip ${cls}" title="${escapeHtml(rec.pathogenStatus||'')}">เชื้อ: ${escapeHtml(label)}</span>`;
+function pathogenHistoryForPond(pond){
+  return (pond && pond.pathogenHistory) ? pond.pathogenHistory.slice().sort((a,b)=>(a.weekDate||'').localeCompare(b.weekDate||'')) : [];
+}
+function pathogenChipHtml(severity, status){
+  if(!severity) return '';
+  const cls = PATHOGEN_SEVERITY_CLASS[severity] || '';
+  const label = PATHOGEN_SEVERITY_LABEL[severity] || severity;
+  return `<span class="pathogen-chip ${cls}" title="${escapeHtml(status||'')}">เชื้อ: ${escapeHtml(label)}</span>`;
 }
 function computeAdgForPond(p, recs){
   if(!recs || recs.length===0) return null;
@@ -644,7 +649,6 @@ function renderOverviewDashboard(tabs){
         const adg = computeAdgForPond(pond, recs);
         const speciesShort = pond.species ? pond.species.split('(')[0].trim() : '';
         const isNew = isPondRecentlyUpdated(pond);
-        const pathogenRec = latestPathogenRecord(pond.id);
         return `
           <tr data-open-pond="${pond.id}">
             <td>
@@ -654,7 +658,7 @@ function renderOverviewDashboard(tabs){
             <td>${last && last.sizeCount!=null ? last.sizeCount+' ตัว/กก.' : '-'}</td>
             <td>${doc!==null ? doc+' วัน' : '-'}</td>
             <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
-            <td>${pathogenRec ? pathogenChipHtml(pathogenRec) : '-'}</td>
+            <td>${pond.pathogenSeverity ? pathogenChipHtml(pond.pathogenSeverity, pond.pathogenStatus) : '-'}</td>
           </tr>`;
       }).join('');
       return zoneRow + pondRows;
@@ -686,14 +690,13 @@ function renderPondCard(p){
   const recs = recordsForPond(p.id);
   const last = recs[recs.length-1];
   const adg = computeAdgForPond(p, recs);
-  const pathogenRec = latestPathogenRecord(p.id);
   return `
     <div class="pond-card" data-open-pond="${p.id}">
       <div class="pond-card-top">
         <div>
           <h3>${escapeHtml(p.name)}</h3>
           <div class="pond-meta">${escapeHtml(p.species||'ยังไม่ระบุชนิด')} ${p.brand ? '· '+escapeHtml(p.brand) : ''}</div>
-          ${pathogenRec ? `<div style="margin-top:5px">${pathogenChipHtml(pathogenRec)}</div>` : ''}
+          ${p.pathogenSeverity ? `<div style="margin-top:5px">${pathogenChipHtml(p.pathogenSeverity, p.pathogenStatus)}</div>` : ''}
         </div>
         ${doc!==null ? `<span class="doc-chip">DOC ${doc} วัน</span>` : ''}
       </div>
@@ -715,7 +718,7 @@ function renderPondDetail(){
   const p = state.ponds.find(x=>x.id===currentPondId);
   if(!p){ currentPondId = null; return renderFarmDashboard(); }
   const records = recordsForPond(p.id);
-  const pathogenRec = latestPathogenRecord(p.id);
+  const pathogenRec = latestPathogenInfo(p);
   const pondBatches = state.batches
     .filter(b=>b.pondId===p.id)
     .slice()
@@ -750,19 +753,19 @@ function renderPondDetail(){
       </tr>`;
   }).join('');
 
-  const pathogenEntries = records.filter(r=>r.pathogenSeverity || r.pathogenStatus).slice().reverse();
+  const pathogenEntries = pathogenHistoryForPond(p).slice().reverse();
   const pathogenHistoryHtml = pathogenEntries.length ? `
     <div class="card">
       <h3>ผลตรวจเชื้อรายสัปดาห์</h3>
       <div class="pathogen-list">
         ${pathogenEntries.map(r=>`
-          <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[r.pathogenSeverity]||''}">
+          <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[r.severity]||''}">
             <div class="pe-head">
               <span class="pe-date">${fmtDate(r.weekDate)}</span>
-              ${pathogenChipHtml(r)}
-              ${r.pathogenWorsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
+              ${pathogenChipHtml(r.severity, r.status)}
+              ${r.worsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
             </div>
-            <div class="pe-text">${escapeHtml(r.pathogenStatus||'-')}</div>
+            <div class="pe-text">${escapeHtml(r.status||'-')}</div>
           </div>
         `).join('')}
       </div>
@@ -781,7 +784,7 @@ function renderPondDetail(){
           ${p.releaseDate ? `<span class="tag coral">ปล่อย ${fmtDate(p.releaseDate)}</span>` : ''}
           ${p.releaseCount ? `<span class="tag">จำนวนปล่อย ${Number(p.releaseCount).toLocaleString('th-TH')} ตัว</span>` : ''}
           ${doc!==null ? `<span class="tag amber">DOC ${doc} วัน</span>` : ''}
-          ${pathogenRec ? `<span class="tag ${PATHOGEN_SEVERITY_CLASS[pathogenRec.pathogenSeverity]||''}">ผลเชื้อ (${fmtDate(pathogenRec.weekDate)}): ${escapeHtml(PATHOGEN_SEVERITY_LABEL[pathogenRec.pathogenSeverity]||pathogenRec.pathogenSeverity)}</span>` : ''}
+          ${pathogenRec ? `<span class="tag ${PATHOGEN_SEVERITY_CLASS[pathogenRec.severity]||''}">ผลเชื้อ (${fmtDate(pathogenRec.weekDate)}): ${escapeHtml(PATHOGEN_SEVERITY_LABEL[pathogenRec.severity]||pathogenRec.severity)}</span>` : ''}
         </div>
         <div style="margin-top:8px">
           <button class="btn-danger-text" style="text-decoration:none;color:var(--teal-700)" id="btn-edit-pond">แก้ไขข้อมูลบ่อ</button>
@@ -791,10 +794,10 @@ function renderPondDetail(){
         </div>
       </div>
 
-      ${pathogenRec && pathogenRec.pathogenStatus ? `
+      ${pathogenRec && pathogenRec.status ? `
       <div class="card" style="padding:14px 16px;">
         <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลตรวจเชื้อล่าสุด · ${fmtDate(pathogenRec.weekDate)}</div>
-        <div style="font-size:14.5px;color:var(--ink);margin-top:6px;line-height:1.5;">${escapeHtml(pathogenRec.pathogenStatus)}</div>
+        <div style="font-size:14.5px;color:var(--ink);margin-top:6px;line-height:1.5;">${escapeHtml(pathogenRec.status)}</div>
       </div>` : ''}
 
       <div class="summary-strip">
@@ -936,19 +939,19 @@ function renderBatchDetail(){
       </tr>`;
   }).join('');
 
-  const batchPathogenEntries = records.filter(r=>r.pathogenSeverity || r.pathogenStatus).slice().reverse();
+  const batchPathogenEntries = (batch.pathogenHistory || []).slice().sort((a,b)=>(a.weekDate||'').localeCompare(b.weekDate||'')).reverse();
   const batchPathogenHistoryHtml = batchPathogenEntries.length ? `
     <div class="card">
       <h3>ผลตรวจเชื้อรายสัปดาห์</h3>
       <div class="pathogen-list">
         ${batchPathogenEntries.map(r=>`
-          <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[r.pathogenSeverity]||''}">
+          <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[r.severity]||''}">
             <div class="pe-head">
               <span class="pe-date">${fmtDate(r.weekDate)}</span>
-              ${pathogenChipHtml(r)}
-              ${r.pathogenWorsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
+              ${pathogenChipHtml(r.severity, r.status)}
+              ${r.worsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
             </div>
-            <div class="pe-text">${escapeHtml(r.pathogenStatus||'-')}</div>
+            <div class="pe-text">${escapeHtml(r.status||'-')}</div>
           </div>
         `).join('')}
       </div>
@@ -1287,7 +1290,6 @@ function bindDashboardEvents(){
     const archivedRecords = pondRecords.map(r=>({
       weekDate:r.weekDate, sizeCount:r.sizeCount, feedPerDay:r.feedPerDay,
       survivalRate:r.survivalRate!=null?r.survivalRate:null, note:r.note||'',
-      pathogenStatus:r.pathogenStatus||'', pathogenSeverity:r.pathogenSeverity||'',
     }));
     try{
       await db.collection('batches').add({
@@ -1296,9 +1298,18 @@ function bindDashboardEvents(){
         releaseCount: pond.releaseCount||null, releaseDate: pond.releaseDate||'',
         savedAt: todayISO(),
         records: archivedRecords,
+        pathogenHistory: pond.pathogenHistory || [],
       });
       const writeBatch = db.batch();
       pondRecords.forEach(r=>writeBatch.delete(db.collection('records').doc(r.id)));
+      writeBatch.update(db.collection('ponds').doc(pondId), {
+        pathogenHistory: [],
+        pathogenStatus: firebase.firestore.FieldValue.delete(),
+        pathogenSeverity: firebase.firestore.FieldValue.delete(),
+        pathogenWorsened: firebase.firestore.FieldValue.delete(),
+        pathogenDate: firebase.firestore.FieldValue.delete(),
+        pathogenReportId: firebase.firestore.FieldValue.delete(),
+      });
       await writeBatch.commit();
     }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
     render();
