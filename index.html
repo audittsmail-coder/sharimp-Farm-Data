@@ -832,7 +832,7 @@ function renderPondDetail(){
             </div>
             <div class="field">
               <label>ไซส์กุ้ง (ตัว/กก.)</label>
-              <input type="number" inputmode="decimal" step="0.1" name="sizeCount" placeholder="เช่น 60" value="${editingRecordThisRender ? editingRecordThisRender.sizeCount : ''}" required>
+              <input type="number" inputmode="decimal" step="0.1" name="sizeCount" placeholder="เช่น 60 (เว้นว่างได้ถ้ายังไม่สุ่มไซส์)" value="${editingRecordThisRender && editingRecordThisRender.sizeCount!=null ? editingRecordThisRender.sizeCount : ''}">
             </div>
           </div>
           <div class="field-row">
@@ -1396,7 +1396,7 @@ function bindDashboardEvents(){
       const data = {
         pondId: currentPondId,
         weekDate,
-        sizeCount: parseFloat(fd.get('sizeCount')),
+        sizeCount: fd.get('sizeCount') ? parseFloat(fd.get('sizeCount')) : null,
         feedPerDay: parseFloat(fd.get('feedPerDay')),
         survivalRate: fd.get('survivalRate') ? parseFloat(fd.get('survivalRate')) : null,
         note: (fd.get('note')||'').trim(),
