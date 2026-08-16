@@ -523,6 +523,10 @@ function estimatedBiomassKg(releaseCount, survivalRate, sizeCount){
   const survivingCount = releaseCount * (survivalRate/100);
   return survivingCount * weightG / 1000;
 }
+function estimatedSurvivingCount(releaseCount, survivalRate){
+  if(!releaseCount || survivalRate==null) return null;
+  return Math.round(releaseCount * (survivalRate/100));
+}
 
 /* ---------------- Bootstrap ---------------- */
 function boot(){
@@ -737,6 +741,7 @@ function renderPondDetail(){
     if(dDays>0 && wPrev!==null && wLast!==null) weeklyAdg = (wLast-wPrev)/dDays;
   }
   const estimatedYieldKg = last ? estimatedBiomassKg(p.releaseCount, last.survivalRate, last.sizeCount) : null;
+  const estimatedSurviving = last ? estimatedSurvivingCount(p.releaseCount, last.survivalRate) : null;
 
   const rows = records.slice().reverse().map(r=>{
     const w = weightFromCount(r.sizeCount);
@@ -809,10 +814,18 @@ function renderPondDetail(){
         </div>
       </div>
 
-      <div class="card" style="text-align:center; padding:14px 16px;">
-        <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลผลิตโดยประมาณ</div>
-        <div id="yield-value" style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg!==null ? estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-'}</div>
-        <div id="yield-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${estimatedYieldKg!==null ? `คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด` : 'ใส่อัตรารอดด้านล่างเพื่อคำนวณผลผลิตโดยประมาณ'}</div>
+      <div class="card" style="padding:14px 16px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="flex:1; text-align:center;">
+            <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลผลิตโดยประมาณ</div>
+            <div id="yield-value" style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg!==null ? estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-'}</div>
+            <div id="yield-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${estimatedYieldKg!==null ? `คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด` : 'ใส่อัตรารอดด้านล่างเพื่อคำนวณผลผลิตโดยประมาณ'}</div>
+          </div>
+          <div style="flex-shrink:0; width:104px; background:var(--surface-hi); border-radius:10px; padding:10px 8px; text-align:center;">
+            <div style="font-size:10px;color:var(--ink-faint);line-height:1.3;">กุ้งที่เหลือโดยประมาณ</div>
+            <div id="survival-count-value" style="font-size:16px;font-weight:700;color:var(--ink);margin-top:5px;">${estimatedSurviving!==null ? estimatedSurviving.toLocaleString('th-TH')+' ตัว' : '-'}</div>
+          </div>
+        </div>
       </div>
 
       <div class="card" id="record-form-card">
@@ -1367,6 +1380,7 @@ function bindDashboardEvents(){
     const survivalRateInput = recordForm.querySelector('input[name=survivalRate]');
     const yieldValueEl = document.getElementById('yield-value');
     const yieldCaptionEl = document.getElementById('yield-caption');
+    const survivalCountEl = document.getElementById('survival-count-value');
     if(sizeCountInput && survivalRateInput && yieldValueEl && yieldCaptionEl){
       const updateYieldPreview = ()=>{
         const pond = state.ponds.find(x=>x.id===currentPondId);
@@ -1379,6 +1393,10 @@ function bindDashboardEvents(){
         } else {
           yieldValueEl.textContent = '-';
           yieldCaptionEl.textContent = 'ใส่อัตรารอดด้านล่างเพื่อคำนวณผลผลิตโดยประมาณ';
+        }
+        if(survivalCountEl){
+          const survivingCount = pond ? estimatedSurvivingCount(pond.releaseCount, survivalRate) : null;
+          survivalCountEl.textContent = survivingCount!==null ? survivingCount.toLocaleString('th-TH')+' ตัว' : '-';
         }
       };
       sizeCountInput.addEventListener('input', updateYieldPreview);
