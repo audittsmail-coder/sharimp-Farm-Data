@@ -365,10 +365,11 @@ const ICONS = {
 const FARM_SEED = ['ฟาร์ม 1','ฟาร์ม 2','ฟาร์ม 3','ฟาร์ม 4','ฟาร์ม 5'];
 const SPECIES_OPTIONS = ['กุ้งขาว (Vannamei)','กุ้งกุลาดำ (Black Tiger)','อื่นๆ'];
 
-let state = { farms: [], ponds: [], records: [], batches: [] };
+let state = { farms: [], ponds: [], records: [], batches: [], harvests: [] };
 let currentFarmId = 'overview';
 let currentPondId = null;
 let viewingBatchId = null;
+let viewingHarvestPondId = null;
 let showSettingsSheet = false;
 let showPondFormSheet = false;
 let editingPond = null;
@@ -384,7 +385,7 @@ function el(html){ const t=document.createElement('template'); t.innerHTML=html.
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* ---------------- Data layer (Firestore, real-time sync + offline cache) ---------------- */
-let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null;
+let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null;
 let seededFarms = false;
 
 async function ensureFarmsSeeded(){
@@ -428,6 +429,11 @@ function attachFirestoreListeners(){
     state.batches = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     render();
   }, (e)=>console.error('batches listener error', e));
+
+  unsubHarvests = db.collection('harvests').onSnapshot((snap)=>{
+    state.harvests = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    render();
+  }, (e)=>console.error('harvests listener error', e));
 }
 
 function detachFirestoreListeners(){
@@ -435,8 +441,9 @@ function detachFirestoreListeners(){
   if(unsubPonds) unsubPonds();
   if(unsubRecords) unsubRecords();
   if(unsubBatches) unsubBatches();
-  unsubFarms = unsubPonds = unsubRecords = unsubBatches = null;
-  state = { farms: [], ponds: [], records: [], batches: [] };
+  if(unsubHarvests) unsubHarvests();
+  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = null;
+  state = { farms: [], ponds: [], records: [], batches: [], harvests: [] };
   currentFarmId = 'overview';
   currentPondId = null;
 }
@@ -477,6 +484,9 @@ function isPondRecentlyUpdated(pond){
 }
 function recordsForPond(pondId){
   return state.records.filter(r=>r.pondId===pondId).slice().sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
+}
+function harvestsForPond(pondId){
+  return state.harvests.filter(h=>h.pondId===pondId).slice().sort((a,b)=>(a.harvestDate||'').localeCompare(b.harvestDate||''));
 }
 
 /* ---------------- Pathogen results (written by the weekly culture-log app) ---------------- */
@@ -568,7 +578,9 @@ function render(){
     if(showPondFormSheet) panelHtml += renderPondFormPanel();
     if(panelHtml) html += `<div style="padding:14px 16px 0 16px">${panelHtml}</div>`;
 
-    if(viewingBatchId){
+    if(viewingHarvestPondId){
+      html += renderHarvestForm();
+    } else if(viewingBatchId){
       html += renderBatchDetail();
     } else if(currentPondId){
       html += renderPondDetail();
@@ -579,7 +591,8 @@ function render(){
     app.innerHTML = html;
     bindDashboardEvents();
 
-    if(viewingBatchId) drawBatchCharts();
+    if(viewingHarvestPondId){ /* no charts on the harvest page */ }
+    else if(viewingBatchId) drawBatchCharts();
     else if(currentPondId) drawCharts();
   }catch(e){
     console.error('render() failed', e);
@@ -740,8 +753,18 @@ function renderPondDetail(){
     const wPrev = weightFromCount(prev.sizeCount), wLast = weightFromCount(last.sizeCount);
     if(dDays>0 && wPrev!==null && wLast!==null) weeklyAdg = (wLast-wPrev)/dDays;
   }
-  const estimatedYieldKg = last ? estimatedBiomassKg(p.releaseCount, last.survivalRate, last.sizeCount) : null;
-  const estimatedSurviving = last ? estimatedSurvivingCount(p.releaseCount, last.survivalRate) : null;
+  const pondHarvests = harvestsForPond(p.id);
+  const totalHarvestedCount = pondHarvests.reduce((sum,h)=> sum + (h.caughtCount||0), 0);
+  const totalHarvestedKg = pondHarvests.reduce((sum,h)=> sum + (h.weightKg||0), 0);
+  const totalHarvestedRevenue = pondHarvests.reduce((sum,h)=> sum + (h.revenue||0), 0);
+  const rawSurvivingCount = last ? estimatedSurvivingCount(p.releaseCount, last.survivalRate) : null;
+  const estimatedSurviving = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount) : null;
+  const estimatedYieldKg = (()=>{
+    if(estimatedSurviving===null || !last || !last.sizeCount) return null;
+    const weightG = weightFromCount(last.sizeCount);
+    if(weightG===null) return null;
+    return estimatedSurviving * weightG / 1000;
+  })();
 
   const rows = records.slice().reverse().map(r=>{
     const w = weightFromCount(r.sizeCount);
@@ -819,13 +842,17 @@ function renderPondDetail(){
           <div style="flex:1; text-align:center;">
             <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลผลิตโดยประมาณ</div>
             <div id="yield-value" style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg!==null ? estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-'}</div>
-            <div id="yield-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${estimatedYieldKg!==null ? `คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด` : 'ใส่อัตรารอดด้านล่างเพื่อคำนวณผลผลิตโดยประมาณ'}</div>
+            <div id="yield-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${estimatedYieldKg!==null ? (totalHarvestedCount>0 ? `จำนวนปล่อย × อัตรารอด ${last.survivalRate}% − แบ่งจับสะสม ${totalHarvestedCount.toLocaleString('th-TH')} ตัว` : `คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด`) : 'ใส่อัตรารอดด้านล่างเพื่อคำนวณผลผลิตโดยประมาณ'}</div>
           </div>
           <div style="flex-shrink:0; width:104px; background:var(--surface-hi); border-radius:10px; padding:10px 8px; text-align:center;">
             <div style="font-size:10px;color:var(--ink-faint);line-height:1.3;">กุ้งที่เหลือโดยประมาณ</div>
             <div id="survival-count-value" style="font-size:16px;font-weight:700;color:var(--ink);margin-top:5px;">${estimatedSurviving!==null ? estimatedSurviving.toLocaleString('th-TH')+' ตัว' : '-'}</div>
           </div>
         </div>
+        ${pondHarvests.length>0 ? `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft);font-size:11px;color:var(--ink-faint);text-align:center;">
+          แบ่งจับแล้ว ${pondHarvests.length} ครั้ง · รวม ${totalHarvestedKg.toLocaleString('th-TH',{maximumFractionDigits:1})} กก.${totalHarvestedRevenue>0 ? ` · ${totalHarvestedRevenue.toLocaleString('th-TH',{maximumFractionDigits:0})} บาท` : ''}
+        </div>` : ''}
       </div>
 
       <div class="card" id="record-form-card">
@@ -859,6 +886,9 @@ function renderPondDetail(){
           <div class="btn-row">
             ${editingRecordId ? `<button class="btn btn-secondary" type="button" id="btn-cancel-edit-record" style="flex:1">ยกเลิก</button>` : ''}
             <button class="btn btn-primary" type="submit" style="flex:${editingRecordId?2:1}">${editingRecordId ? 'บันทึกการแก้ไข' : 'บันทึกข้อมูลสัปดาห์นี้'}</button>
+          </div>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="btn btn-secondary" type="button" id="btn-open-harvest" style="flex:1">แบ่งจับ</button>
           </div>
         </form>
       </div>
@@ -911,6 +941,107 @@ function renderPondDetail(){
           }).join('')}
         </div>
       </div>` : ''}
+    </main>
+  `;
+}
+
+function renderHarvestForm(){
+  const p = state.ponds.find(x=>x.id===viewingHarvestPondId);
+  if(!p){ viewingHarvestPondId = null; return renderPondDetail(); }
+  const records = recordsForPond(p.id);
+  const last = records[records.length-1];
+  const pondHarvests = harvestsForPond(p.id);
+  const totalHarvestedKg = pondHarvests.reduce((sum,h)=> sum + (h.weightKg||0), 0);
+  const totalHarvestedRevenue = pondHarvests.reduce((sum,h)=> sum + (h.revenue||0), 0);
+  const rawSurvivingCount = last ? estimatedSurvivingCount(p.releaseCount, last.survivalRate) : null;
+  const totalHarvestedCount = pondHarvests.reduce((sum,h)=> sum + (h.caughtCount||0), 0);
+  const currentRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount) : null;
+  const currentSurvivalRatePct = (currentRemaining!==null && p.releaseCount) ? (currentRemaining / p.releaseCount * 100) : null;
+
+  const rows = pondHarvests.slice().reverse().map(h=>`
+    <tr>
+      <td>${fmtDate(h.harvestDate)}</td>
+      <td>${h.weightKg!=null ? h.weightKg.toLocaleString('th-TH')+' กก.' : '-'}</td>
+      <td>${h.sizeCount!=null ? h.sizeCount+' ตัว/กก.' : '-'}</td>
+      <td>${h.pricePerKg!=null ? h.pricePerKg.toLocaleString('th-TH')+' บ./กก.' : '-'}</td>
+      <td>${h.revenue!=null ? h.revenue.toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-'}</td>
+      <td>${h.caughtCount!=null ? h.caughtCount.toLocaleString('th-TH')+' ตัว' : '-'}</td>
+      <td>${h.remainingAfter!=null ? h.remainingAfter.toLocaleString('th-TH')+' ตัว' : '-'}${h.survivalRateAfter!=null ? '<br><span style="color:var(--ink-faint);font-size:11px">'+h.survivalRateAfter.toFixed(1)+'%</span>' : ''}</td>
+      <td><button class="row-del" data-del-harvest="${h.id}">ลบ</button></td>
+    </tr>`).join('');
+
+  return `
+    <div class="backbar">
+      <button class="back-btn" id="btn-back-harvest">${ICONS.back} กลับ</button>
+    </div>
+    <main>
+      <div class="pond-head">
+        <h2>แบ่งจับ — ${escapeHtml(p.name)}</h2>
+      </div>
+
+      <div class="summary-strip">
+        <div class="summary-box">
+          <div class="n">${currentRemaining!==null ? currentRemaining.toLocaleString('th-TH') : '-'}</div>
+          <div class="l">ตัว เหลือตอนนี้</div>
+        </div>
+        <div class="summary-box amber">
+          <div class="n">${currentSurvivalRatePct!==null ? currentSurvivalRatePct.toFixed(1)+'%' : '-'}</div>
+          <div class="l">อัตรารอดปัจจุบัน</div>
+        </div>
+        <div class="summary-box coral">
+          <div class="n">${totalHarvestedKg.toLocaleString('th-TH',{maximumFractionDigits:1})}</div>
+          <div class="l">กก. จับสะสม</div>
+        </div>
+      </div>
+
+      <div class="card" id="harvest-form-card">
+        <h3>บันทึกการแบ่งจับ</h3>
+        <form id="harvest-form">
+          <div class="field-row">
+            <div class="field">
+              <label>วันที่จับ</label>
+              <input type="date" name="harvestDate" id="harvest-date" value="${todayISO()}" required>
+            </div>
+            <div class="field">
+              <label>ไซส์ที่จับ (ตัว/กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="sizeCount" id="harvest-size" placeholder="เช่น 60" required>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>น้ำหนักที่จับ (กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="weightKg" id="harvest-weight" placeholder="เช่น 500" required>
+            </div>
+            <div class="field">
+              <label>ราคา (บาท/กก.) (ถ้ามี)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="pricePerKg" id="harvest-price" placeholder="เช่น 120">
+            </div>
+          </div>
+          <div class="field">
+            <label>หมายเหตุ (ถ้ามี)</label>
+            <input type="text" name="note" placeholder="เช่น จับหน้าฝน, ลูกค้า A">
+          </div>
+          <div style="background:var(--surface-hi);border-radius:10px;padding:12px 14px;margin-bottom:13px;text-align:center;">
+            <div style="font-size:11px;color:var(--ink-faint);">หลังแบ่งจับนี้ คาดว่าจะเหลือ</div>
+            <div id="harvest-preview-remaining" style="font-size:20px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:3px;">-</div>
+            <div id="harvest-preview-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">ใส่น้ำหนักและไซส์ที่จับเพื่อคำนวณ</div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" type="submit" style="flex:1">บันทึกการแบ่งจับ</button>
+          </div>
+        </form>
+      </div>
+
+      ${pondHarvests.length>0 ? `
+      <div class="card">
+        <h3>ประวัติการแบ่งจับ${totalHarvestedRevenue>0 ? ` · รวม ${totalHarvestedRevenue.toLocaleString('th-TH',{maximumFractionDigits:0})} บาท` : ''}</h3>
+        <div style="overflow-x:auto">
+          <table class="rec-table">
+            <thead><tr><th>วันที่</th><th>น้ำหนัก</th><th>ไซส์</th><th>ราคา</th><th>มูลค่า</th><th>จับได้</th><th>เหลือหลังจับ</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>` : `<div class="empty-state">${ICONS.shrimp}<p>ยังไม่มีประวัติการแบ่งจับ</p></div>`}
     </main>
   `;
 }
@@ -1209,6 +1340,7 @@ function bindDashboardEvents(){
     const batch = db.batch();
     state.ponds.forEach(p=>batch.delete(db.collection('ponds').doc(p.id)));
     state.records.forEach(r=>batch.delete(db.collection('records').doc(r.id)));
+    state.harvests.forEach(h=>batch.delete(db.collection('harvests').doc(h.id)));
     await batch.commit().catch((e)=>alert('ล้างข้อมูลไม่สำเร็จ: '+e.message));
     showSettingsSheet=false; currentPondId=null; render();
   };
@@ -1260,13 +1392,14 @@ function bindDashboardEvents(){
     card.onclick = ()=>{
       currentPondId = card.getAttribute('data-open-pond');
       editingRecordId = null;
+      viewingHarvestPondId = null;
       markPondViewed(currentPondId);
       render();
     };
   });
 
   const btnBack = document.getElementById('btn-back');
-  if(btnBack) btnBack.onclick = ()=>{ currentPondId=null; editingRecordId=null; render(); };
+  if(btnBack) btnBack.onclick = ()=>{ currentPondId=null; editingRecordId=null; viewingHarvestPondId=null; render(); };
 
   const btnEditPond = document.getElementById('btn-edit-pond');
   if(btnEditPond) btnEditPond.onclick = ()=>{
@@ -1281,6 +1414,7 @@ function bindDashboardEvents(){
     const pondId = currentPondId;
     const writeBatch = db.batch();
     state.records.filter(r=>r.pondId===pondId).forEach(r=>writeBatch.delete(db.collection('records').doc(r.id)));
+    state.harvests.filter(h=>h.pondId===pondId).forEach(h=>writeBatch.delete(db.collection('harvests').doc(h.id)));
     writeBatch.delete(db.collection('ponds').doc(pondId));
     await writeBatch.commit().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
     currentPondId = null;
@@ -1299,6 +1433,12 @@ function bindDashboardEvents(){
       weekDate:r.weekDate, sizeCount:r.sizeCount, feedPerDay:r.feedPerDay,
       survivalRate:r.survivalRate!=null?r.survivalRate:null, note:r.note||'',
     }));
+    const pondHarvests = harvestsForPond(pondId);
+    const archivedHarvests = pondHarvests.map(h=>({
+      harvestDate:h.harvestDate, weightKg:h.weightKg, sizeCount:h.sizeCount,
+      pricePerKg:h.pricePerKg!=null?h.pricePerKg:null, revenue:h.revenue!=null?h.revenue:null,
+      caughtCount:h.caughtCount!=null?h.caughtCount:null, note:h.note||'',
+    }));
     try{
       await db.collection('batches').add({
         pondId, pondName: pond.name, farmId: pond.farmId,
@@ -1307,9 +1447,11 @@ function bindDashboardEvents(){
         savedAt: todayISO(),
         records: archivedRecords,
         pathogenHistory: pond.pathogenHistory || [],
+        harvests: archivedHarvests,
       });
       const writeBatch = db.batch();
       pondRecords.forEach(r=>writeBatch.delete(db.collection('records').doc(r.id)));
+      pondHarvests.forEach(h=>writeBatch.delete(db.collection('harvests').doc(h.id)));
       writeBatch.update(db.collection('ponds').doc(pondId), {
         pathogenHistory: [],
         pathogenStatus: firebase.firestore.FieldValue.delete(),
@@ -1322,6 +1464,87 @@ function bindDashboardEvents(){
     }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
     render();
   };
+
+  const btnOpenHarvest = document.getElementById('btn-open-harvest');
+  if(btnOpenHarvest) btnOpenHarvest.onclick = ()=>{ viewingHarvestPondId = currentPondId; render(); };
+
+  const btnBackHarvest = document.getElementById('btn-back-harvest');
+  if(btnBackHarvest) btnBackHarvest.onclick = ()=>{ viewingHarvestPondId = null; render(); };
+
+  document.querySelectorAll('[data-del-harvest]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(!confirm('ลบประวัติการแบ่งจับนี้?')) return;
+      const id = btn.getAttribute('data-del-harvest');
+      await db.collection('harvests').doc(id).delete()
+        .catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
+      render();
+    };
+  });
+
+  const harvestForm = document.getElementById('harvest-form');
+  if(harvestForm){
+    const hWeightInput = harvestForm.querySelector('input[name=weightKg]');
+    const hSizeInput = harvestForm.querySelector('input[name=sizeCount]');
+    const hPreviewRemaining = document.getElementById('harvest-preview-remaining');
+    const hPreviewCaption = document.getElementById('harvest-preview-caption');
+    if(hWeightInput && hSizeInput && hPreviewRemaining && hPreviewCaption){
+      const updateHarvestPreview = ()=>{
+        const pond = state.ponds.find(x=>x.id===viewingHarvestPondId);
+        if(!pond) return;
+        const records = recordsForPond(pond.id);
+        const last = records[records.length-1];
+        const pondHarvests = harvestsForPond(pond.id);
+        const totalHarvestedCount = pondHarvests.reduce((sum,h)=> sum + (h.caughtCount||0), 0);
+        const rawSurvivingCount = last ? estimatedSurvivingCount(pond.releaseCount, last.survivalRate) : null;
+        const currentRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount) : null;
+        const weightKg = hWeightInput.value ? parseFloat(hWeightInput.value) : null;
+        const sizeCount = hSizeInput.value ? parseFloat(hSizeInput.value) : null;
+        if(currentRemaining!==null && weightKg && sizeCount){
+          const caughtCount = weightKg * sizeCount;
+          const remainingAfter = Math.max(0, currentRemaining - caughtCount);
+          const survivalRateAfter = pond.releaseCount ? (remainingAfter / pond.releaseCount * 100) : null;
+          hPreviewRemaining.textContent = remainingAfter.toLocaleString('th-TH',{maximumFractionDigits:0}) + ' ตัว';
+          hPreviewCaption.textContent = `จับได้ประมาณ ${caughtCount.toLocaleString('th-TH',{maximumFractionDigits:0})} ตัว${survivalRateAfter!==null ? ` · อัตรารอดเหลือ ${survivalRateAfter.toFixed(1)}%` : ''}`;
+        } else {
+          hPreviewRemaining.textContent = '-';
+          hPreviewCaption.textContent = 'ใส่น้ำหนักและไซส์ที่จับเพื่อคำนวณ';
+        }
+      };
+      hWeightInput.addEventListener('input', updateHarvestPreview);
+      hSizeInput.addEventListener('input', updateHarvestPreview);
+    }
+    harvestForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const pond = state.ponds.find(x=>x.id===viewingHarvestPondId);
+      if(!pond) return;
+      const fd = new FormData(harvestForm);
+      const harvestDate = fd.get('harvestDate');
+      const weightKg = parseFloat(fd.get('weightKg'));
+      const sizeCount = parseFloat(fd.get('sizeCount'));
+      const pricePerKg = fd.get('pricePerKg') ? parseFloat(fd.get('pricePerKg')) : null;
+      const note = (fd.get('note')||'').trim();
+
+      const records = recordsForPond(pond.id);
+      const last = records[records.length-1];
+      const pondHarvests = harvestsForPond(pond.id);
+      const totalHarvestedCount = pondHarvests.reduce((sum,h)=> sum + (h.caughtCount||0), 0);
+      const rawSurvivingCount = last ? estimatedSurvivingCount(pond.releaseCount, last.survivalRate) : null;
+      const currentRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount) : null;
+
+      const caughtCount = weightKg * sizeCount;
+      const remainingAfter = currentRemaining!==null ? Math.max(0, currentRemaining - caughtCount) : null;
+      const survivalRateAfter = (remainingAfter!==null && pond.releaseCount) ? (remainingAfter / pond.releaseCount * 100) : null;
+      const revenue = pricePerKg!=null ? weightKg * pricePerKg : null;
+
+      const data = {
+        pondId: pond.id, harvestDate, weightKg, sizeCount,
+        pricePerKg, revenue, caughtCount, remainingAfter, survivalRateAfter,
+        note, createdAt: Date.now(),
+      };
+      await db.collection('harvests').add(data).catch((e)=>alert('บันทึกไม่สำเร็จ: '+e.message));
+      render();
+    });
+  }
 
   const btnBackBatch = document.getElementById('btn-back-batch');
   if(btnBackBatch) btnBackBatch.onclick = ()=>{ viewingBatchId=null; render(); };
@@ -1386,16 +1609,19 @@ function bindDashboardEvents(){
         const pond = state.ponds.find(x=>x.id===currentPondId);
         const sizeCount = sizeCountInput.value ? parseFloat(sizeCountInput.value) : null;
         const survivalRate = survivalRateInput.value ? parseFloat(survivalRateInput.value) : null;
-        const kg = pond ? estimatedBiomassKg(pond.releaseCount, survivalRate, sizeCount) : null;
+        const totalHarvestedCount = pond ? harvestsForPond(pond.id).reduce((sum,h)=> sum + (h.caughtCount||0), 0) : 0;
+        const rawSurvivingCount = pond ? estimatedSurvivingCount(pond.releaseCount, survivalRate) : null;
+        const survivingCount = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount) : null;
+        const weightG = sizeCount ? weightFromCount(sizeCount) : null;
+        const kg = (survivingCount!==null && weightG!==null) ? survivingCount * weightG / 1000 : null;
         if(kg!==null){
           yieldValueEl.textContent = kg.toLocaleString('th-TH',{maximumFractionDigits:1}) + ' กก.';
-          yieldCaptionEl.textContent = `คำนวณจากจำนวนปล่อย × อัตรารอด ${survivalRate}% × ไซส์ที่กรอก`;
+          yieldCaptionEl.textContent = totalHarvestedCount>0 ? `อัตรารอด ${survivalRate}% − แบ่งจับสะสม ${totalHarvestedCount.toLocaleString('th-TH')} ตัว` : `คำนวณจากจำนวนปล่อย × อัตรารอด ${survivalRate}% × ไซส์ที่กรอก`;
         } else {
           yieldValueEl.textContent = '-';
           yieldCaptionEl.textContent = 'ใส่อัตรารอดด้านล่างเพื่อคำนวณผลผลิตโดยประมาณ';
         }
         if(survivalCountEl){
-          const survivingCount = pond ? estimatedSurvivingCount(pond.releaseCount, survivalRate) : null;
           survivalCountEl.textContent = survivingCount!==null ? survivingCount.toLocaleString('th-TH')+' ตัว' : '-';
         }
       };
