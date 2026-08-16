@@ -753,21 +753,21 @@ function renderPondDetail(){
       </tr>`;
   }).join('');
 
-  const pathogenEntries = pathogenHistoryForPond(p).slice().reverse();
-  const pathogenHistoryHtml = pathogenEntries.length ? `
+  const pathogenHistoryCount = pathogenHistoryForPond(p).length;
+  const pathogenDaysAgo = (pathogenRec && pathogenRec.weekDate) ? daysBetween(pathogenRec.weekDate, todayISO()) : null;
+  const pathogenLatestHtml = pathogenRec ? `
     <div class="card">
-      <h3>ผลตรวจเชื้อรายสัปดาห์</h3>
+      <h3>ผลตรวจเชื้อล่าสุด</h3>
       <div class="pathogen-list">
-        ${pathogenEntries.map(r=>`
-          <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[r.severity]||''}">
-            <div class="pe-head">
-              <span class="pe-date">${fmtDate(r.weekDate)}</span>
-              ${pathogenChipHtml(r.severity, r.status)}
-              ${r.worsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
-            </div>
-            <div class="pe-text">${escapeHtml(r.status||'-')}</div>
+        <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[pathogenRec.severity]||''}">
+          <div class="pe-head">
+            <span class="pe-date">${fmtDate(pathogenRec.weekDate)}${pathogenDaysAgo!==null ? ` · ${pathogenDaysAgo<=0?'วันนี้':pathogenDaysAgo+' วันที่แล้ว'}` : ''}</span>
+            ${pathogenChipHtml(pathogenRec.severity, pathogenRec.status)}
+            ${pathogenRec.worsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
           </div>
-        `).join('')}
+          <div class="pe-text">${escapeHtml(pathogenRec.status||'-')}</div>
+          ${pathogenHistoryCount>1 ? `<div style="margin-top:8px;font-size:11px;color:var(--ink-faint)">ตรวจสะสมมาแล้ว ${pathogenHistoryCount} ครั้ง</div>` : ''}
+        </div>
       </div>
     </div>` : '';
 
@@ -793,12 +793,6 @@ function renderPondDetail(){
           ${records.length>0 ? `&nbsp;·&nbsp;<button class="btn-danger-text" style="text-decoration:none;color:var(--teal-700)" id="btn-archive-batch">บันทึกรุ่นนี้เก็บไว้</button>` : ''}
         </div>
       </div>
-
-      ${pathogenRec && pathogenRec.status ? `
-      <div class="card" style="padding:14px 16px;">
-        <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลตรวจเชื้อล่าสุด · ${fmtDate(pathogenRec.weekDate)}</div>
-        <div style="font-size:14.5px;color:var(--ink);margin-top:6px;line-height:1.5;">${escapeHtml(pathogenRec.status)}</div>
-      </div>` : ''}
 
       <div class="summary-strip">
         <div class="summary-box">
@@ -856,6 +850,8 @@ function renderPondDetail(){
         </form>
       </div>
 
+      ${pathogenLatestHtml}
+
       ${records.length>0 ? `
       <div class="card">
         <h3>แนวโน้มไซส์กุ้ง (น้ำหนักเฉลี่ย กรัม)</h3>
@@ -870,7 +866,6 @@ function renderPondDetail(){
         <h3>แนวโน้ม ADG รายสัปดาห์ (กรัม/วัน)</h3>
         <div class="chart-wrap" id="chart-adg"></div>
       </div>` : ''}
-      ${pathogenHistoryHtml}
       <div class="card">
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
