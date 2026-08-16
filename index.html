@@ -232,6 +232,19 @@
   .pathogen-entry .pe-worse{ font-size:10.5px; color:var(--coral); font-weight:700; }
   .pathogen-entry .pe-text{ font-size:13.5px; color:var(--ink); line-height:1.55; }
 
+  /* Harvest ("แบ่งจับ") page: amber accent so it visually reads as a distinct mode */
+  .harvest-page{ display:contents; }
+  .harvest-page .back-btn{ color:var(--amber); border-color:rgba(239,183,83,.35); }
+  .harvest-page .pond-head h2{ color:var(--amber); }
+  .harvest-page .card h3{ color:var(--amber); }
+  .harvest-page .card{ border-color:rgba(239,183,83,.18); }
+  .harvest-page .btn-primary{ background:linear-gradient(135deg, var(--amber), #C98A2E); box-shadow:0 6px 16px rgba(239,183,83,.35); }
+  .harvest-page .btn-primary:hover{ box-shadow:0 8px 20px rgba(239,183,83,.45); }
+  .harvest-page .field input:focus, .harvest-page .field select:focus, .harvest-page .field textarea:focus{
+    border-color:var(--amber); box-shadow:0 0 0 3px rgba(239,183,83,.22);
+  }
+  .harvest-page table.rec-table th{ color:var(--amber); opacity:.85; }
+
   .summary-strip{ display:flex; gap:10px; margin:16px 0; }
   .summary-box{
     flex:1; background:linear-gradient(150deg, var(--teal-500), var(--teal-700)); color:#fff;
@@ -971,6 +984,7 @@ function renderHarvestForm(){
     </tr>`).join('');
 
   return `
+    <div class="harvest-page">
     <div class="backbar">
       <button class="back-btn" id="btn-back-harvest">${ICONS.back} กลับ</button>
     </div>
@@ -1043,6 +1057,7 @@ function renderHarvestForm(){
         </div>
       </div>` : `<div class="empty-state">${ICONS.shrimp}<p>ยังไม่มีประวัติการแบ่งจับ</p></div>`}
     </main>
+    </div>
   `;
 }
 
