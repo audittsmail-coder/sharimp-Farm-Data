@@ -180,6 +180,36 @@
   .fab:hover{ box-shadow:0 10px 26px rgba(232,129,95,.4); }
   .fab:active{ transform:scale(.98); }
 
+  /* Farm view: sidebar list on wide screens, full-page list/detail on narrow screens */
+  .farm-split{ flex:1; display:block; }
+  .farm-sidebar-mobile{ padding:16px 16px 32px 16px; animation:viewIn .28s var(--ease); }
+  .farm-sidebar-desktop{ display:none; }
+  .farm-main{ display:none; }
+  .farm-split.has-selection .farm-sidebar-mobile{ display:none; }
+  .farm-split.has-selection .farm-main{ display:block; }
+  .split-placeholder{ padding:16px; }
+
+  .pond-sidebar-list{ display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+  .pond-sidebar-row{
+    display:block; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--radius); padding:12px 14px; cursor:pointer; position:relative;
+    font-family:inherit; transition:border-color .15s var(--ease), background .15s var(--ease);
+  }
+  .pond-sidebar-row:hover{ border-color:var(--teal-500); }
+  .pond-sidebar-row.active{ background:var(--surface-hi); border-color:var(--teal-500); box-shadow:0 0 0 1px var(--teal-500); }
+  .pond-sidebar-row .psr-name{ font-weight:700; font-size:14.5px; color:var(--heading); font-family:'Taviraj',serif; }
+  .pond-sidebar-row .psr-meta{ font-size:11.5px; color:var(--ink-faint); margin-top:2px; }
+
+  @media (min-width: 860px){
+    #app{ max-width:1120px; }
+    .farm-split{ display:flex; gap:24px; align-items:flex-start; padding:16px 16px 32px 16px; }
+    .farm-sidebar-mobile{ display:none !important; }
+    .farm-sidebar-desktop{ display:block !important; flex:0 0 300px; position:sticky; top:16px; }
+    .farm-main{ display:block !important; flex:1; min-width:0; }
+    .farm-main main{ padding:0; animation:none; }
+    .split-placeholder{ padding:56px 20px; }
+  }
+
   .card{
     background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg); padding:18px;
     box-shadow:var(--shadow-sm); margin-bottom:16px;
@@ -630,7 +660,7 @@ function render(){
       html += renderHarvestForm();
     } else if(viewingBatchId){
       html += renderBatchDetail();
-    } else if(currentPondId){
+    } else if(currentPondId && currentFarmId === 'overview'){
       html += renderPondDetail();
     } else {
       html += renderFarmDashboard();
@@ -665,28 +695,46 @@ function renderFarmDashboard(){
 
   const farm = state.farms.find(f=>f.id===currentFarmId);
   const ponds = pondsForFarm(currentFarmId);
-  let pondsHtml = '';
-  if(ponds.length === 0){
-    pondsHtml = `
-      <div class="empty-state">
-        ${ICONS.shrimp}
-        <p><b>ยังไม่มีบ่อในฟาร์มนี้</b></p>
-        <p>กดปุ่ม "+ เพิ่มบ่อ" ด้านล่างเพื่อเริ่มบันทึกข้อมูล</p>
-      </div>`;
-  } else {
-    pondsHtml = `<div class="pond-grid">` + ponds.map(p => renderPondCard(p)).join('') + `</div>`;
-  }
+  const pondSelected = !!(currentPondId && ponds.some(p=>p.id===currentPondId));
+
+  const titleRowHtml = `
+    <div class="farm-title-row">
+      <h2>${escapeHtml(farm ? farm.name : '')}</h2>
+      <button class="action-btn" data-rename-farm="${farm?farm.id:''}">${ICONS.edit} แก้ชื่อฟาร์ม</button>
+    </div>`;
+
+  const emptyPondsHtml = `
+    <div class="empty-state">
+      ${ICONS.shrimp}
+      <p><b>ยังไม่มีบ่อในฟาร์มนี้</b></p>
+      <p>กดปุ่ม "+ เพิ่มบ่อ" ด้านล่างเพื่อเริ่มบันทึกข้อมูล</p>
+    </div>`;
+
+  const mobileListHtml = ponds.length === 0 ? emptyPondsHtml : `<div class="pond-grid">` + ponds.map(p => renderPondCard(p)).join('') + `</div>`;
+  const desktopListHtml = ponds.length === 0 ? emptyPondsHtml : `<div class="pond-sidebar-list">` + ponds.map(p => renderPondSidebarRow(p)).join('') + `</div>`;
+
+  const mainHtml = pondSelected ? renderPondDetail() : `
+    <div class="empty-state split-placeholder">
+      ${ICONS.shrimp}
+      <p><b>เลือกบ่อจากด้านข้าง</b></p>
+      <p>เพื่อดูรายละเอียดและบันทึกข้อมูล</p>
+    </div>`;
 
   return `
     <div class="farm-tabs">${tabs}</div>
-    <main>
-      <div class="farm-title-row">
-        <h2>${escapeHtml(farm ? farm.name : '')}</h2>
-        <button class="action-btn" data-rename-farm="${farm?farm.id:''}">${ICONS.edit} แก้ชื่อฟาร์ม</button>
+    <div class="farm-split ${pondSelected ? 'has-selection' : ''}">
+      <div class="farm-sidebar-mobile">
+        ${titleRowHtml}
+        ${mobileListHtml}
+        <button class="fab add-pond-trigger" id="btn-add-pond" type="button">${ICONS.plus} เพิ่มบ่อใหม่</button>
       </div>
-      ${pondsHtml}
-      <button class="fab" id="btn-add-pond">${ICONS.plus} เพิ่มบ่อใหม่</button>
-    </main>
+      <aside class="farm-sidebar-desktop">
+        ${titleRowHtml}
+        ${desktopListHtml}
+        <button class="fab add-pond-trigger" id="btn-add-pond-desktop" type="button">${ICONS.plus} เพิ่มบ่อใหม่</button>
+      </aside>
+      <div class="farm-main">${mainHtml}</div>
+    </div>
   `;
 }
 
@@ -778,6 +826,19 @@ function renderPondCard(p){
       </div>
     </div>
   `;
+}
+
+function renderPondSidebarRow(p){
+  const doc = p.releaseDate ? daysBetween(p.releaseDate, todayISO()) : null;
+  const isActive = p.id === currentPondId;
+  const speciesShort = p.species ? p.species.split('(')[0].trim() : '';
+  const metaBits = [speciesShort, doc!==null ? 'DOC '+doc+' วัน' : ''].filter(Boolean).join(' · ');
+  return `
+    <button type="button" class="pond-sidebar-row ${isActive?'active':''}" data-open-pond="${p.id}">
+      <div class="psr-name">${escapeHtml(p.name)}</div>
+      ${metaBits ? `<div class="psr-meta">${escapeHtml(metaBits)}</div>` : ''}
+      ${p.pathogenSeverity ? `<div style="margin-top:6px">${pathogenChipHtml(p.pathogenSeverity, p.pathogenStatus)}</div>` : ''}
+    </button>`;
 }
 
 function renderPondDetail(){
@@ -1438,8 +1499,9 @@ function bindDashboardEvents(){
     };
   });
 
-  const btnAddPond = document.getElementById('btn-add-pond');
-  if(btnAddPond) btnAddPond.onclick = ()=>{ editingPond=null; showPondFormSheet=true; render(); };
+  document.querySelectorAll('.add-pond-trigger').forEach(btn=>{
+    btn.onclick = ()=>{ editingPond=null; showPondFormSheet=true; render(); };
+  });
 
   document.querySelectorAll('[data-open-pond]').forEach(card=>{
     card.onclick = ()=>{
