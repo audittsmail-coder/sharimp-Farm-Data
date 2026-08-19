@@ -466,6 +466,7 @@ let currentPondId = null;
 let viewingBatchId = null;
 let viewingHarvestPondId = null;
 let viewingClosePondId = null;
+let editingClosureId = null;
 let showSettingsSheet = false;
 let showClosureStats = false;
 let showPondFormSheet = false;
@@ -743,7 +744,9 @@ function render(){
     if(showPondFormSheet) panelHtml += renderPondFormPanel();
     if(panelHtml) html += `<div style="padding:14px 16px 0 16px">${panelHtml}</div>`;
 
-    if(viewingClosePondId){
+    if(editingClosureId){
+      html += renderClosureEditForm();
+    } else if(viewingClosePondId){
       html += renderCloseForm();
     } else if(viewingHarvestPondId){
       html += renderHarvestForm();
@@ -758,7 +761,8 @@ function render(){
     app.innerHTML = html;
     bindDashboardEvents();
 
-    if(viewingClosePondId){ /* no charts on the close-pond page */ }
+    if(editingClosureId){ /* no charts on the closure-edit page */ }
+    else if(viewingClosePondId){ /* no charts on the close-pond page */ }
     else if(viewingHarvestPondId){ /* no charts on the harvest page */ }
     else if(viewingBatchId) drawBatchCharts();
     else if(currentPondId) drawCharts();
@@ -950,7 +954,7 @@ function renderClosuresSummary(tabs){
       <h3>ประวัติการปิดบ่อทั้งหมด</h3>
       <div style="overflow-x:auto">
         <table class="rec-table">
-          <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>มูลค่า</th></tr></thead>
+          <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>มูลค่า</th><th></th></tr></thead>
           <tbody>
             ${closures.map(c=>`
               <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" style="cursor:pointer;">
@@ -965,6 +969,7 @@ function renderClosuresSummary(tabs){
                 <td>${c.survivalRatePct!=null ? c.survivalRatePct.toFixed(1)+'%' : '-'}</td>
                 <td>${c.fcr!=null ? c.fcr.toFixed(2) : '-'}</td>
                 <td>${c.revenue!=null ? c.revenue.toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-'}</td>
+                <td><button type="button" class="action-btn" data-edit-closure="${c.id}">${ICONS.edit} แก้ไข</button></td>
               </tr>`).join('')}
           </tbody>
         </table>
@@ -1449,6 +1454,101 @@ function renderCloseForm(){
   `;
 }
 
+function renderClosureEditForm(){
+  const c = state.closures.find(x=>x.id===editingClosureId);
+  if(!c){ editingClosureId = null; currentFarmId = 'closures'; return renderFarmDashboard(); }
+
+  return `
+    <div class="backbar">
+      <button class="back-btn" id="btn-back-close-edit">${ICONS.back} กลับ</button>
+    </div>
+    <main>
+      <div class="pond-head">
+        <h2>แก้ไขประวัติปิดบ่อ — ${escapeHtml(c.pondName||'')}</h2>
+      </div>
+
+      <div class="card" id="close-edit-form-card">
+        <h3>แก้ไขรายการจับกุ้ง</h3>
+        <form id="close-edit-form">
+          <div class="form-section-label">วันที่และสถานที่</div>
+          <div class="field-row">
+            <div class="field">
+              <label>วันที่จับ</label>
+              <input type="date" name="closeDate" id="close-edit-date" value="${c.closeDate||todayISO()}" required>
+            </div>
+            <div class="field">
+              <label>จำนวนวันที่เลี้ยง (วัน)</label>
+              <input type="number" inputmode="numeric" step="1" name="doc" id="close-edit-doc" placeholder="เช่น 90" value="${c.doc!=null?c.doc:''}">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>ฟาร์มที่</label>
+              <input type="text" name="farmName" id="close-edit-farmname" placeholder="เช่น ฟาร์ม A" value="${escapeHtml(c.farmName||'')}">
+            </div>
+            <div class="field">
+              <label>บ่อที่</label>
+              <input type="text" name="pondName" id="close-edit-pondname" placeholder="เช่น บ่อ 1" value="${escapeHtml(c.pondName||'')}">
+            </div>
+          </div>
+
+          <div class="form-section-label">ข้อมูลลูกกุ้งที่ปล่อย</div>
+          <div class="field-row">
+            <div class="field">
+              <label>จำนวนปล่อยกุ้ง (ตัว)</label>
+              <input type="number" inputmode="numeric" step="1" name="releaseCount" id="close-edit-releasecount" placeholder="เช่น 500000" value="${c.releaseCount!=null?c.releaseCount:''}">
+            </div>
+            <div class="field">
+              <label>ชนิดกุ้ง</label>
+              <input type="text" name="species" id="close-edit-species" placeholder="เช่น กุ้งขาว (Vannamei)" value="${escapeHtml(c.species||'')}">
+            </div>
+          </div>
+          <div class="field">
+            <label>ลูกกุ้งจากไหน</label>
+            <input type="text" name="hatchery" id="close-edit-hatchery" placeholder="เช่น ฟาร์มพ่อแม่พันธุ์ ABC" value="${escapeHtml(c.hatchery||'')}">
+          </div>
+
+          <div class="form-section-label">ผลการจับ</div>
+          <div class="field-row">
+            <div class="field">
+              <label>ขนาดไซส์ (ตัว/กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="sizeCount" id="close-edit-size" placeholder="เช่น 50" value="${c.sizeCount!=null?c.sizeCount:''}">
+            </div>
+            <div class="field">
+              <label>ราคา (บาท/กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="pricePerKg" id="close-edit-price" placeholder="เช่น 150" value="${c.pricePerKg!=null?c.pricePerKg:''}">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>จำนวนที่จับ (กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="weightKg" id="close-edit-weight" placeholder="เช่น 500" value="${c.weightKg!=null?c.weightKg:''}">
+            </div>
+            <div class="field">
+              <label>อาหารรวมทั้งหมด (กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" id="close-edit-feed" placeholder="เช่น 750" value="${c.totalFeedKg!=null?c.totalFeedKg:''}">
+            </div>
+          </div>
+
+          <div class="calc-box">
+            <div class="calc-box-label">ผลคำนวณอัตโนมัติ</div>
+            <div class="calc-grid">
+              <div class="calc-tile"><div class="n" id="close-edit-calc-count">-</div><div class="l">จำนวนที่จับ (ตัว)</div></div>
+              <div class="calc-tile"><div class="n" id="close-edit-calc-survival">-</div><div class="l">อัตรารอด</div></div>
+              <div class="calc-tile"><div class="n" id="close-edit-calc-fcr">-</div><div class="l">FCR</div></div>
+              <div class="calc-tile"><div class="n" id="close-edit-calc-value">-</div><div class="l">มูลค่ารายการนี้ (บาท)</div></div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" type="submit" style="flex:1">${ICONS.edit} บันทึกการแก้ไข</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  `;
+}
+
 function renderBatchDetail(){
   const batch = state.batches.find(b=>b.id===viewingBatchId);
   if(!batch){ viewingBatchId = null; return renderPondDetail(); }
@@ -1862,6 +1962,14 @@ function bindDashboardEvents(){
     };
   });
 
+  document.querySelectorAll('[data-edit-closure]').forEach(btn=>{
+    btn.onclick = (e)=>{
+      e.stopPropagation();
+      editingClosureId = btn.getAttribute('data-edit-closure');
+      render();
+    };
+  });
+
   const btnBack = document.getElementById('btn-back');
   if(btnBack) btnBack.onclick = ()=>{ currentPondId=null; editingRecordId=null; viewingHarvestPondId=null; render(); };
 
@@ -2000,6 +2108,72 @@ function bindDashboardEvents(){
       }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
       viewingClosePondId = null;
       currentPondId = null;
+      render();
+    });
+  }
+
+  const btnBackCloseEdit = document.getElementById('btn-back-close-edit');
+  if(btnBackCloseEdit) btnBackCloseEdit.onclick = ()=>{ editingClosureId = null; render(); };
+
+  const closeEditForm = document.getElementById('close-edit-form');
+  if(closeEditForm){
+    const eSize = closeEditForm.querySelector('#close-edit-size');
+    const ePrice = closeEditForm.querySelector('#close-edit-price');
+    const eWeight = closeEditForm.querySelector('#close-edit-weight');
+    const eFeed = closeEditForm.querySelector('#close-edit-feed');
+    const eReleaseCount = closeEditForm.querySelector('#close-edit-releasecount');
+    const eCalcCount = document.getElementById('close-edit-calc-count');
+    const eCalcSurvival = document.getElementById('close-edit-calc-survival');
+    const eCalcFcr = document.getElementById('close-edit-calc-fcr');
+    const eCalcValue = document.getElementById('close-edit-calc-value');
+
+    const updateEditCalc = ()=>{
+      const releaseCount = eReleaseCount.value ? parseFloat(eReleaseCount.value) : null;
+      const sizeCount = eSize.value ? parseFloat(eSize.value) : null;
+      const pricePerKg = ePrice.value ? parseFloat(ePrice.value) : null;
+      const weightKg = eWeight.value ? parseFloat(eWeight.value) : null;
+      const totalFeedKg = eFeed.value ? parseFloat(eFeed.value) : null;
+
+      const caughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
+      eCalcCount.textContent = caughtCount!==null ? Math.round(caughtCount).toLocaleString('th-TH')+' ตัว' : '-';
+      eCalcSurvival.textContent = (caughtCount!==null && releaseCount) ? (caughtCount / releaseCount * 100).toFixed(1) + '%' : '-';
+      eCalcFcr.textContent = (totalFeedKg && weightKg) ? (totalFeedKg / weightKg).toFixed(2) : '-';
+      eCalcValue.textContent = (weightKg && pricePerKg) ? (weightKg*pricePerKg).toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-';
+    };
+    [eReleaseCount, eSize, ePrice, eWeight, eFeed].forEach(el=>{ if(el) el.addEventListener('input', updateEditCalc); });
+    updateEditCalc();
+
+    closeEditForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const id = editingClosureId;
+      if(!id) return;
+      const fd = new FormData(closeEditForm);
+      const closeDate = fd.get('closeDate');
+      const doc = fd.get('doc') ? parseFloat(fd.get('doc')) : null;
+      const farmName = (fd.get('farmName')||'').trim();
+      const pondName = (fd.get('pondName')||'').trim();
+      const releaseCount = fd.get('releaseCount') ? parseFloat(fd.get('releaseCount')) : null;
+      const species = (fd.get('species')||'').trim();
+      const hatchery = (fd.get('hatchery')||'').trim();
+      const sizeCount = fd.get('sizeCount') ? parseFloat(fd.get('sizeCount')) : null;
+      const pricePerKg = fd.get('pricePerKg') ? parseFloat(fd.get('pricePerKg')) : null;
+      const weightKg = fd.get('weightKg') ? parseFloat(fd.get('weightKg')) : null;
+      const totalFeedKg = fd.get('totalFeedKg') ? parseFloat(fd.get('totalFeedKg')) : null;
+
+      const caughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
+      const survivalRatePct = (caughtCount!==null && releaseCount) ? (caughtCount / releaseCount * 100) : null;
+      const fcr = (totalFeedKg && weightKg) ? (totalFeedKg / weightKg) : null;
+      const revenue = (weightKg && pricePerKg) ? weightKg * pricePerKg : null;
+
+      const data = {
+        closeDate, doc, farmName, pondName, releaseCount, species, hatchery,
+        sizeCount, pricePerKg, weightKg, totalFeedKg,
+        caughtCount, survivalRatePct, fcr, revenue,
+      };
+      try{
+        await db.collection('closures').doc(id).update(data);
+      }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
+      editingClosureId = null;
       render();
     });
   }
