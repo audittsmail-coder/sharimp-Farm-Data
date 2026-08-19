@@ -249,13 +249,11 @@
   .calc-tile .l{ font-size:10.5px; color:var(--ink-faint); margin-top:3px; }
   .field label .info-hint{ color:var(--ink-faint); font-weight:400; cursor:help; }
 
-  .dist-list{ display:flex; flex-direction:column; gap:13px; }
-  .dist-top{ display:flex; justify-content:space-between; align-items:baseline; font-size:13px; margin-bottom:5px; gap:8px; }
-  .dist-label{ color:var(--ink); font-weight:600; }
-  .dist-pct{ color:var(--teal-400); font-weight:700; font-family:'Taviraj',serif; white-space:nowrap; }
+  .dist-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; }
+  .dist-cell{ background:var(--surface-soft); border-radius:var(--radius-sm); padding:10px 12px; text-align:center; }
+  .dist-pct{ color:var(--teal-400); font-weight:700; font-family:'Taviraj',serif; font-size:19px; display:block; }
+  .dist-label{ color:var(--ink); font-weight:600; font-size:12px; margin-top:3px; display:block; }
   .dist-count{ color:var(--ink-faint); font-weight:400; font-size:11px; }
-  .dist-bar-wrap{ background:var(--surface-soft); border-radius:999px; height:8px; overflow:hidden; }
-  .dist-bar{ background:linear-gradient(90deg, var(--teal-500), var(--teal-400)); height:100%; border-radius:999px; }
 
   .btn{ border:none; border-radius:var(--radius-sm); padding:12px 16px; font-size:14px; font-weight:600; cursor:pointer; transition:transform .12s var(--ease), background .15s var(--ease), opacity .15s var(--ease); }
   .btn-primary{ background:linear-gradient(135deg, var(--teal-500), var(--teal-600)); color:#fff; width:100%; box-shadow:0 6px 16px rgba(31,110,95,.35); }
@@ -469,6 +467,7 @@ let viewingBatchId = null;
 let viewingHarvestPondId = null;
 let viewingClosePondId = null;
 let showSettingsSheet = false;
+let showClosureStats = false;
 let showPondFormSheet = false;
 let editingPond = null;
 let editingRecordId = null;
@@ -900,12 +899,10 @@ function distributionCardHtml(title, items){
       <h3>${escapeHtml(title)}</h3>
       <div class="dist-list">
         ${items.map(it=>`
-          <div class="dist-row">
-            <div class="dist-top">
-              <span class="dist-label">${escapeHtml(it.label)}</span>
-              <span class="dist-pct">${it.pct.toFixed(0)}% <span class="dist-count">(${it.count})</span></span>
-            </div>
-            <div class="dist-bar-wrap"><div class="dist-bar" style="width:${it.pct.toFixed(1)}%"></div></div>
+          <div class="dist-cell">
+            <span class="dist-pct">${it.pct.toFixed(0)}%</span>
+            <span class="dist-label">${escapeHtml(it.label)}</span>
+            <span class="dist-count">(${it.count})</span>
           </div>
         `).join('')}
       </div>
@@ -917,13 +914,29 @@ function renderClosuresSummary(tabs){
 
   let statsHtml = '';
   if(closures.length > 0){
-    statsHtml =
-      distributionCardHtml('ชนิดกุ้ง', buildDistribution(closures, c=>speciesShortLabel(c.species))) +
-      distributionCardHtml('ลูกกุ้งจากไหน', buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null)) +
-      distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
-      distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
-      distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
-      distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate)));
+    if(showClosureStats){
+      statsHtml = `
+        <div class="card">
+          <div class="farm-title-row" style="margin-bottom:0;">
+            <h3 style="margin:0;">สถิติสรุป</h3>
+            <button type="button" id="btn-toggle-closure-stats" class="action-btn">ซ่อนสถิติ</button>
+          </div>
+        </div>` +
+        distributionCardHtml('ชนิดกุ้ง', buildDistribution(closures, c=>speciesShortLabel(c.species))) +
+        distributionCardHtml('ลูกกุ้งจากไหน', buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null)) +
+        distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
+        distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
+        distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
+        distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate)));
+    } else {
+      statsHtml = `
+        <div class="card">
+          <div class="farm-title-row" style="margin-bottom:0;">
+            <h3 style="margin:0;">สถิติสรุป</h3>
+            <button type="button" id="btn-toggle-closure-stats" class="action-btn">แสดงสถิติ</button>
+          </div>
+        </div>`;
+    }
   }
 
   const bodyHtml = closures.length === 0 ? `
@@ -1827,6 +1840,12 @@ function bindDashboardEvents(){
       render();
     };
   });
+
+  const btnToggleClosureStats = document.getElementById('btn-toggle-closure-stats');
+  if(btnToggleClosureStats) btnToggleClosureStats.onclick = ()=>{
+    showClosureStats = !showClosureStats;
+    render();
+  };
 
   document.querySelectorAll('[data-open-closure-pond]').forEach(row=>{
     const pondId = row.getAttribute('data-open-closure-pond');
