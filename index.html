@@ -590,6 +590,9 @@ function isPondRecentlyUpdated(pond){
 function recordsForPond(pondId){
   return state.records.filter(r=>r.pondId===pondId).slice().sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
 }
+function isPondClosed(pond){
+  return !!pond.closedAt && recordsForPond(pond.id).length === 0;
+}
 function harvestsForPond(pondId){
   return state.harvests.filter(h=>h.pondId===pondId).slice().sort((a,b)=>(a.harvestDate||'').localeCompare(b.harvestDate||''));
 }
@@ -785,8 +788,9 @@ function renderFarmDashboard(){
   if(currentFarmId === 'closures') return renderClosuresSummary(tabs);
 
   const farm = state.farms.find(f=>f.id===currentFarmId);
-  const ponds = pondsForFarm(currentFarmId);
-  const pondSelected = !!(currentPondId && ponds.some(p=>p.id===currentPondId));
+  const allFarmPonds = pondsForFarm(currentFarmId);
+  const ponds = allFarmPonds.filter(p=>!isPondClosed(p));
+  const pondSelected = !!(currentPondId && allFarmPonds.some(p=>p.id===currentPondId));
 
   const titleRowHtml = `
     <div class="farm-title-row">
@@ -831,7 +835,7 @@ function renderFarmDashboard(){
 
 function renderOverviewDashboard(tabs){
   const groups = state.farms
-    .map(farm => ({ farm, ponds: pondsForFarm(farm.id) }))
+    .map(farm => ({ farm, ponds: pondsForFarm(farm.id).filter(p=>!isPondClosed(p)) }))
     .filter(g => g.ponds.length > 0);
 
   let bodyHtml;
@@ -937,7 +941,7 @@ function renderClosuresSummary(tabs){
           <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>มูลค่า</th></tr></thead>
           <tbody>
             ${closures.map(c=>`
-              <tr>
+              <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" style="cursor:pointer;">
                 <td>
                   <div style="font-weight:700;color:var(--heading);font-family:'Taviraj',serif;">${escapeHtml(c.pondName||'-')}</div>
                   ${c.farmName ? `<div style="font-size:11px;color:var(--ink-faint);margin-top:1px;">${escapeHtml(c.farmName)}</div>` : ''}
@@ -1713,6 +1717,45 @@ function renderPondFormPanel(){
 }
 function closePondSheet(){ showPondFormSheet=false; editingPond=null; render(); }
 
+/* ---------------- Archive the current cycle's records/harvests into `batches`, then clear the pond for a fresh cycle ---------------- */
+async function archivePondCycle(pond, extraPondFields){
+  const pondRecords = recordsForPond(pond.id);
+  const pondHarvests = harvestsForPond(pond.id);
+  if(pondRecords.length>0 || pondHarvests.length>0){
+    const archivedRecords = pondRecords.map(r=>({
+      weekDate:r.weekDate, sizeCount:r.sizeCount, feedPerDay:r.feedPerDay,
+      survivalRate:r.survivalRate!=null?r.survivalRate:null, note:r.note||'',
+    }));
+    const archivedHarvests = pondHarvests.map(h=>({
+      harvestDate:h.harvestDate, weightKg:h.weightKg, sizeCount:h.sizeCount,
+      pricePerKg:h.pricePerKg!=null?h.pricePerKg:null, revenue:h.revenue!=null?h.revenue:null,
+      caughtCount:h.caughtCount!=null?h.caughtCount:null, note:h.note||'',
+    }));
+    await db.collection('batches').add({
+      pondId: pond.id, pondName: pond.name, farmId: pond.farmId,
+      species: pond.species||'', brand: pond.brand||'',
+      releaseCount: pond.releaseCount||null, releaseDate: pond.releaseDate||'',
+      savedAt: todayISO(),
+      records: archivedRecords,
+      pathogenHistory: pond.pathogenHistory || [],
+      harvests: archivedHarvests,
+    });
+  }
+  const writeBatch = db.batch();
+  pondRecords.forEach(r=>writeBatch.delete(db.collection('records').doc(r.id)));
+  pondHarvests.forEach(h=>writeBatch.delete(db.collection('harvests').doc(h.id)));
+  writeBatch.update(db.collection('ponds').doc(pond.id), {
+    pathogenHistory: [],
+    pathogenStatus: firebase.firestore.FieldValue.delete(),
+    pathogenSeverity: firebase.firestore.FieldValue.delete(),
+    pathogenWorsened: firebase.firestore.FieldValue.delete(),
+    pathogenDate: firebase.firestore.FieldValue.delete(),
+    pathogenReportId: firebase.firestore.FieldValue.delete(),
+    ...(extraPondFields||{}),
+  });
+  await writeBatch.commit();
+}
+
 /* ---------------- Event binding ---------------- */
 function bindDashboardEvents(){
   const btnSettings = document.getElementById('btn-settings');
@@ -1786,6 +1829,21 @@ function bindDashboardEvents(){
     };
   });
 
+  document.querySelectorAll('[data-open-closure-pond]').forEach(row=>{
+    const pondId = row.getAttribute('data-open-closure-pond');
+    if(!pondId) return;
+    row.onclick = ()=>{
+      currentPondId = pondId;
+      currentFarmId = row.getAttribute('data-open-closure-farm') || 'overview';
+      editingRecordId = null;
+      viewingHarvestPondId = null;
+      viewingClosePondId = null;
+      viewingBatchId = null;
+      markPondViewed(currentPondId);
+      render();
+    };
+  });
+
   const btnBack = document.getElementById('btn-back');
   if(btnBack) btnBack.onclick = ()=>{ currentPondId=null; editingRecordId=null; viewingHarvestPondId=null; render(); };
 
@@ -1817,38 +1875,8 @@ function bindDashboardEvents(){
     const pondRecords = recordsForPond(pondId);
     if(pondRecords.length===0) return;
     if(!confirm(`บันทึกข้อมูล ${pondRecords.length} รายการของบ่อนี้เก็บไว้เป็นประวัติ แล้วล้างเพื่อเริ่มบันทึกรุ่นใหม่? การกระทำนี้ไม่สามารถย้อนกลับได้`)) return;
-    const archivedRecords = pondRecords.map(r=>({
-      weekDate:r.weekDate, sizeCount:r.sizeCount, feedPerDay:r.feedPerDay,
-      survivalRate:r.survivalRate!=null?r.survivalRate:null, note:r.note||'',
-    }));
-    const pondHarvests = harvestsForPond(pondId);
-    const archivedHarvests = pondHarvests.map(h=>({
-      harvestDate:h.harvestDate, weightKg:h.weightKg, sizeCount:h.sizeCount,
-      pricePerKg:h.pricePerKg!=null?h.pricePerKg:null, revenue:h.revenue!=null?h.revenue:null,
-      caughtCount:h.caughtCount!=null?h.caughtCount:null, note:h.note||'',
-    }));
     try{
-      await db.collection('batches').add({
-        pondId, pondName: pond.name, farmId: pond.farmId,
-        species: pond.species||'', brand: pond.brand||'',
-        releaseCount: pond.releaseCount||null, releaseDate: pond.releaseDate||'',
-        savedAt: todayISO(),
-        records: archivedRecords,
-        pathogenHistory: pond.pathogenHistory || [],
-        harvests: archivedHarvests,
-      });
-      const writeBatch = db.batch();
-      pondRecords.forEach(r=>writeBatch.delete(db.collection('records').doc(r.id)));
-      pondHarvests.forEach(h=>writeBatch.delete(db.collection('harvests').doc(h.id)));
-      writeBatch.update(db.collection('ponds').doc(pondId), {
-        pathogenHistory: [],
-        pathogenStatus: firebase.firestore.FieldValue.delete(),
-        pathogenSeverity: firebase.firestore.FieldValue.delete(),
-        pathogenWorsened: firebase.firestore.FieldValue.delete(),
-        pathogenDate: firebase.firestore.FieldValue.delete(),
-        pathogenReportId: firebase.firestore.FieldValue.delete(),
-      });
-      await writeBatch.commit();
+      await archivePondCycle(pond);
     }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
     render();
   };
@@ -1948,8 +1976,12 @@ function bindDashboardEvents(){
         caughtCount, survivalRatePct, fcr, revenue,
         createdAt: Date.now(),
       };
-      await db.collection('closures').add(data).catch((e)=>alert('บันทึกไม่สำเร็จ: '+e.message));
+      try{
+        await db.collection('closures').add(data);
+        await archivePondCycle(pond, { closedAt: Date.now() });
+      }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
       viewingClosePondId = null;
+      currentPondId = null;
       render();
     });
   }
