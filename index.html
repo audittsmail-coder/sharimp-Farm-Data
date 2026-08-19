@@ -237,6 +237,19 @@
   .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .hint{ font-size:11.5px; color:var(--ink-faint); margin-top:5px; }
 
+  .form-section-label{
+    font-size:13px; font-weight:700; color:var(--heading); margin:22px 0 14px 0;
+    padding-bottom:8px; border-bottom:1px solid var(--line-soft);
+  }
+  .form-section-label:first-child{ margin-top:0; }
+  .calc-box{ border:1.5px dashed var(--line); border-radius:var(--radius); padding:14px; margin:18px 0 13px 0; }
+  .calc-box-label{ font-size:12.5px; font-weight:700; color:var(--heading); margin-bottom:10px; }
+  .calc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .calc-tile{ background:var(--surface-hi); border-radius:10px; padding:11px 8px; text-align:center; }
+  .calc-tile .n{ font-size:16px; font-weight:700; color:var(--teal-400); font-family:'Taviraj',serif; }
+  .calc-tile .l{ font-size:10.5px; color:var(--ink-faint); margin-top:3px; }
+  .field label .info-hint{ color:var(--ink-faint); font-weight:400; cursor:help; }
+
   .btn{ border:none; border-radius:var(--radius-sm); padding:12px 16px; font-size:14px; font-weight:600; cursor:pointer; transition:transform .12s var(--ease), background .15s var(--ease), opacity .15s var(--ease); }
   .btn-primary{ background:linear-gradient(135deg, var(--teal-500), var(--teal-600)); color:#fff; width:100%; box-shadow:0 6px 16px rgba(31,110,95,.35); }
   .btn-primary:hover{ box-shadow:0 8px 20px rgba(31,110,95,.45); }
@@ -442,11 +455,12 @@ const ICONS = {
 const FARM_SEED = ['ฟาร์ม 1','ฟาร์ม 2','ฟาร์ม 3','ฟาร์ม 4','ฟาร์ม 5'];
 const SPECIES_OPTIONS = ['กุ้งขาว (Vannamei)','กุ้งกุลาดำ (Black Tiger)','อื่นๆ'];
 
-let state = { farms: [], ponds: [], records: [], batches: [], harvests: [] };
+let state = { farms: [], ponds: [], records: [], batches: [], harvests: [], closures: [] };
 let currentFarmId = 'overview';
 let currentPondId = null;
 let viewingBatchId = null;
 let viewingHarvestPondId = null;
+let viewingClosePondId = null;
 let showSettingsSheet = false;
 let showPondFormSheet = false;
 let editingPond = null;
@@ -462,7 +476,7 @@ function el(html){ const t=document.createElement('template'); t.innerHTML=html.
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* ---------------- Data layer (Firestore, real-time sync + offline cache) ---------------- */
-let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null;
+let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null, unsubClosures = null;
 let seededFarms = false;
 
 async function ensureFarmsSeeded(){
@@ -511,6 +525,11 @@ function attachFirestoreListeners(){
     state.harvests = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     render();
   }, (e)=>console.error('harvests listener error', e));
+
+  unsubClosures = db.collection('closures').onSnapshot((snap)=>{
+    state.closures = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    render();
+  }, (e)=>console.error('closures listener error', e));
 }
 
 function detachFirestoreListeners(){
@@ -519,8 +538,9 @@ function detachFirestoreListeners(){
   if(unsubRecords) unsubRecords();
   if(unsubBatches) unsubBatches();
   if(unsubHarvests) unsubHarvests();
-  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = null;
-  state = { farms: [], ponds: [], records: [], batches: [], harvests: [] };
+  if(unsubClosures) unsubClosures();
+  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = unsubClosures = null;
+  state = { farms: [], ponds: [], records: [], batches: [], harvests: [], closures: [] };
   currentFarmId = 'overview';
   currentPondId = null;
 }
@@ -564,6 +584,12 @@ function recordsForPond(pondId){
 }
 function harvestsForPond(pondId){
   return state.harvests.filter(h=>h.pondId===pondId).slice().sort((a,b)=>(a.harvestDate||'').localeCompare(b.harvestDate||''));
+}
+function closuresForPond(pondId){
+  return state.closures.filter(c=>c.pondId===pondId).slice().sort((a,b)=>(a.closeDate||'').localeCompare(b.closeDate||''));
+}
+function allClosuresSorted(){
+  return state.closures.slice().sort((a,b)=>(b.closeDate||'').localeCompare(a.closeDate||'') || (b.createdAt||0)-(a.createdAt||0));
 }
 
 /* ---------------- Pathogen results (written by the weekly culture-log app) ---------------- */
@@ -656,7 +682,9 @@ function render(){
     if(showPondFormSheet) panelHtml += renderPondFormPanel();
     if(panelHtml) html += `<div style="padding:14px 16px 0 16px">${panelHtml}</div>`;
 
-    if(viewingHarvestPondId){
+    if(viewingClosePondId){
+      html += renderCloseForm();
+    } else if(viewingHarvestPondId){
       html += renderHarvestForm();
     } else if(viewingBatchId){
       html += renderBatchDetail();
@@ -669,7 +697,8 @@ function render(){
     app.innerHTML = html;
     bindDashboardEvents();
 
-    if(viewingHarvestPondId){ /* no charts on the harvest page */ }
+    if(viewingClosePondId){ /* no charts on the close-pond page */ }
+    else if(viewingHarvestPondId){ /* no charts on the harvest page */ }
     else if(viewingBatchId) drawBatchCharts();
     else if(currentPondId) drawCharts();
   }catch(e){
@@ -687,11 +716,13 @@ function render(){
 
 function renderFarmDashboard(){
   const tabs = `<button class="farm-tab ${currentFarmId==='overview'?'active':''}" data-farm="overview">ภาพรวม</button>` +
+    `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>` +
     state.farms.map(f => `
     <button class="farm-tab ${f.id===currentFarmId?'active':''}" data-farm="${f.id}">${escapeHtml(f.name)}</button>
   `).join('');
 
   if(currentFarmId === 'overview') return renderOverviewDashboard(tabs);
+  if(currentFarmId === 'closures') return renderClosuresSummary(tabs);
 
   const farm = state.farms.find(f=>f.id===currentFarmId);
   const ponds = pondsForFarm(currentFarmId);
@@ -793,6 +824,49 @@ function renderOverviewDashboard(tabs){
     <main>
       <div class="farm-title-row">
         <h2>ภาพรวมทุกฟาร์ม</h2>
+      </div>
+      ${bodyHtml}
+    </main>
+  `;
+}
+
+function renderClosuresSummary(tabs){
+  const closures = allClosuresSorted();
+  const bodyHtml = closures.length === 0 ? `
+    <div class="empty-state">
+      ${ICONS.shrimp}
+      <p><b>ยังไม่มีข้อมูลปิดบ่อ</b></p>
+      <p>เมื่อกด "ปิดบ่อ" แล้วบันทึกข้อมูลจากหน้ารายละเอียดบ่อ รายการจะมาแสดงที่นี่</p>
+    </div>` : `
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table class="rec-table">
+          <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>มูลค่า</th></tr></thead>
+          <tbody>
+            ${closures.map(c=>`
+              <tr>
+                <td>
+                  <div style="font-weight:700;color:var(--heading);font-family:'Taviraj',serif;">${escapeHtml(c.pondName||'-')}</div>
+                  ${c.farmName ? `<div style="font-size:11px;color:var(--ink-faint);margin-top:1px;">${escapeHtml(c.farmName)}</div>` : ''}
+                </td>
+                <td>${fmtDate(c.closeDate)}</td>
+                <td>${c.doc!=null ? c.doc+' วัน' : '-'}</td>
+                <td>${c.sizeCount!=null ? c.sizeCount+' ตัว/กก.' : '-'}</td>
+                <td>${c.weightKg!=null ? c.weightKg.toLocaleString('th-TH')+' กก.' : '-'}</td>
+                <td>${c.survivalRatePct!=null ? c.survivalRatePct.toFixed(1)+'%' : '-'}</td>
+                <td>${c.fcr!=null ? c.fcr.toFixed(2) : '-'}</td>
+                <td>${c.revenue!=null ? c.revenue.toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  return `
+    <div class="farm-tabs">${tabs}</div>
+    <main>
+      <div class="farm-title-row">
+        <h2>สรุปผลที่ผ่านมา</h2>
       </div>
       ${bodyHtml}
     </main>
@@ -1157,6 +1231,112 @@ function renderHarvestForm(){
       </div>` : `<div class="empty-state">${ICONS.shrimp}<p>ยังไม่มีประวัติการแบ่งจับ</p></div>`}
     </main>
     </div>
+  `;
+}
+
+function renderCloseForm(){
+  const p = state.ponds.find(x=>x.id===viewingClosePondId);
+  if(!p){ viewingClosePondId = null; return renderPondDetail(); }
+  const farm = state.farms.find(f=>f.id===p.farmId);
+  const records = recordsForPond(p.id);
+  const last = records[records.length-1];
+  const pondHarvests = harvestsForPond(p.id);
+  const priorCaughtCount = pondHarvests.reduce((sum,h)=> sum + (h.caughtCount||0), 0);
+  const priorKg = pondHarvests.reduce((sum,h)=> sum + (h.weightKg||0), 0);
+  const lastHarvestWithPrice = pondHarvests.slice().reverse().find(h=>h.pricePerKg!=null);
+  const rawSurvivingCount = last ? estimatedSurvivingCount(p.releaseCount, last.survivalRate) : null;
+  const estimatedRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - priorCaughtCount) : null;
+  const suggestedWeightKg = (estimatedRemaining!==null && last && last.sizeCount) ? (estimatedRemaining / last.sizeCount) : null;
+  const initialDoc = p.releaseDate ? daysBetween(p.releaseDate, todayISO()) : '';
+
+  return `
+    <div class="backbar">
+      <button class="back-btn" id="btn-back-close">${ICONS.back} กลับ</button>
+    </div>
+    <main>
+      <div class="pond-head">
+        <h2>ปิดบ่อ — ${escapeHtml(p.name)}</h2>
+      </div>
+
+      <div class="card" id="close-form-card">
+        <h3>เพิ่มรายการจับกุ้ง</h3>
+        <form id="close-form">
+          <div class="form-section-label">วันที่และสถานที่</div>
+          <div class="field-row">
+            <div class="field">
+              <label>วันที่จับ</label>
+              <input type="date" name="closeDate" id="close-date" value="${todayISO()}" required>
+            </div>
+            <div class="field">
+              <label>จำนวนวันที่เลี้ยง (วัน)</label>
+              <input type="number" inputmode="numeric" step="1" name="doc" id="close-doc" placeholder="เช่น 90" value="${initialDoc}">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>ฟาร์มที่</label>
+              <input type="text" name="farmName" id="close-farmname" placeholder="เช่น ฟาร์ม A" value="${escapeHtml(farm ? farm.name : '')}">
+            </div>
+            <div class="field">
+              <label>บ่อที่</label>
+              <input type="text" name="pondName" id="close-pondname" placeholder="เช่น บ่อ 1" value="${escapeHtml(p.name)}">
+            </div>
+          </div>
+
+          <div class="form-section-label">ข้อมูลลูกกุ้งที่ปล่อย</div>
+          <div class="field-row">
+            <div class="field">
+              <label>จำนวนปล่อยกุ้ง (ตัว)</label>
+              <input type="number" inputmode="numeric" step="1" name="releaseCount" id="close-releasecount" placeholder="เช่น 500000" value="${p.releaseCount!=null ? p.releaseCount : ''}">
+            </div>
+            <div class="field">
+              <label>ชนิดกุ้ง</label>
+              <input type="text" name="species" id="close-species" placeholder="เช่น กุ้งขาว (Vannamei)" value="${escapeHtml(p.species||'')}">
+            </div>
+          </div>
+          <div class="field">
+            <label>ลูกกุ้งจากไหน</label>
+            <input type="text" name="hatchery" id="close-hatchery" placeholder="เช่น ฟาร์มพ่อแม่พันธุ์ ABC" value="${escapeHtml(p.brand||'')}">
+          </div>
+
+          <div class="form-section-label">ผลการจับ</div>
+          <div class="field-row">
+            <div class="field">
+              <label>ขนาดไซส์ (ตัว/กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="sizeCount" id="close-size" placeholder="เช่น 50" value="${last && last.sizeCount!=null ? last.sizeCount : ''}">
+            </div>
+            <div class="field">
+              <label>ราคา (บาท/กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="pricePerKg" id="close-price" placeholder="เช่น 150" value="${lastHarvestWithPrice ? lastHarvestWithPrice.pricePerKg : ''}">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>จำนวนที่จับ (กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="weightKg" id="close-weight" placeholder="เช่น 500" value="${suggestedWeightKg!=null ? suggestedWeightKg.toFixed(1) : ''}">
+            </div>
+            <div class="field">
+              <label>อาหารรวมทั้งหมด (กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" id="close-feed" placeholder="เช่น 750">
+            </div>
+          </div>
+
+          <div class="calc-box">
+            <div class="calc-box-label">ผลคำนวณอัตโนมัติ</div>
+            <div class="calc-grid">
+              <div class="calc-tile"><div class="n" id="close-calc-count">-</div><div class="l">จำนวนที่จับ (ตัว)</div></div>
+              <div class="calc-tile"><div class="n" id="close-calc-survival">-</div><div class="l">อัตรารอด</div></div>
+              <div class="calc-tile"><div class="n" id="close-calc-fcr">-</div><div class="l">FCR</div></div>
+              <div class="calc-tile"><div class="n" id="close-calc-value">-</div><div class="l">มูลค่ารายการนี้ (บาท)</div></div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" type="submit" style="flex:1">${ICONS.plus} บันทึกรายการ</button>
+          </div>
+        </form>
+      </div>
+    </main>
   `;
 }
 
@@ -1585,6 +1765,101 @@ function bindDashboardEvents(){
 
   const btnBackHarvest = document.getElementById('btn-back-harvest');
   if(btnBackHarvest) btnBackHarvest.onclick = ()=>{ viewingHarvestPondId = null; render(); };
+
+  const btnClosePond = document.getElementById('btn-close-pond');
+  if(btnClosePond) btnClosePond.onclick = ()=>{ viewingClosePondId = currentPondId; render(); };
+
+  const btnBackClose = document.getElementById('btn-back-close');
+  if(btnBackClose) btnBackClose.onclick = ()=>{ viewingClosePondId = null; render(); };
+
+  const closeForm = document.getElementById('close-form');
+  if(closeForm){
+    const cDate = closeForm.querySelector('#close-date');
+    const cDoc = closeForm.querySelector('#close-doc');
+    const cReleaseCount = closeForm.querySelector('#close-releasecount');
+    const cSize = closeForm.querySelector('#close-size');
+    const cPrice = closeForm.querySelector('#close-price');
+    const cWeight = closeForm.querySelector('#close-weight');
+    const cFeed = closeForm.querySelector('#close-feed');
+    const calcCount = document.getElementById('close-calc-count');
+    const calcSurvival = document.getElementById('close-calc-survival');
+    const calcFcr = document.getElementById('close-calc-fcr');
+    const calcValue = document.getElementById('close-calc-value');
+
+    const pond = state.ponds.find(x=>x.id===viewingClosePondId);
+    const priorHarvests = pond ? harvestsForPond(pond.id) : [];
+    const priorCaughtCount = priorHarvests.reduce((sum,h)=> sum + (h.caughtCount||0), 0);
+    const priorKg = priorHarvests.reduce((sum,h)=> sum + (h.weightKg||0), 0);
+
+    let docManuallyEdited = false;
+    if(cDoc) cDoc.addEventListener('input', ()=>{ docManuallyEdited = true; });
+    if(cDate && cDoc && pond && pond.releaseDate){
+      cDate.addEventListener('input', ()=>{
+        if(docManuallyEdited || !cDate.value) return;
+        cDoc.value = daysBetween(pond.releaseDate, cDate.value);
+      });
+    }
+
+    const updateCalc = ()=>{
+      const releaseCount = cReleaseCount.value ? parseFloat(cReleaseCount.value) : null;
+      const sizeCount = cSize.value ? parseFloat(cSize.value) : null;
+      const pricePerKg = cPrice.value ? parseFloat(cPrice.value) : null;
+      const weightKg = cWeight.value ? parseFloat(cWeight.value) : null;
+      const totalFeedKg = cFeed.value ? parseFloat(cFeed.value) : null;
+
+      const thisCaughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
+      calcCount.textContent = thisCaughtCount!==null ? Math.round(thisCaughtCount).toLocaleString('th-TH')+' ตัว' : '-';
+
+      if(thisCaughtCount!==null && releaseCount){
+        const totalCaughtCount = priorCaughtCount + thisCaughtCount;
+        calcSurvival.textContent = (totalCaughtCount / releaseCount * 100).toFixed(1) + '%';
+      } else {
+        calcSurvival.textContent = '-';
+      }
+
+      const totalBiomassKg = priorKg + (weightKg||0);
+      calcFcr.textContent = (totalFeedKg && totalBiomassKg) ? (totalFeedKg / totalBiomassKg).toFixed(2) : '-';
+
+      calcValue.textContent = (weightKg && pricePerKg) ? (weightKg*pricePerKg).toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-';
+    };
+    [cReleaseCount, cSize, cPrice, cWeight, cFeed].forEach(el=>{ if(el) el.addEventListener('input', updateCalc); });
+    updateCalc();
+
+    closeForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      if(!pond) return;
+      const fd = new FormData(closeForm);
+      const closeDate = fd.get('closeDate');
+      const doc = fd.get('doc') ? parseFloat(fd.get('doc')) : null;
+      const farmName = (fd.get('farmName')||'').trim();
+      const pondName = (fd.get('pondName')||'').trim();
+      const releaseCount = fd.get('releaseCount') ? parseFloat(fd.get('releaseCount')) : null;
+      const species = (fd.get('species')||'').trim();
+      const hatchery = (fd.get('hatchery')||'').trim();
+      const sizeCount = fd.get('sizeCount') ? parseFloat(fd.get('sizeCount')) : null;
+      const pricePerKg = fd.get('pricePerKg') ? parseFloat(fd.get('pricePerKg')) : null;
+      const weightKg = fd.get('weightKg') ? parseFloat(fd.get('weightKg')) : null;
+      const totalFeedKg = fd.get('totalFeedKg') ? parseFloat(fd.get('totalFeedKg')) : null;
+
+      const caughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
+      const totalCaughtCount = caughtCount!==null ? priorCaughtCount + caughtCount : null;
+      const survivalRatePct = (totalCaughtCount!==null && releaseCount) ? (totalCaughtCount / releaseCount * 100) : null;
+      const totalBiomassKg = priorKg + (weightKg||0);
+      const fcr = (totalFeedKg && totalBiomassKg) ? (totalFeedKg / totalBiomassKg) : null;
+      const revenue = (weightKg && pricePerKg) ? weightKg * pricePerKg : null;
+
+      const data = {
+        pondId: pond.id, farmId: pond.farmId,
+        closeDate, doc, farmName, pondName, releaseCount, species, hatchery,
+        sizeCount, pricePerKg, weightKg, totalFeedKg,
+        caughtCount, survivalRatePct, fcr, revenue,
+        createdAt: Date.now(),
+      };
+      await db.collection('closures').add(data).catch((e)=>alert('บันทึกไม่สำเร็จ: '+e.message));
+      viewingClosePondId = null;
+      render();
+    });
+  }
 
   document.querySelectorAll('[data-del-harvest]').forEach(btn=>{
     btn.onclick = async ()=>{
