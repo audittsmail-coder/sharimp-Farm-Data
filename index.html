@@ -241,6 +241,7 @@
     padding-bottom:8px; border-bottom:1px solid var(--line-soft);
   }
   .form-section-label:first-child{ margin-top:0; }
+  .info-note{ background:var(--surface-soft); border-radius:var(--radius-sm); padding:10px 12px; font-size:12.5px; color:var(--ink-soft); margin:14px 0; line-height:1.5; }
   .calc-box{ border:1.5px dashed var(--line); border-radius:var(--radius); padding:14px; margin:18px 0 13px 0; }
   .calc-box-label{ font-size:12.5px; font-weight:700; color:var(--heading); margin-bottom:10px; }
   .calc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
@@ -1435,13 +1436,18 @@ function renderCloseForm(){
             </div>
           </div>
 
+          ${pondHarvests.length>0 ? `
+          <div class="info-note">
+            มีการแบ่งจับมาก่อน ${pondHarvests.length} ครั้ง รวม ${priorKg.toLocaleString('th-TH')} กก. — ระบบจะรวมน้ำหนักและมูลค่านี้เข้ากับรายการปิดบ่อให้อัตโนมัติ
+          </div>` : ''}
+
           <div class="calc-box">
-            <div class="calc-box-label">ผลคำนวณอัตโนมัติ</div>
+            <div class="calc-box-label">ผลคำนวณอัตโนมัติ (รวมการแบ่งจับก่อนหน้า)</div>
             <div class="calc-grid">
-              <div class="calc-tile"><div class="n" id="close-calc-count">-</div><div class="l">จำนวนที่จับ (ตัว)</div></div>
+              <div class="calc-tile"><div class="n" id="close-calc-count">-</div><div class="l">จำนวนที่จับรวม (ตัว)</div></div>
               <div class="calc-tile"><div class="n" id="close-calc-survival">-</div><div class="l">อัตรารอด</div></div>
               <div class="calc-tile"><div class="n" id="close-calc-fcr">-</div><div class="l">FCR</div></div>
-              <div class="calc-tile"><div class="n" id="close-calc-value">-</div><div class="l">มูลค่ารายการนี้ (บาท)</div></div>
+              <div class="calc-tile"><div class="n" id="close-calc-value">-</div><div class="l">มูลค่ารวม (บาท)</div></div>
             </div>
           </div>
 
@@ -2037,6 +2043,7 @@ function bindDashboardEvents(){
     const priorHarvests = pond ? harvestsForPond(pond.id) : [];
     const priorCaughtCount = priorHarvests.reduce((sum,h)=> sum + (h.caughtCount||0), 0);
     const priorKg = priorHarvests.reduce((sum,h)=> sum + (h.weightKg||0), 0);
+    const priorRevenue = priorHarvests.reduce((sum,h)=> sum + (h.revenue||0), 0);
 
     let docManuallyEdited = false;
     if(cDoc) cDoc.addEventListener('input', ()=>{ docManuallyEdited = true; });
@@ -2055,19 +2062,21 @@ function bindDashboardEvents(){
       const totalFeedKg = cFeed.value ? parseFloat(cFeed.value) : null;
 
       const thisCaughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
-      calcCount.textContent = thisCaughtCount!==null ? Math.round(thisCaughtCount).toLocaleString('th-TH')+' ตัว' : '-';
+      const totalCaughtCount = (thisCaughtCount!==null || priorCaughtCount) ? priorCaughtCount + (thisCaughtCount||0) : null;
+      calcCount.textContent = totalCaughtCount!==null ? Math.round(totalCaughtCount).toLocaleString('th-TH')+' ตัว' : '-';
 
-      if(thisCaughtCount!==null && releaseCount){
-        const totalCaughtCount = priorCaughtCount + thisCaughtCount;
+      if(totalCaughtCount!==null && releaseCount){
         calcSurvival.textContent = (totalCaughtCount / releaseCount * 100).toFixed(1) + '%';
       } else {
         calcSurvival.textContent = '-';
       }
 
-      const totalBiomassKg = priorKg + (weightKg||0);
-      calcFcr.textContent = (totalFeedKg && totalBiomassKg) ? (totalFeedKg / totalBiomassKg).toFixed(2) : '-';
+      const totalWeightKg = priorKg + (weightKg||0);
+      calcFcr.textContent = (totalFeedKg && totalWeightKg) ? (totalFeedKg / totalWeightKg).toFixed(2) : '-';
 
-      calcValue.textContent = (weightKg && pricePerKg) ? (weightKg*pricePerKg).toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-';
+      const thisRevenue = (weightKg && pricePerKg) ? weightKg*pricePerKg : null;
+      const totalRevenue = (thisRevenue!==null || priorRevenue) ? priorRevenue + (thisRevenue||0) : null;
+      calcValue.textContent = totalRevenue!==null ? totalRevenue.toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-';
     };
     [cReleaseCount, cSize, cPrice, cWeight, cFeed].forEach(el=>{ if(el) el.addEventListener('input', updateCalc); });
     updateCalc();
@@ -2088,18 +2097,19 @@ function bindDashboardEvents(){
       const weightKg = fd.get('weightKg') ? parseFloat(fd.get('weightKg')) : null;
       const totalFeedKg = fd.get('totalFeedKg') ? parseFloat(fd.get('totalFeedKg')) : null;
 
-      const caughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
-      const totalCaughtCount = caughtCount!==null ? priorCaughtCount + caughtCount : null;
+      const thisCaughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
+      const totalCaughtCount = (thisCaughtCount!==null || priorCaughtCount) ? priorCaughtCount + (thisCaughtCount||0) : null;
       const survivalRatePct = (totalCaughtCount!==null && releaseCount) ? (totalCaughtCount / releaseCount * 100) : null;
-      const totalBiomassKg = priorKg + (weightKg||0);
-      const fcr = (totalFeedKg && totalBiomassKg) ? (totalFeedKg / totalBiomassKg) : null;
-      const revenue = (weightKg && pricePerKg) ? weightKg * pricePerKg : null;
+      const totalWeightKg = priorKg + (weightKg||0);
+      const fcr = (totalFeedKg && totalWeightKg) ? (totalFeedKg / totalWeightKg) : null;
+      const thisRevenue = (weightKg && pricePerKg) ? weightKg * pricePerKg : null;
+      const totalRevenue = (thisRevenue!==null || priorRevenue) ? priorRevenue + (thisRevenue||0) : null;
 
       const data = {
         pondId: pond.id, farmId: pond.farmId,
         closeDate, doc, farmName, pondName, releaseCount, species, hatchery,
-        sizeCount, pricePerKg, weightKg, totalFeedKg,
-        caughtCount, survivalRatePct, fcr, revenue,
+        sizeCount, pricePerKg, weightKg: totalWeightKg, totalFeedKg,
+        caughtCount: totalCaughtCount, survivalRatePct, fcr, revenue: totalRevenue,
         createdAt: Date.now(),
       };
       try{
