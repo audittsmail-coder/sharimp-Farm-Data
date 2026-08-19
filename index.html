@@ -250,6 +250,14 @@
   .calc-tile .l{ font-size:10.5px; color:var(--ink-faint); margin-top:3px; }
   .field label .info-hint{ color:var(--ink-faint); font-weight:400; cursor:help; }
 
+  .dist-list{ display:flex; flex-direction:column; gap:13px; }
+  .dist-top{ display:flex; justify-content:space-between; align-items:baseline; font-size:13px; margin-bottom:5px; gap:8px; }
+  .dist-label{ color:var(--ink); font-weight:600; }
+  .dist-pct{ color:var(--teal-400); font-weight:700; font-family:'Taviraj',serif; white-space:nowrap; }
+  .dist-count{ color:var(--ink-faint); font-weight:400; font-size:11px; }
+  .dist-bar-wrap{ background:var(--surface-soft); border-radius:999px; height:8px; overflow:hidden; }
+  .dist-bar{ background:linear-gradient(90deg, var(--teal-500), var(--teal-400)); height:100%; border-radius:999px; }
+
   .btn{ border:none; border-radius:var(--radius-sm); padding:12px 16px; font-size:14px; font-weight:600; cursor:pointer; transition:transform .12s var(--ease), background .15s var(--ease), opacity .15s var(--ease); }
   .btn-primary{ background:linear-gradient(135deg, var(--teal-500), var(--teal-600)); color:#fff; width:100%; box-shadow:0 6px 16px rgba(31,110,95,.35); }
   .btn-primary:hover{ box-shadow:0 8px 20px rgba(31,110,95,.45); }
@@ -592,6 +600,58 @@ function allClosuresSorted(){
   return state.closures.slice().sort((a,b)=>(b.closeDate||'').localeCompare(a.closeDate||'') || (b.createdAt||0)-(a.createdAt||0));
 }
 
+/* ---------------- Closures summary stat distributions ---------------- */
+function speciesShortLabel(species){
+  if(!species) return null;
+  const s = species.split('(')[0].trim();
+  return s || null;
+}
+function quarterLabel(dateStr){
+  if(!dateStr || dateStr.length < 7) return null;
+  const month = parseInt(dateStr.slice(5,7), 10);
+  if(!month) return null;
+  const q = Math.ceil(month/3);
+  return `ไตรมาส ${q} (${dateStr.slice(0,4)})`;
+}
+function sizeRangeLabel(size){
+  if(size==null) return null;
+  if(size<=40) return '≤40 ตัว/กก.';
+  if(size<=60) return '41-60 ตัว/กก.';
+  if(size<=80) return '61-80 ตัว/กก.';
+  if(size<=100) return '81-100 ตัว/กก.';
+  if(size<=150) return '101-150 ตัว/กก.';
+  return '150+ ตัว/กก.';
+}
+function docRangeLabel(doc){
+  if(doc==null) return null;
+  if(doc<60) return '<60 วัน';
+  if(doc<80) return '60-79 วัน';
+  if(doc<100) return '80-99 วัน';
+  if(doc<120) return '100-119 วัน';
+  return '120+ วัน';
+}
+function survivalRangeLabel(pct){
+  if(pct==null) return null;
+  if(pct<30) return '<30%';
+  if(pct<50) return '30-49%';
+  if(pct<70) return '50-69%';
+  if(pct<90) return '70-89%';
+  return '90%+';
+}
+function buildDistribution(closures, labelFn){
+  const counts = {};
+  let total = 0;
+  closures.forEach(c=>{
+    const label = labelFn(c);
+    if(!label) return;
+    counts[label] = (counts[label]||0) + 1;
+    total++;
+  });
+  return Object.entries(counts)
+    .map(([label,count])=>({ label, count, pct: total ? (count/total*100) : 0 }))
+    .sort((a,b)=> b.count-a.count);
+}
+
 /* ---------------- Pathogen results (written by the weekly culture-log app) ---------------- */
 // Pathogen fields live directly on the pond doc (pathogenStatus/pathogenSeverity/
 // pathogenWorsened/pathogenDate = latest result, pathogenHistory[] = every week's result)
@@ -830,15 +890,48 @@ function renderOverviewDashboard(tabs){
   `;
 }
 
+function distributionCardHtml(title, items){
+  if(!items || items.length === 0) return '';
+  return `
+    <div class="card">
+      <h3>${escapeHtml(title)}</h3>
+      <div class="dist-list">
+        ${items.map(it=>`
+          <div class="dist-row">
+            <div class="dist-top">
+              <span class="dist-label">${escapeHtml(it.label)}</span>
+              <span class="dist-pct">${it.pct.toFixed(0)}% <span class="dist-count">(${it.count})</span></span>
+            </div>
+            <div class="dist-bar-wrap"><div class="dist-bar" style="width:${it.pct.toFixed(1)}%"></div></div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
 function renderClosuresSummary(tabs){
   const closures = allClosuresSorted();
+
+  let statsHtml = '';
+  if(closures.length > 0){
+    statsHtml =
+      distributionCardHtml('ชนิดกุ้ง', buildDistribution(closures, c=>speciesShortLabel(c.species))) +
+      distributionCardHtml('ลูกกุ้งจากไหน', buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null)) +
+      distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
+      distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
+      distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
+      distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate)));
+  }
+
   const bodyHtml = closures.length === 0 ? `
     <div class="empty-state">
       ${ICONS.shrimp}
       <p><b>ยังไม่มีข้อมูลปิดบ่อ</b></p>
       <p>เมื่อกด "ปิดบ่อ" แล้วบันทึกข้อมูลจากหน้ารายละเอียดบ่อ รายการจะมาแสดงที่นี่</p>
     </div>` : `
+    ${statsHtml}
     <div class="card">
+      <h3>ประวัติการปิดบ่อทั้งหมด</h3>
       <div style="overflow-x:auto">
         <table class="rec-table">
           <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>มูลค่า</th></tr></thead>
