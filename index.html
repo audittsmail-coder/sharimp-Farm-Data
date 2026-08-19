@@ -113,8 +113,7 @@
   main{ flex:1; padding:16px 16px 32px 16px; animation:viewIn .28s var(--ease); }
   @keyframes viewIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:translateY(0);} }
 
-  .farm-tabs{ display:flex; gap:8px; overflow-x:auto; padding:14px 16px 4px 16px; -webkit-overflow-scrolling:touch; }
-  .farm-tabs::-webkit-scrollbar{ display:none; }
+  .farm-tabs{ display:flex; flex-wrap:wrap; gap:8px; padding:14px 16px 4px 16px; }
   .farm-tab{
     flex:none; padding:8px 15px; border-radius:999px; border:1px solid var(--line);
     background:var(--surface); color:var(--ink-soft); font-size:13.5px; font-weight:500;
