@@ -716,10 +716,10 @@ function render(){
 
 function renderFarmDashboard(){
   const tabs = `<button class="farm-tab ${currentFarmId==='overview'?'active':''}" data-farm="overview">ภาพรวม</button>` +
-    `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>` +
     state.farms.map(f => `
     <button class="farm-tab ${f.id===currentFarmId?'active':''}" data-farm="${f.id}">${escapeHtml(f.name)}</button>
-  `).join('');
+  `).join('') +
+    `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>`;
 
   if(currentFarmId === 'overview') return renderOverviewDashboard(tabs);
   if(currentFarmId === 'closures') return renderClosuresSummary(tabs);
