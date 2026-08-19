@@ -45,9 +45,9 @@
     --line:#1E3A4E;
     --line-soft:#17293A;
     --danger:#E2695A;
-    --radius-sm:10px;
-    --radius:16px;
-    --radius-lg:20px;
+    --radius-sm:0;
+    --radius:0;
+    --radius-lg:0;
     --shadow-sm:0 1px 2px rgba(0,0,0,.24);
     --shadow:0 2px 4px rgba(0,0,0,.24), 0 12px 28px rgba(0,0,0,.32);
     --shadow-lg:0 8px 16px rgba(0,0,0,.28), 0 24px 48px rgba(0,0,0,.4);
@@ -89,14 +89,14 @@
     box-shadow:0 4px 20px rgba(4,20,17,.35);
   }
   .topbar .wave{
-    width:30px; height:30px; flex:none; padding:5px; border-radius:10px;
+    width:30px; height:30px; flex:none; padding:5px; border-radius:0;
     background:rgba(255,255,255,.14);
   }
   .topbar h1{ font-size:19.5px; margin:0; color:#fff; flex:1; letter-spacing:.1px; }
   .topbar .sub{ font-size:11.5px; color:rgba(255,255,255,.8); margin-top:2px; font-weight:500; }
   .icon-btn{
     background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff;
-    width:36px; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+    width:36px; height:36px; border-radius:0; display:flex; align-items:center; justify-content:center;
     cursor:pointer; flex:none; transition:background .15s var(--ease), transform .15s var(--ease);
   }
   .icon-btn:hover{ background:rgba(255,255,255,.18); }
@@ -105,7 +105,7 @@
   .backbar{ display:flex; align-items:center; gap:8px; padding:14px 16px 0 16px; }
   .back-btn{
     background:var(--surface); border:1px solid var(--line); color:var(--heading); font-size:13.5px; font-weight:600;
-    display:flex; align-items:center; gap:5px; cursor:pointer; padding:7px 12px 7px 8px; border-radius:999px;
+    display:flex; align-items:center; gap:5px; cursor:pointer; padding:7px 12px 7px 8px; border-radius:0;
     transition:background .15s var(--ease);
   }
   .back-btn:active{ background:var(--surface-soft); }
@@ -115,7 +115,7 @@
 
   .farm-tabs{ display:flex; flex-wrap:wrap; gap:8px; padding:14px 16px 4px 16px; }
   .farm-tab{
-    flex:none; padding:8px 15px; border-radius:999px; border:1px solid var(--line);
+    flex:none; padding:8px 15px; border-radius:0; border:1px solid var(--line);
     background:var(--surface); color:var(--ink-soft); font-size:13.5px; font-weight:500;
     cursor:pointer; white-space:nowrap; transition:all .18s var(--ease);
   }
@@ -133,7 +133,7 @@
   .action-btn{
     display:inline-flex; align-items:center; gap:6px;
     background:var(--surface-soft); border:1px solid var(--line); color:var(--ink-soft); font-size:12px;
-    cursor:pointer; padding:7px 12px; border-radius:999px; font-weight:600; transition:all .15s var(--ease);
+    cursor:pointer; padding:7px 12px; border-radius:0; font-weight:600; transition:all .15s var(--ease);
   }
   .action-btn:hover{ color:var(--heading); border-color:var(--teal-500); }
   .action-btn.danger{ color:var(--danger); }
@@ -148,7 +148,7 @@
     transition:transform .16s var(--ease), box-shadow .16s var(--ease), border-color .16s var(--ease);
   }
   .pond-card::before{
-    content:''; position:absolute; left:0; top:14px; bottom:14px; width:3px; border-radius:3px;
+    content:''; position:absolute; left:0; top:14px; bottom:14px; width:3px; border-radius:0;
     background:linear-gradient(var(--teal-400), var(--teal-600)); opacity:.85;
   }
   .pond-card{ padding-left:19px; }
@@ -157,7 +157,7 @@
   .pond-card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
   .pond-card h3{ margin:0; font-size:16.5px; color:var(--heading); }
   .pond-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
-  .doc-chip{ background:var(--teal-100); color:var(--teal-400); font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; flex:none; letter-spacing:.01em; }
+  .doc-chip{ background:var(--teal-100); color:var(--teal-400); font-size:11px; font-weight:700; padding:3px 9px; border-radius:0; flex:none; letter-spacing:.01em; }
   .stat-row{ display:flex; gap:8px; margin-top:10px; }
   .stat{ flex:1; background:var(--surface-soft); border-radius:var(--radius-sm); padding:7px 10px; border:1px solid var(--line-soft); }
   .stat .label{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
@@ -217,7 +217,7 @@
     margin:0 0 14px 0; font-size:16px; color:var(--heading); display:flex; align-items:center; gap:7px;
     position:relative; padding-left:11px;
   }
-  .card h3::before{ content:''; position:absolute; left:0; top:1px; bottom:1px; width:3px; border-radius:2px; background:currentColor; opacity:.55; }
+  .card h3::before{ content:''; position:absolute; left:0; top:1px; bottom:1px; width:3px; border-radius:0; background:currentColor; opacity:.55; }
   .field{ margin-bottom:13px; }
   .field label{ display:block; font-size:12.5px; color:var(--heading); margin-bottom:6px; font-weight:700; letter-spacing:.01em; }
   .field input, .field select, .field textarea{
@@ -245,7 +245,7 @@
   .calc-box{ border:1.5px dashed var(--line); border-radius:var(--radius); padding:14px; margin:18px 0 13px 0; }
   .calc-box-label{ font-size:12.5px; font-weight:700; color:var(--heading); margin-bottom:10px; }
   .calc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .calc-tile{ background:var(--surface-hi); border-radius:10px; padding:11px 8px; text-align:center; }
+  .calc-tile{ background:var(--surface-hi); border-radius:0; padding:11px 8px; text-align:center; }
   .calc-tile .n{ font-size:16px; font-weight:700; color:var(--teal-400); font-family:'Taviraj',serif; }
   .calc-tile .l{ font-size:10.5px; color:var(--ink-faint); margin-top:3px; }
   .field label .info-hint{ color:var(--ink-faint); font-weight:400; cursor:help; }
@@ -269,13 +269,13 @@
   .pond-head{ margin-bottom:4px; }
   .pond-head h2{ font-size:22px; margin:0; color:var(--heading); }
   .tag-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
-  .tag{ background:var(--surface-soft); color:var(--ink); font-size:14.5px; padding:7px 14px; border-radius:999px; border:1px solid var(--line-soft); font-weight:600; }
+  .tag{ background:var(--surface-soft); color:var(--ink); font-size:14.5px; padding:7px 14px; border-radius:0; border:1px solid var(--line-soft); font-weight:600; }
   .tag.coral{ background:var(--coral-soft); color:var(--coral); border-color:transparent; }
   .tag.amber{ background:var(--amber-soft); color:var(--amber); border-color:transparent; }
   .tag.good{ background:var(--teal-100); color:var(--teal-400); border-color:transparent; }
 
   .pathogen-chip{
-    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:0;
     letter-spacing:.01em; white-space:nowrap;
   }
   .pathogen-chip.coral{ background:var(--coral-soft); color:var(--coral); }
@@ -284,7 +284,7 @@
 
   .pathogen-list{ display:flex; flex-direction:column; gap:10px; }
   .pathogen-entry{
-    border-left:3px solid var(--line); padding:9px 12px; border-radius:8px;
+    border-left:3px solid var(--line); padding:9px 12px; border-radius:0;
     background:var(--surface-soft);
   }
   .pathogen-entry.coral{ border-left-color:var(--coral); }
@@ -345,12 +345,12 @@
   .ov-pond-species{ font-size:11px; color:var(--ink-faint); margin-top:1px; }
   .ov-update-badge{
     display:inline-block; font-size:9.5px; font-weight:700; color:var(--coral);
-    background:var(--coral-soft); padding:2px 7px; border-radius:999px; vertical-align:middle;
+    background:var(--coral-soft); padding:2px 7px; border-radius:0; vertical-align:middle;
     letter-spacing:.02em;
   }
   .ov-harvest-badge{
     display:inline-block; font-size:9.5px; font-weight:700; color:var(--orange);
-    background:var(--orange-soft); padding:2px 7px; border-radius:999px; vertical-align:middle;
+    background:var(--orange-soft); padding:2px 7px; border-radius:0; vertical-align:middle;
     letter-spacing:.02em;
   }
   .ov-adg{ color:var(--coral); font-weight:700; }
@@ -374,7 +374,7 @@
 
   .loading{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 0; color:var(--ink-faint); font-size:13px; gap:14px; }
   .loading::before{
-    content:''; width:26px; height:26px; border-radius:50%;
+    content:''; width:26px; height:26px; border-radius:0;
     border:3px solid var(--line); border-top-color:var(--teal-500);
     animation:spin .8s linear infinite;
   }
@@ -406,7 +406,7 @@
   }
   .login-card .wave{
     width:52px; height:52px; margin:0 auto 14px auto; color:var(--heading);
-    background:linear-gradient(135deg, var(--teal-500), var(--teal-700)); border-radius:16px; padding:12px;
+    background:linear-gradient(135deg, var(--teal-500), var(--teal-700)); border-radius:0; padding:12px;
     box-shadow:0 8px 20px rgba(46,147,203,.3);
   }
   .login-card h1{ font-size:20px; margin:0 0 5px 0; color:var(--heading); }
@@ -1142,7 +1142,7 @@ function renderPondDetail(){
             <div id="yield-value" style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg!==null ? estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-'}</div>
             <div id="yield-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${estimatedYieldKg!==null ? (totalHarvestedCount>0 ? `จำนวนปล่อย × อัตรารอด ${last.survivalRate}% − แบ่งจับสะสม ${totalHarvestedCount.toLocaleString('th-TH')} ตัว` : `คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด`) : 'ใส่อัตรารอดด้านล่างเพื่อคำนวณผลผลิตโดยประมาณ'}</div>
           </div>
-          <div style="flex-shrink:0; width:104px; background:var(--surface-hi); border-radius:10px; padding:10px 8px; text-align:center;">
+          <div style="flex-shrink:0; width:104px; background:var(--surface-hi); border-radius:0; padding:10px 8px; text-align:center;">
             <div style="font-size:10px;color:var(--ink-faint);line-height:1.3;">กุ้งที่เหลือโดยประมาณ</div>
             <div id="survival-count-value" style="font-size:16px;font-weight:700;color:var(--ink);margin-top:5px;">${estimatedSurviving!==null ? estimatedSurviving.toLocaleString('th-TH')+' ตัว' : '-'}</div>
           </div>
@@ -1323,7 +1323,7 @@ function renderHarvestForm(){
             <label>หมายเหตุ (ถ้ามี)</label>
             <input type="text" name="note" placeholder="เช่น จับหน้าฝน, ลูกค้า A">
           </div>
-          <div style="background:var(--surface-hi);border-radius:10px;padding:12px 14px;margin-bottom:13px;text-align:center;">
+          <div style="background:var(--surface-hi);border-radius:0;padding:12px 14px;margin-bottom:13px;text-align:center;">
             <div style="font-size:11px;color:var(--ink-faint);">หลังแบ่งจับนี้ คาดว่าจะเหลือ</div>
             <div id="harvest-preview-remaining" style="font-size:20px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:3px;">-</div>
             <div id="harvest-preview-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">ใส่น้ำหนักและไซส์ที่จับเพื่อคำนวณ</div>
