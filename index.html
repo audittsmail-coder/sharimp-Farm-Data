@@ -1678,9 +1678,15 @@ function renderBiomassCalc(){
             <input type="number" inputmode="decimal" step="0.1" id="biomass-survival" placeholder="เช่น 80" value="${last && last.survivalRate!=null ? last.survivalRate : ''}">
           </div>
         </div>
-        <div class="field">
-          <label>ไซส์กุ้ง (ตัว/กก.)</label>
-          <input type="number" inputmode="decimal" step="0.1" id="biomass-size" placeholder="เช่น 60" value="${last && last.sizeCount!=null ? last.sizeCount : ''}">
+        <div class="field-row">
+          <div class="field">
+            <label>ไซส์กุ้ง (ตัว/กก.)</label>
+            <input type="number" inputmode="decimal" step="0.1" id="biomass-size" placeholder="เช่น 60" value="${last && last.sizeCount!=null ? last.sizeCount : ''}">
+          </div>
+          <div class="field">
+            <label>อัตราให้อาหาร (% Biomass)</label>
+            <input type="number" inputmode="decimal" step="0.1" id="biomass-feedpct" placeholder="เช่น 5">
+          </div>
         </div>
 
         <div class="calc-box">
@@ -1689,6 +1695,7 @@ function renderBiomassCalc(){
             <div class="calc-tile"><div class="n" id="biomass-calc-surviving">-</div><div class="l">กุ้งที่เหลือ (ตัว)</div></div>
             <div class="calc-tile"><div class="n" id="biomass-calc-weight">-</div><div class="l">น้ำหนัก/ตัว (กรัม)</div></div>
             <div class="calc-tile"><div class="n" id="biomass-calc-biomass">-</div><div class="l">Biomass รวม (กก.)</div></div>
+            <div class="calc-tile"><div class="n" id="biomass-calc-feed">-</div><div class="l">อาหารที่ควรให้/วัน (กก.)</div></div>
           </div>
         </div>
       </div>
@@ -2308,14 +2315,17 @@ function bindDashboardEvents(){
   const biomassRelease = document.getElementById('biomass-release');
   const biomassSurvival = document.getElementById('biomass-survival');
   const biomassSize = document.getElementById('biomass-size');
+  const biomassFeedPct = document.getElementById('biomass-feedpct');
   if(biomassRelease && biomassSurvival && biomassSize){
     const biomassCalcSurviving = document.getElementById('biomass-calc-surviving');
     const biomassCalcWeight = document.getElementById('biomass-calc-weight');
     const biomassCalcBiomass = document.getElementById('biomass-calc-biomass');
+    const biomassCalcFeed = document.getElementById('biomass-calc-feed');
     const updateBiomassCalc = ()=>{
       const releaseCount = biomassRelease.value ? parseFloat(biomassRelease.value) : null;
       const survivalRate = biomassSurvival.value ? parseFloat(biomassSurvival.value) : null;
       const sizeCount = biomassSize.value ? parseFloat(biomassSize.value) : null;
+      const feedPct = biomassFeedPct.value ? parseFloat(biomassFeedPct.value) : null;
 
       const survivingCount = (releaseCount && survivalRate!=null) ? Math.round(releaseCount*(survivalRate/100)) : null;
       biomassCalcSurviving.textContent = survivingCount!=null ? survivingCount.toLocaleString('th-TH')+' ตัว' : '-';
@@ -2325,8 +2335,11 @@ function bindDashboardEvents(){
 
       const biomassKg = (releaseCount && survivalRate!=null && sizeCount) ? estimatedBiomassKg(releaseCount, survivalRate, sizeCount) : null;
       biomassCalcBiomass.textContent = biomassKg!=null ? biomassKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-';
+
+      const feedKg = (biomassKg!=null && feedPct!=null) ? biomassKg * (feedPct/100) : null;
+      biomassCalcFeed.textContent = feedKg!=null ? feedKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-';
     };
-    [biomassRelease, biomassSurvival, biomassSize].forEach(el=>el.addEventListener('input', updateBiomassCalc));
+    [biomassRelease, biomassSurvival, biomassSize, biomassFeedPct].forEach(el=>el.addEventListener('input', updateBiomassCalc));
     updateBiomassCalc();
   }
 
