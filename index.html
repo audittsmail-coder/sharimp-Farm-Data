@@ -306,11 +306,12 @@
 
   .pond-head{ margin-bottom:4px; }
   .pond-head h2{ font-size:22px; margin:0; color:var(--heading); }
-  .tag-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
-  .tag{ background:var(--surface-soft); color:var(--ink); font-size:14.5px; padding:7px 14px; border-radius:0; border:1px solid var(--line-soft); font-weight:600; }
-  .tag.coral{ background:var(--coral-soft); color:var(--coral); border-color:transparent; }
-  .tag.amber{ background:var(--amber-soft); color:var(--amber); border-color:transparent; }
-  .tag.good{ background:var(--teal-100); color:var(--teal-400); border-color:transparent; }
+  .meta-row{ display:flex; flex-wrap:wrap; align-items:baseline; margin-top:12px; font-size:13.5px; color:var(--ink); }
+  .meta-item{ font-weight:600; white-space:nowrap; }
+  .meta-item.coral{ color:var(--coral); }
+  .meta-item.amber{ color:var(--amber); }
+  .meta-item.good{ color:var(--teal-400); }
+  .meta-dot{ margin:0 9px; color:var(--ink-faint); font-weight:400; }
 
   .pathogen-chip{
     display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:0;
@@ -819,6 +820,14 @@ function pathogenChipHtml(severity, status){
   const label = PATHOGEN_SEVERITY_LABEL[severity] || severity;
   return `<span class="pathogen-chip ${cls}" title="${escapeHtml(status||'')}">เชื้อ: ${escapeHtml(label)}</span>`;
 }
+function metaRowHtml(items){
+  const valid = items.filter(Boolean);
+  if(valid.length === 0) return '';
+  return `
+    <div class="meta-row">
+      ${valid.map((it,i)=>`${i>0 ? '<span class="meta-dot">·</span>' : ''}<span class="meta-item ${it.cls||''}">${it.text}</span>`).join('')}
+    </div>`;
+}
 function computeAdgForPond(p, recs){
   if(!recs || recs.length===0) return null;
   const last = recs[recs.length-1];
@@ -1288,14 +1297,14 @@ function renderPondDetail(){
     <main>
       <div class="pond-head">
         <h2>${escapeHtml(p.name)}</h2>
-        <div class="tag-row">
-          <span class="tag">${escapeHtml(p.species||'ยังไม่ระบุชนิด')}</span>
-          ${p.brand ? `<span class="tag">แบรนด์: ${escapeHtml(p.brand)}</span>` : ''}
-          ${p.releaseDate ? `<span class="tag coral">ปล่อย ${fmtDate(p.releaseDate)}</span>` : ''}
-          ${p.releaseCount ? `<span class="tag">จำนวนปล่อย ${Number(p.releaseCount).toLocaleString('th-TH')} ตัว</span>` : ''}
-          ${doc!==null ? `<span class="tag amber">DOC ${doc} วัน</span>` : ''}
-          ${pathogenRec ? `<span class="tag ${PATHOGEN_SEVERITY_CLASS[pathogenRec.severity]||''}">ผลเชื้อ (${fmtDate(pathogenRec.weekDate)}): ${escapeHtml(PATHOGEN_SEVERITY_LABEL[pathogenRec.severity]||pathogenRec.severity)}</span>` : ''}
-        </div>
+        ${metaRowHtml([
+          { text: escapeHtml(p.species||'ยังไม่ระบุชนิด') },
+          p.brand ? { text: `แบรนด์: ${escapeHtml(p.brand)}` } : null,
+          p.releaseDate ? { text: `ปล่อย ${fmtDate(p.releaseDate)}`, cls:'coral' } : null,
+          p.releaseCount ? { text: `จำนวนปล่อย ${Number(p.releaseCount).toLocaleString('th-TH')} ตัว` } : null,
+          doc!==null ? { text: `DOC ${doc} วัน`, cls:'amber' } : null,
+          pathogenRec ? { text: `ผลเชื้อ (${fmtDate(pathogenRec.weekDate)}): ${escapeHtml(PATHOGEN_SEVERITY_LABEL[pathogenRec.severity]||pathogenRec.severity)}`, cls: PATHOGEN_SEVERITY_CLASS[pathogenRec.severity]||'' } : null,
+        ])}
         <div class="action-row">
           <button class="action-btn" id="btn-edit-pond">${ICONS.edit} แก้ไขข้อมูลบ่อ</button>
           <button class="action-btn" id="btn-open-biomass">คำนวณ Biomass</button>
@@ -1839,13 +1848,13 @@ function renderBatchDetail(){
     <main>
       <div class="pond-head">
         <h2>${escapeHtml(batch.pondName||'บ่อ')} <span style="font-size:13px;color:var(--ink-faint);font-weight:500">(ประวัติ)</span></h2>
-        <div class="tag-row">
-          <span class="tag">${escapeHtml(batch.species||'ยังไม่ระบุชนิด')}</span>
-          ${batch.brand ? `<span class="tag">แบรนด์: ${escapeHtml(batch.brand)}</span>` : ''}
-          ${batch.releaseDate ? `<span class="tag coral">ปล่อย ${fmtDate(batch.releaseDate)}</span>` : ''}
-          ${batch.releaseCount ? `<span class="tag">จำนวนปล่อย ${Number(batch.releaseCount).toLocaleString('th-TH')} ตัว</span>` : ''}
-          <span class="tag amber">บันทึกเมื่อ ${fmtDate(batch.savedAt)}</span>
-        </div>
+        ${metaRowHtml([
+          { text: escapeHtml(batch.species||'ยังไม่ระบุชนิด') },
+          batch.brand ? { text: `แบรนด์: ${escapeHtml(batch.brand)}` } : null,
+          batch.releaseDate ? { text: `ปล่อย ${fmtDate(batch.releaseDate)}`, cls:'coral' } : null,
+          batch.releaseCount ? { text: `จำนวนปล่อย ${Number(batch.releaseCount).toLocaleString('th-TH')} ตัว` } : null,
+          { text: `บันทึกเมื่อ ${fmtDate(batch.savedAt)}`, cls:'amber' },
+        ])}
       </div>
 
       <div class="summary-strip">
