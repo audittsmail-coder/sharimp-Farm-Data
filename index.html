@@ -608,6 +608,7 @@ let currentPondId = null;
 let viewingBatchId = null;
 let viewingHarvestPondId = null;
 let viewingClosePondId = null;
+let viewingBiomassPondId = null;
 let editingClosureId = null;
 let showSettingsSheet = false;
 let showDeleteAllConfirm = false;
@@ -894,6 +895,8 @@ function render(){
       html += renderClosureEditForm();
     } else if(viewingClosePondId){
       html += renderCloseForm();
+    } else if(viewingBiomassPondId){
+      html += renderBiomassCalc();
     } else if(viewingHarvestPondId){
       html += renderHarvestForm();
     } else if(viewingBatchId){
@@ -909,6 +912,7 @@ function render(){
 
     if(editingClosureId){ /* no charts on the closure-edit page */ }
     else if(viewingClosePondId){ /* no charts on the close-pond page */ }
+    else if(viewingBiomassPondId){ /* no charts on the biomass calculator page */ }
     else if(viewingHarvestPondId){ /* no charts on the harvest page */ }
     else if(viewingBatchId) drawBatchCharts();
     else if(currentPondId) drawCharts();
@@ -1294,6 +1298,7 @@ function renderPondDetail(){
         </div>
         <div class="action-row">
           <button class="action-btn" id="btn-edit-pond">${ICONS.edit} แก้ไขข้อมูลบ่อ</button>
+          <button class="action-btn" id="btn-open-biomass">คำนวณ Biomass</button>
           ${records.length>0 ? `<button class="action-btn" id="btn-archive-batch">${ICONS.archive} บันทึกรุ่นนี้เก็บไว้</button>` : ''}
           <button class="action-btn danger" id="btn-delete-pond">${ICONS.trash} ลบบ่อนี้</button>
         </div>
@@ -1632,6 +1637,51 @@ function renderCloseForm(){
             <button class="btn btn-primary" type="submit" style="flex:1">${ICONS.plus} บันทึกรายการ</button>
           </div>
         </form>
+      </div>
+    </main>
+  `;
+}
+
+function renderBiomassCalc(){
+  const p = state.ponds.find(x=>x.id===viewingBiomassPondId);
+  if(!p){ viewingBiomassPondId = null; return renderPondDetail(); }
+  const recs = recordsForPond(p.id);
+  const last = recs[recs.length-1];
+
+  return `
+    <div class="backbar">
+      <button class="back-btn" id="btn-back-biomass">${ICONS.back} กลับ</button>
+    </div>
+    <main>
+      <div class="pond-head">
+        <h2>คำนวณ Biomass — ${escapeHtml(p.name)}</h2>
+      </div>
+
+      <div class="card">
+        <h3>ใส่ค่าเพื่อคำนวณ</h3>
+        <div class="field-row">
+          <div class="field">
+            <label>จำนวนปล่อยกุ้ง (ตัว)</label>
+            <input type="number" inputmode="numeric" step="1" id="biomass-release" placeholder="เช่น 500000" value="${p.releaseCount!=null ? p.releaseCount : ''}">
+          </div>
+          <div class="field">
+            <label>อัตรารอด (%)</label>
+            <input type="number" inputmode="decimal" step="0.1" id="biomass-survival" placeholder="เช่น 80" value="${last && last.survivalRate!=null ? last.survivalRate : ''}">
+          </div>
+        </div>
+        <div class="field">
+          <label>ไซส์กุ้ง (ตัว/กก.)</label>
+          <input type="number" inputmode="decimal" step="0.1" id="biomass-size" placeholder="เช่น 60" value="${last && last.sizeCount!=null ? last.sizeCount : ''}">
+        </div>
+
+        <div class="calc-box">
+          <div class="calc-box-label">ผลคำนวณ</div>
+          <div class="calc-grid">
+            <div class="calc-tile"><div class="n" id="biomass-calc-surviving">-</div><div class="l">กุ้งที่เหลือ (ตัว)</div></div>
+            <div class="calc-tile"><div class="n" id="biomass-calc-weight">-</div><div class="l">น้ำหนัก/ตัว (กรัม)</div></div>
+            <div class="calc-tile"><div class="n" id="biomass-calc-biomass">-</div><div class="l">Biomass รวม (กก.)</div></div>
+          </div>
+        </div>
       </div>
     </main>
   `;
@@ -2176,6 +2226,7 @@ function bindDashboardEvents(){
       editingRecordId = null;
       viewingHarvestPondId = null;
       viewingClosePondId = null;
+      viewingBiomassPondId = null;
       viewingBatchId = null;
       markPondViewed(currentPondId);
       render();
@@ -2238,6 +2289,37 @@ function bindDashboardEvents(){
 
   const btnBackClose = document.getElementById('btn-back-close');
   if(btnBackClose) btnBackClose.onclick = ()=>{ viewingClosePondId = null; render(); };
+
+  const btnOpenBiomass = document.getElementById('btn-open-biomass');
+  if(btnOpenBiomass) btnOpenBiomass.onclick = ()=>{ viewingBiomassPondId = currentPondId; render(); };
+
+  const btnBackBiomass = document.getElementById('btn-back-biomass');
+  if(btnBackBiomass) btnBackBiomass.onclick = ()=>{ viewingBiomassPondId = null; render(); };
+
+  const biomassRelease = document.getElementById('biomass-release');
+  const biomassSurvival = document.getElementById('biomass-survival');
+  const biomassSize = document.getElementById('biomass-size');
+  if(biomassRelease && biomassSurvival && biomassSize){
+    const biomassCalcSurviving = document.getElementById('biomass-calc-surviving');
+    const biomassCalcWeight = document.getElementById('biomass-calc-weight');
+    const biomassCalcBiomass = document.getElementById('biomass-calc-biomass');
+    const updateBiomassCalc = ()=>{
+      const releaseCount = biomassRelease.value ? parseFloat(biomassRelease.value) : null;
+      const survivalRate = biomassSurvival.value ? parseFloat(biomassSurvival.value) : null;
+      const sizeCount = biomassSize.value ? parseFloat(biomassSize.value) : null;
+
+      const survivingCount = (releaseCount && survivalRate!=null) ? Math.round(releaseCount*(survivalRate/100)) : null;
+      biomassCalcSurviving.textContent = survivingCount!=null ? survivingCount.toLocaleString('th-TH')+' ตัว' : '-';
+
+      const weightG = sizeCount ? weightFromCount(sizeCount) : null;
+      biomassCalcWeight.textContent = weightG!=null ? weightG.toFixed(1)+' ก.' : '-';
+
+      const biomassKg = (releaseCount && survivalRate!=null && sizeCount) ? estimatedBiomassKg(releaseCount, survivalRate, sizeCount) : null;
+      biomassCalcBiomass.textContent = biomassKg!=null ? biomassKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-';
+    };
+    [biomassRelease, biomassSurvival, biomassSize].forEach(el=>el.addEventListener('input', updateBiomassCalc));
+    updateBiomassCalc();
+  }
 
   const closeForm = document.getElementById('close-form');
   if(closeForm){
