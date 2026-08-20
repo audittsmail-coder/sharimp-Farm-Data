@@ -263,6 +263,26 @@
   .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .hint{ font-size:11.5px; color:var(--ink-faint); margin-top:5px; }
 
+  .feedpct-value{ color:var(--teal-400); font-weight:700; font-family:'Taviraj',serif; margin-left:4px; }
+  .field input[type=range]{
+    width:100%; padding:0; border:none; background:none; box-shadow:none;
+    -webkit-appearance:none; appearance:none; height:20px; cursor:pointer; margin:6px 0 0 0;
+  }
+  .field input[type=range]:focus{ outline:none; box-shadow:none; }
+  .field input[type=range]::-webkit-slider-runnable-track{
+    height:6px; background:var(--surface-hi); border:1px solid var(--line);
+  }
+  .field input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; width:18px; height:18px;
+    background:var(--teal-400); border:none; cursor:pointer; margin-top:-7px;
+  }
+  .field input[type=range]::-moz-range-track{
+    height:6px; background:var(--surface-hi); border:1px solid var(--line);
+  }
+  .field input[type=range]::-moz-range-thumb{
+    width:18px; height:18px; background:var(--teal-400); border:none; cursor:pointer; border-radius:0;
+  }
+
   .form-section-label{
     font-size:13px; font-weight:700; color:var(--heading); margin:22px 0 14px 0;
     padding-bottom:8px; border-bottom:1px solid var(--line-soft);
@@ -855,6 +875,20 @@ function estimatedBiomassKg(releaseCount, survivalRate, sizeCount){
 function estimatedSurvivingCount(releaseCount, survivalRate){
   if(!releaseCount || survivalRate==null) return null;
   return Math.round(releaseCount * (survivalRate/100));
+}
+function suggestedFeedPctRange(sizeCount){
+  if(sizeCount==null) return null;
+  if(sizeCount > 150) return { min:8, max:12 };
+  if(sizeCount > 100) return { min:6, max:9 };
+  if(sizeCount > 60) return { min:4, max:6 };
+  if(sizeCount > 40) return { min:3, max:4 };
+  if(sizeCount > 25) return { min:2, max:3 };
+  return { min:1.5, max:2.5 };
+}
+function feedPctHintText(sizeCount){
+  const range = suggestedFeedPctRange(sizeCount);
+  if(!range) return 'ใส่ไซส์กุ้งเพื่อดูช่วงอัตราให้อาหารที่แนะนำ';
+  return `ไซส์ ${sizeCount} ตัว/กก. โดยทั่วไปให้อาหารประมาณ ${range.min}-${range.max}% ของ biomass/วัน`;
 }
 
 /* ---------------- Bootstrap ---------------- */
@@ -1656,6 +1690,9 @@ function renderBiomassCalc(){
   if(!p){ viewingBiomassPondId = null; return renderPondDetail(); }
   const recs = recordsForPond(p.id);
   const last = recs[recs.length-1];
+  const initialSizeCount = last && last.sizeCount!=null ? last.sizeCount : null;
+  const initialFeedRange = suggestedFeedPctRange(initialSizeCount);
+  const initialFeedPct = initialFeedRange ? ((initialFeedRange.min+initialFeedRange.max)/2) : 3;
 
   return `
     <div class="backbar">
@@ -1684,8 +1721,9 @@ function renderBiomassCalc(){
             <input type="number" inputmode="decimal" step="0.1" id="biomass-size" placeholder="เช่น 60" value="${last && last.sizeCount!=null ? last.sizeCount : ''}">
           </div>
           <div class="field">
-            <label>อัตราให้อาหาร (% Biomass)</label>
-            <input type="number" inputmode="decimal" step="0.1" id="biomass-feedpct" placeholder="เช่น 5">
+            <label>อัตราให้อาหาร (% Biomass) <span class="feedpct-value" id="biomass-feedpct-value">${initialFeedPct.toFixed(1)}%</span></label>
+            <input type="range" min="0.5" max="15" step="0.1" id="biomass-feedpct" value="${initialFeedPct}">
+            <div class="hint" id="biomass-feedpct-hint">${escapeHtml(feedPctHintText(initialSizeCount))}</div>
           </div>
         </div>
 
@@ -2321,11 +2359,16 @@ function bindDashboardEvents(){
     const biomassCalcWeight = document.getElementById('biomass-calc-weight');
     const biomassCalcBiomass = document.getElementById('biomass-calc-biomass');
     const biomassCalcFeed = document.getElementById('biomass-calc-feed');
+    const biomassFeedPctValue = document.getElementById('biomass-feedpct-value');
+    const biomassFeedPctHint = document.getElementById('biomass-feedpct-hint');
     const updateBiomassCalc = ()=>{
       const releaseCount = biomassRelease.value ? parseFloat(biomassRelease.value) : null;
       const survivalRate = biomassSurvival.value ? parseFloat(biomassSurvival.value) : null;
       const sizeCount = biomassSize.value ? parseFloat(biomassSize.value) : null;
       const feedPct = biomassFeedPct.value ? parseFloat(biomassFeedPct.value) : null;
+
+      if(biomassFeedPctValue) biomassFeedPctValue.textContent = feedPct!=null ? feedPct.toFixed(1)+'%' : '-';
+      if(biomassFeedPctHint) biomassFeedPctHint.textContent = feedPctHintText(sizeCount);
 
       const survivingCount = (releaseCount && survivalRate!=null) ? Math.round(releaseCount*(survivalRate/100)) : null;
       biomassCalcSurviving.textContent = survivingCount!=null ? survivingCount.toLocaleString('th-TH')+' ตัว' : '-';
