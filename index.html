@@ -292,6 +292,9 @@
   .btn-primary:disabled{ opacity:.6; cursor:default; transform:none; }
   .btn-secondary{ background:var(--surface-soft); color:var(--ink); border:1px solid var(--line); }
   .btn-secondary:hover{ border-color:var(--teal-500); }
+  .btn-danger{ background:var(--danger); color:#fff; }
+  .btn-danger:hover{ background:#EA7C6F; }
+  .btn-danger:disabled{ opacity:.4; cursor:default; background:var(--surface-soft); color:var(--ink-faint); }
   .btn-harvest{ background:var(--teal-400); color:#04121C; }
   .btn-harvest:hover{ background:#6BC3E5; }
   .btn-harvest:active{ transform:scale(.98); }
@@ -609,6 +612,7 @@ let viewingHarvestPondId = null;
 let viewingClosePondId = null;
 let editingClosureId = null;
 let showSettingsSheet = false;
+let showDeleteAllConfirm = false;
 let showClosureStats = false;
 let overviewSortBy = '';
 let showPondFormSheet = false;
@@ -883,7 +887,8 @@ function render(){
     `;
 
     let panelHtml = '';
-    if(showSettingsSheet) panelHtml += renderSettingsPanel();
+    if(showSettingsSheet && !showDeleteAllConfirm) panelHtml += renderSettingsPanel();
+    if(showDeleteAllConfirm) panelHtml += renderDeleteAllConfirmPanel();
     if(showPondFormSheet) panelHtml += renderPondFormPanel();
     if(panelHtml) html += `<div style="padding:14px 16px 0 16px">${panelHtml}</div>`;
 
@@ -1975,9 +1980,28 @@ function renderSettingsPanel(){
       </p>
       <div class="btn-row" style="margin-top:10px">
         <button class="btn btn-secondary" type="button" id="btn-close-settings" style="flex:1">ปิด</button>
-        <button class="btn btn-secondary" type="button" id="btn-clear-data" style="flex:2">ล้างข้อมูลทั้งหมด</button>
+        <button class="btn btn-secondary" type="button" id="btn-clear-data" style="flex:2">ลบข้อมูลทั้งหมด</button>
       </div>
       <div class="app-version">เวอร์ชันแอป: ${escapeHtml(APP_VERSION)}</div>
+    </div>
+  `;
+}
+
+function renderDeleteAllConfirmPanel(){
+  return `
+    <div class="card panel-card">
+      <h3 style="color:var(--danger);">ยืนยันการลบข้อมูลทั้งหมด</h3>
+      <p style="font-size:13px;color:var(--ink-soft);line-height:1.6;margin-top:-6px">
+        จะลบข้อมูลบ่อและบันทึกทั้งหมด (ฟาร์มจะยังอยู่) การกระทำนี้ไม่สามารถย้อนกลับได้<br>
+        พิมพ์ <b>delete</b> เพื่อยืนยัน
+      </p>
+      <div class="field">
+        <input type="text" id="delete-confirm-input" placeholder="พิมพ์ delete" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" type="button" id="btn-cancel-delete-all" style="flex:1">ยกเลิก</button>
+        <button class="btn btn-danger" type="button" id="btn-confirm-delete-all" style="flex:2" disabled>ลบข้อมูลทั้งหมด</button>
+      </div>
     </div>
   `;
 }
@@ -2051,21 +2075,33 @@ async function archivePondCycle(pond, extraPondFields){
 /* ---------------- Event binding ---------------- */
 function bindDashboardEvents(){
   const btnSettings = document.getElementById('btn-settings');
-  if(btnSettings) btnSettings.onclick = ()=>{ showSettingsSheet=true; render(); };
+  if(btnSettings) btnSettings.onclick = ()=>{ showSettingsSheet=true; showDeleteAllConfirm=false; render(); };
 
   const btnCloseSettings = document.getElementById('btn-close-settings');
   if(btnCloseSettings) btnCloseSettings.onclick = ()=>{ showSettingsSheet=false; render(); };
 
   const btnClearData = document.getElementById('btn-clear-data');
-  if(btnClearData) btnClearData.onclick = async ()=>{
-    if(!confirm('ล้างข้อมูลบ่อและบันทึกทั้งหมด (ฟาร์มจะยังอยู่)? การกระทำนี้ย้อนกลับไม่ได้')) return;
-    const batch = db.batch();
-    state.ponds.forEach(p=>batch.delete(db.collection('ponds').doc(p.id)));
-    state.records.forEach(r=>batch.delete(db.collection('records').doc(r.id)));
-    state.harvests.forEach(h=>batch.delete(db.collection('harvests').doc(h.id)));
-    await batch.commit().catch((e)=>alert('ล้างข้อมูลไม่สำเร็จ: '+e.message));
-    showSettingsSheet=false; currentPondId=null; render();
-  };
+  if(btnClearData) btnClearData.onclick = ()=>{ showDeleteAllConfirm=true; render(); };
+
+  const btnCancelDeleteAll = document.getElementById('btn-cancel-delete-all');
+  if(btnCancelDeleteAll) btnCancelDeleteAll.onclick = ()=>{ showDeleteAllConfirm=false; render(); };
+
+  const deleteConfirmInput = document.getElementById('delete-confirm-input');
+  const btnConfirmDeleteAll = document.getElementById('btn-confirm-delete-all');
+  if(deleteConfirmInput && btnConfirmDeleteAll){
+    deleteConfirmInput.addEventListener('input', ()=>{
+      btnConfirmDeleteAll.disabled = deleteConfirmInput.value.trim().toLowerCase() !== 'delete';
+    });
+    btnConfirmDeleteAll.onclick = async ()=>{
+      if(deleteConfirmInput.value.trim().toLowerCase() !== 'delete') return;
+      const batch = db.batch();
+      state.ponds.forEach(p=>batch.delete(db.collection('ponds').doc(p.id)));
+      state.records.forEach(r=>batch.delete(db.collection('records').doc(r.id)));
+      state.harvests.forEach(h=>batch.delete(db.collection('harvests').doc(h.id)));
+      await batch.commit().catch((e)=>alert('ลบข้อมูลไม่สำเร็จ: '+e.message));
+      showDeleteAllConfirm=false; showSettingsSheet=false; currentPondId=null; render();
+    };
+  }
 
   const pondFormEl = document.getElementById('pond-form');
   if(pondFormEl){
