@@ -126,8 +126,16 @@
     font-weight:600;
   }
 
-  .farm-title-row{ display:flex; align-items:center; justify-content:space-between; margin:8px 0 14px 0; }
+  .farm-title-row{ display:flex; align-items:center; justify-content:space-between; margin:8px 0 14px 0; gap:10px; flex-wrap:wrap; }
   .farm-title-row h2{ font-size:21px; margin:0; color:var(--heading); }
+  .sort-select{
+    appearance:none; -webkit-appearance:none; background:var(--surface-soft); border:1px solid var(--line);
+    border-radius:0; color:var(--ink-soft); font-size:12.5px; font-weight:600; padding:7px 28px 7px 10px;
+    cursor:pointer; font-family:inherit; color-scheme:dark;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%239DB7C8' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat; background-position:right 10px center;
+  }
+  .sort-select:hover{ border-color:var(--teal-500); color:var(--heading); }
 
   .action-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
   .action-btn{
@@ -476,6 +484,7 @@ let viewingClosePondId = null;
 let editingClosureId = null;
 let showSettingsSheet = false;
 let showClosureStats = false;
+let overviewSortBy = '';
 let showPondFormSheet = false;
 let editingPond = null;
 let editingRecordId = null;
@@ -844,8 +853,43 @@ function renderFarmDashboard(){
 
 function renderOverviewDashboard(tabs){
   const groups = state.farms
-    .map(farm => ({ farm, ponds: pondsForFarm(farm.id).filter(p=>!isPondClosed(p)) }))
+    .map(farm => ({
+      farm,
+      ponds: pondsForFarm(farm.id).filter(p=>!isPondClosed(p)).map(pond=>{
+        const doc = pond.releaseDate ? daysBetween(pond.releaseDate, todayISO()) : null;
+        const recs = recordsForPond(pond.id);
+        const last = recs[recs.length-1];
+        const adg = computeAdgForPond(pond, recs);
+        return { pond, doc, last, adg };
+      }),
+    }))
     .filter(g => g.ponds.length > 0);
+
+  const sortKeyFns = {
+    size: it => (it.last && it.last.sizeCount!=null) ? it.last.sizeCount : null,
+    doc: it => it.doc,
+    adg: it => it.adg,
+  };
+  if(overviewSortBy && sortKeyFns[overviewSortBy]){
+    const keyFn = sortKeyFns[overviewSortBy];
+    groups.forEach(g=>{
+      g.ponds.sort((a,b)=>{
+        const av = keyFn(a), bv = keyFn(b);
+        if(av==null && bv==null) return 0;
+        if(av==null) return 1;
+        if(bv==null) return -1;
+        return bv - av;
+      });
+    });
+  }
+
+  const sortSelectHtml = `
+    <select id="overview-sort-select" class="sort-select">
+      <option value="" ${overviewSortBy===''?'selected':''}>เรียงตามฟาร์ม</option>
+      <option value="size" ${overviewSortBy==='size'?'selected':''}>เรียงตามไซส์</option>
+      <option value="doc" ${overviewSortBy==='doc'?'selected':''}>เรียงตามจำนวนวัน</option>
+      <option value="adg" ${overviewSortBy==='adg'?'selected':''}>เรียงตาม ADG</option>
+    </select>`;
 
   let bodyHtml;
   if(groups.length === 0){
@@ -859,11 +903,7 @@ function renderOverviewDashboard(tabs){
     const trs = groups.map(({farm, ponds})=>{
       const zoneRow = `
         <tr class="ov-zone-row"><td colspan="5">${escapeHtml(farm.name)} · ${ponds.length} บ่อ</td></tr>`;
-      const pondRows = ponds.map(pond=>{
-        const doc = pond.releaseDate ? daysBetween(pond.releaseDate, todayISO()) : null;
-        const recs = recordsForPond(pond.id);
-        const last = recs[recs.length-1];
-        const adg = computeAdgForPond(pond, recs);
+      const pondRows = ponds.map(({pond, doc, last, adg})=>{
         const speciesShort = pond.species ? pond.species.split('(')[0].trim() : '';
         const isNew = isPondRecentlyUpdated(pond);
         const hasHarvest = harvestsForPond(pond.id).length > 0;
@@ -897,6 +937,7 @@ function renderOverviewDashboard(tabs){
     <main>
       <div class="farm-title-row">
         <h2>ภาพรวมทุกฟาร์ม</h2>
+        ${sortSelectHtml}
       </div>
       ${bodyHtml}
     </main>
@@ -1950,6 +1991,12 @@ function bindDashboardEvents(){
       render();
     };
   });
+
+  const overviewSortSelect = document.getElementById('overview-sort-select');
+  if(overviewSortSelect) overviewSortSelect.onchange = ()=>{
+    overviewSortBy = overviewSortSelect.value;
+    render();
+  };
 
   const btnToggleClosureStats = document.getElementById('btn-toggle-closure-stats');
   if(btnToggleClosureStats) btnToggleClosureStats.onclick = ()=>{
