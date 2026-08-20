@@ -93,7 +93,16 @@
     background:rgba(255,255,255,.14);
   }
   .topbar h1{ font-size:19.5px; margin:0; color:#fff; flex:1; letter-spacing:.1px; }
-  .topbar .sub{ font-size:11.5px; color:rgba(255,255,255,.8); margin-top:2px; font-weight:500; }
+  .topbar .sub-row{ display:flex; align-items:center; gap:8px; margin-top:3px; flex-wrap:wrap; }
+  .topbar .sub{ font-size:11.5px; color:rgba(255,255,255,.8); margin-top:0; font-weight:500; }
+  .weather-chip{
+    display:inline-flex; align-items:center; gap:5px; flex:none;
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.24);
+    padding:2px 8px; font-size:11px; font-weight:600; color:#fff;
+  }
+  .weather-chip .wc-icon{ font-size:13px; line-height:1; }
+  .weather-chip .wc-temp{ font-family:'Taviraj',serif; font-weight:700; }
+  .weather-chip .wc-rain{ color:rgba(255,255,255,.78); font-weight:500; font-size:10px; }
   .icon-btn{
     background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff;
     width:36px; height:36px; border-radius:0; display:flex; align-items:center; justify-content:center;
@@ -477,6 +486,78 @@ const ICONS = {
 const FARM_SEED = ['ฟาร์ม 1','ฟาร์ม 2','ฟาร์ม 3','ฟาร์ม 4','ฟาร์ม 5'];
 const SPECIES_OPTIONS = ['กุ้งขาว (Vannamei)','กุ้งกุลาดำ (Black Tiger)','อื่นๆ'];
 
+/* ---------------- Weather ---------------- */
+const WEATHER_API_URL = 'https://api.open-meteo.com/v1/forecast?latitude=7.9514&longitude=98.9978&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,rain,precipitation,weather_code&timezone=Asia%2FBangkok';
+const WEATHER_CACHE_KEY = 'shrimpfarm_weather_cache_v1';
+const WEATHER_CODE_MAP = {
+  0:{icon:'☀️',label:'ท้องฟ้าแจ่มใส'}, 1:{icon:'🌤️',label:'มีเมฆบางส่วน'}, 2:{icon:'⛅',label:'มีเมฆเป็นบางช่วง'}, 3:{icon:'☁️',label:'เมฆมาก'},
+  45:{icon:'🌫️',label:'หมอก'}, 48:{icon:'🌫️',label:'หมอกน้ำแข็ง'},
+  51:{icon:'🌦️',label:'ฝนตกปรอยๆเบา'}, 53:{icon:'🌦️',label:'ฝนตกปรอยๆ'}, 55:{icon:'🌦️',label:'ฝนตกปรอยๆหนัก'},
+  56:{icon:'🌧️',label:'ฝนเยือกแข็งเบา'}, 57:{icon:'🌧️',label:'ฝนเยือกแข็งหนัก'},
+  61:{icon:'🌧️',label:'ฝนตกเบา'}, 63:{icon:'🌧️',label:'ฝนตกปานกลาง'}, 65:{icon:'🌧️',label:'ฝนตกหนัก'},
+  66:{icon:'🌧️',label:'ฝนเยือกแข็งเบา'}, 67:{icon:'🌧️',label:'ฝนเยือกแข็งหนัก'},
+  71:{icon:'❄️',label:'หิมะตกเบา'}, 73:{icon:'❄️',label:'หิมะตกปานกลาง'}, 75:{icon:'❄️',label:'หิมะตกหนัก'}, 77:{icon:'❄️',label:'เกล็ดหิมะ'},
+  80:{icon:'🌦️',label:'ฝนซู่เบา'}, 81:{icon:'🌦️',label:'ฝนซู่ปานกลาง'}, 82:{icon:'🌧️',label:'ฝนซู่หนัก'},
+  85:{icon:'🌨️',label:'หิมะซู่เบา'}, 86:{icon:'🌨️',label:'หิมะซู่หนัก'},
+  95:{icon:'⛈️',label:'พายุฝนฟ้าคะนอง'}, 96:{icon:'⛈️',label:'พายุฝนฟ้าคะนองมีลูกเห็บ'}, 99:{icon:'⛈️',label:'พายุฝนฟ้าคะนองรุนแรง'},
+};
+let weatherData = null; // { tempC, humidity, rainPct, code, updatedAt }
+
+function weatherIconLabel(code){
+  return WEATHER_CODE_MAP[code] || { icon:'🌡️', label:'' };
+}
+function loadWeatherCache(){
+  try{
+    const raw = localStorage.getItem(WEATHER_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function saveWeatherCache(data){
+  try{ localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(data)); }catch(e){}
+}
+async function fetchWeather(){
+  try{
+    const res = await fetch(WEATHER_API_URL);
+    if(!res.ok) throw new Error('bad response: '+res.status);
+    const json = await res.json();
+    const h = json.hourly;
+    if(!h || !Array.isArray(h.time) || h.time.length===0) throw new Error('no hourly data');
+    const nowMs = Date.now();
+    let idx = 0, bestDiff = Infinity;
+    h.time.forEach((t,i)=>{
+      const diff = Math.abs(new Date(t).getTime() - nowMs);
+      if(diff < bestDiff){ bestDiff = diff; idx = i; }
+    });
+    const data = {
+      tempC: h.temperature_2m[idx],
+      humidity: h.relative_humidity_2m[idx],
+      rainPct: h.precipitation_probability[idx],
+      code: h.weather_code[idx],
+      updatedAt: Date.now(),
+    };
+    weatherData = data;
+    saveWeatherCache(data);
+    render();
+  }catch(e){
+    console.warn('weather fetch failed', e);
+  }
+}
+function initWeather(){
+  const cached = loadWeatherCache();
+  if(cached) weatherData = cached;
+  fetchWeather();
+}
+function weatherChipHtml(){
+  if(!weatherData) return '';
+  const { icon, label } = weatherIconLabel(weatherData.code);
+  return `
+    <div class="weather-chip" title="${escapeHtml(label)}">
+      <span class="wc-icon">${icon}</span>
+      <span class="wc-temp">${Math.round(weatherData.tempC)}°</span>
+      ${weatherData.rainPct!=null ? `<span class="wc-rain">💧${Math.round(weatherData.rainPct)}%</span>` : ''}
+    </div>`;
+}
+
 let state = { farms: [], ponds: [], records: [], batches: [], harvests: [], closures: [] };
 let currentFarmId = 'overview';
 let currentPondId = null;
@@ -749,9 +830,12 @@ function render(){
       <div class="app-banner">ซิงก์ข้อมูลกับทีมแบบเรียลไทม์ · ใช้งานออฟไลน์ได้</div>
       <div class="topbar">
         <div class="wave">${ICONS.wave}</div>
-        <div style="flex:1">
+        <div style="flex:1; min-width:0;">
           <h1>บันทึกสุ่มกุ้งอนันต์ฟาร์ม</h1>
-          <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม</div>
+          <div class="sub-row">
+            <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม</div>
+            ${weatherChipHtml()}
+          </div>
         </div>
         <button class="icon-btn" id="btn-settings" title="ตั้งค่า">${ICONS.gear}</button>
       </div>
@@ -2432,6 +2516,7 @@ function bindDashboardEvents(){
 
 /* ---------------- Go ---------------- */
 boot();
+initWeather();
 </script>
 
 <script>
