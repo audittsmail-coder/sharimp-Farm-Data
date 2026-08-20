@@ -884,12 +884,6 @@ function suggestedFeedPctRange(sizeCount){
   if(sizeCount > 45) return { min:3, max:3.5 };
   return { min:2, max:2.5 };
 }
-function feedPctHintText(sizeCount){
-  const range = suggestedFeedPctRange(sizeCount);
-  if(!range) return 'ใส่ไซส์กุ้งเพื่อดูช่วงอัตราให้อาหารที่แนะนำ';
-  return `ไซส์ ${sizeCount} ตัว/กก. โดยทั่วไปให้อาหารประมาณ ${range.min}-${range.max}% ของ biomass/วัน`;
-}
-
 /* ---------------- Bootstrap ---------------- */
 function boot(){
   auth.onAuthStateChanged((user)=>{
@@ -1722,7 +1716,6 @@ function renderBiomassCalc(){
           <div class="field">
             <label>อัตราให้อาหาร (% Biomass) <span class="feedpct-value" id="biomass-feedpct-value">${initialFeedPct.toFixed(1)}%</span></label>
             <input type="range" min="0.5" max="10" step="0.1" id="biomass-feedpct" value="${initialFeedPct}">
-            <div class="hint" id="biomass-feedpct-hint">${escapeHtml(feedPctHintText(initialSizeCount))}</div>
           </div>
         </div>
 
@@ -2359,7 +2352,6 @@ function bindDashboardEvents(){
     const biomassCalcBiomass = document.getElementById('biomass-calc-biomass');
     const biomassCalcFeed = document.getElementById('biomass-calc-feed');
     const biomassFeedPctValue = document.getElementById('biomass-feedpct-value');
-    const biomassFeedPctHint = document.getElementById('biomass-feedpct-hint');
     const updateBiomassCalc = ()=>{
       const releaseCount = biomassRelease.value ? parseFloat(biomassRelease.value) : null;
       const survivalRate = biomassSurvival.value ? parseFloat(biomassSurvival.value) : null;
@@ -2367,7 +2359,6 @@ function bindDashboardEvents(){
       const feedPct = biomassFeedPct.value ? parseFloat(biomassFeedPct.value) : null;
 
       if(biomassFeedPctValue) biomassFeedPctValue.textContent = feedPct!=null ? feedPct.toFixed(1)+'%' : '-';
-      if(biomassFeedPctHint) biomassFeedPctHint.textContent = feedPctHintText(sizeCount);
 
       const survivingCount = (releaseCount && survivalRate!=null) ? Math.round(releaseCount*(survivalRate/100)) : null;
       biomassCalcSurviving.textContent = survivingCount!=null ? survivingCount.toLocaleString('th-TH')+' ตัว' : '-';
