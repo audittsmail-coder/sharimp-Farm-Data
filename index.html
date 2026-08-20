@@ -878,12 +878,11 @@ function estimatedSurvivingCount(releaseCount, survivalRate){
 }
 function suggestedFeedPctRange(sizeCount){
   if(sizeCount==null) return null;
-  if(sizeCount > 150) return { min:8, max:12 };
-  if(sizeCount > 100) return { min:6, max:9 };
-  if(sizeCount > 60) return { min:4, max:6 };
-  if(sizeCount > 40) return { min:3, max:4 };
-  if(sizeCount > 25) return { min:2, max:3 };
-  return { min:1.5, max:2.5 };
+  if(sizeCount > 250) return { min:6, max:8 };
+  if(sizeCount > 130) return { min:5, max:6 };
+  if(sizeCount > 75) return { min:4, max:4.5 };
+  if(sizeCount > 45) return { min:3, max:3.5 };
+  return { min:2, max:2.5 };
 }
 function feedPctHintText(sizeCount){
   const range = suggestedFeedPctRange(sizeCount);
@@ -1722,7 +1721,7 @@ function renderBiomassCalc(){
           </div>
           <div class="field">
             <label>อัตราให้อาหาร (% Biomass) <span class="feedpct-value" id="biomass-feedpct-value">${initialFeedPct.toFixed(1)}%</span></label>
-            <input type="range" min="0.5" max="15" step="0.1" id="biomass-feedpct" value="${initialFeedPct}">
+            <input type="range" min="0.5" max="10" step="0.1" id="biomass-feedpct" value="${initialFeedPct}">
             <div class="hint" id="biomass-feedpct-hint">${escapeHtml(feedPctHintText(initialSizeCount))}</div>
           </div>
         </div>
