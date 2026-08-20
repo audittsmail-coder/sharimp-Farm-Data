@@ -93,16 +93,26 @@
     background:rgba(255,255,255,.14);
   }
   .topbar h1{ font-size:19.5px; margin:0; color:#fff; flex:1; letter-spacing:.1px; }
-  .topbar .sub-row{ display:flex; align-items:center; gap:8px; margin-top:3px; flex-wrap:wrap; }
-  .topbar .sub{ font-size:11.5px; color:rgba(255,255,255,.8); margin-top:0; font-weight:500; }
-  .weather-chip{
-    display:inline-flex; align-items:center; gap:5px; flex:none;
-    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.24);
-    padding:2px 8px; font-size:11px; font-weight:600; color:#fff;
+  .topbar .sub{ font-size:11.5px; color:rgba(255,255,255,.8); margin-top:2px; font-weight:500; }
+
+  .weather-banner{
+    background:linear-gradient(155deg, var(--teal-600) 0%, var(--teal-700) 65%, #0E3049 100%);
+    border-bottom:1px solid var(--line); padding:16px 18px 14px 18px;
   }
-  .weather-chip .wc-icon{ font-size:13px; line-height:1; }
-  .weather-chip .wc-temp{ font-family:'Taviraj',serif; font-weight:700; }
-  .weather-chip .wc-rain{ color:rgba(255,255,255,.78); font-weight:500; font-size:10px; }
+  .weather-today{ display:flex; align-items:center; gap:14px; }
+  .wb-icon{ font-size:42px; line-height:1; flex:none; }
+  .wb-temp{ font-size:32px; font-weight:700; font-family:'Taviraj',serif; color:#fff; line-height:1; }
+  .wb-label{ font-size:12.5px; color:rgba(255,255,255,.82); margin-top:4px; font-weight:500; }
+  .weather-forecast{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; margin-top:14px; -webkit-overflow-scrolling:touch; }
+  .weather-forecast::-webkit-scrollbar{ display:none; }
+  .wf-day{
+    flex:none; min-width:60px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16);
+    padding:9px 6px; text-align:center;
+  }
+  .wf-day-label{ font-size:10px; color:rgba(255,255,255,.68); font-weight:700; text-transform:uppercase; letter-spacing:.02em; }
+  .wf-icon{ font-size:19px; margin:5px 0; }
+  .wf-temp{ font-size:11.5px; font-weight:700; color:#fff; }
+  .wf-rain{ font-size:9.5px; color:rgba(255,255,255,.7); margin-top:2px; }
   .icon-btn{
     background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff;
     width:36px; height:36px; border-radius:0; display:flex; align-items:center; justify-content:center;
@@ -487,7 +497,7 @@ const FARM_SEED = ['ฟาร์ม 1','ฟาร์ม 2','ฟาร์ม 3','
 const SPECIES_OPTIONS = ['กุ้งขาว (Vannamei)','กุ้งกุลาดำ (Black Tiger)','อื่นๆ'];
 
 /* ---------------- Weather ---------------- */
-const WEATHER_API_URL = 'https://api.open-meteo.com/v1/forecast?latitude=7.9514&longitude=98.9978&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,rain,precipitation,weather_code&timezone=Asia%2FBangkok';
+const WEATHER_API_URL = 'https://api.open-meteo.com/v1/forecast?latitude=7.9514&longitude=98.9978&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,rain,precipitation,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FBangkok&forecast_days=7';
 const WEATHER_CACHE_KEY = 'shrimpfarm_weather_cache_v1';
 const WEATHER_CODE_MAP = {
   0:{icon:'☀️',label:'ท้องฟ้าแจ่มใส'}, 1:{icon:'🌤️',label:'มีเมฆบางส่วน'}, 2:{icon:'⛅',label:'มีเมฆเป็นบางช่วง'}, 3:{icon:'☁️',label:'เมฆมาก'},
@@ -505,6 +515,12 @@ let weatherData = null; // { tempC, humidity, rainPct, code, updatedAt }
 
 function weatherIconLabel(code){
   return WEATHER_CODE_MAP[code] || { icon:'🌡️', label:'' };
+}
+function weekdayShortTh(dateStr, isToday){
+  if(isToday) return 'วันนี้';
+  try{
+    return new Intl.DateTimeFormat('th-TH', { weekday:'short' }).format(new Date(dateStr+'T00:00:00'));
+  }catch(e){ return ''; }
 }
 function loadWeatherCache(){
   try{
@@ -528,11 +544,20 @@ async function fetchWeather(){
       const diff = Math.abs(new Date(t).getTime() - nowMs);
       if(diff < bestDiff){ bestDiff = diff; idx = i; }
     });
+    const d = json.daily;
+    const daily = (d && Array.isArray(d.time)) ? d.time.map((date,i)=>({
+      date,
+      code: d.weather_code[i],
+      tempMax: d.temperature_2m_max[i],
+      tempMin: d.temperature_2m_min[i],
+      rainPct: d.precipitation_probability_max ? d.precipitation_probability_max[i] : null,
+    })) : [];
     const data = {
       tempC: h.temperature_2m[idx],
       humidity: h.relative_humidity_2m[idx],
       rainPct: h.precipitation_probability[idx],
       code: h.weather_code[idx],
+      daily,
       updatedAt: Date.now(),
     };
     weatherData = data;
@@ -547,14 +572,32 @@ function initWeather(){
   if(cached) weatherData = cached;
   fetchWeather();
 }
-function weatherChipHtml(){
+function weatherBannerHtml(){
   if(!weatherData) return '';
   const { icon, label } = weatherIconLabel(weatherData.code);
+  const daily = weatherData.daily || [];
   return `
-    <div class="weather-chip" title="${escapeHtml(label)}">
-      <span class="wc-icon">${icon}</span>
-      <span class="wc-temp">${Math.round(weatherData.tempC)}°</span>
-      ${weatherData.rainPct!=null ? `<span class="wc-rain">💧${Math.round(weatherData.rainPct)}%</span>` : ''}
+    <div class="weather-banner">
+      <div class="weather-today">
+        <span class="wb-icon">${icon}</span>
+        <div>
+          <div class="wb-temp">${Math.round(weatherData.tempC)}°C</div>
+          <div class="wb-label">${escapeHtml(label)}${weatherData.rainPct!=null ? ` · โอกาสฝน ${Math.round(weatherData.rainPct)}%` : ''}</div>
+        </div>
+      </div>
+      ${daily.length>0 ? `
+      <div class="weather-forecast">
+        ${daily.map((d,i)=>{
+          const dl = weatherIconLabel(d.code);
+          return `
+            <div class="wf-day">
+              <div class="wf-day-label">${escapeHtml(weekdayShortTh(d.date, i===0))}</div>
+              <div class="wf-icon">${dl.icon}</div>
+              <div class="wf-temp">${Math.round(d.tempMax)}°/${Math.round(d.tempMin)}°</div>
+              ${d.rainPct!=null ? `<div class="wf-rain">💧${Math.round(d.rainPct)}%</div>` : ''}
+            </div>`;
+        }).join('')}
+      </div>` : ''}
     </div>`;
 }
 
@@ -827,15 +870,13 @@ function render(){
   app.classList.toggle('harvest-mode', !!viewingHarvestPondId);
   try{
     let html = `
+      ${weatherBannerHtml()}
       <div class="app-banner">ซิงก์ข้อมูลกับทีมแบบเรียลไทม์ · ใช้งานออฟไลน์ได้</div>
       <div class="topbar">
         <div class="wave">${ICONS.wave}</div>
         <div style="flex:1; min-width:0;">
           <h1>บันทึกสุ่มกุ้งอนันต์ฟาร์ม</h1>
-          <div class="sub-row">
-            <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม</div>
-            ${weatherChipHtml()}
-          </div>
+          <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม</div>
         </div>
         <button class="icon-btn" id="btn-settings" title="ตั้งค่า">${ICONS.gear}</button>
       </div>
