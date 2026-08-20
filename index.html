@@ -258,11 +258,13 @@
   .calc-tile .l{ font-size:10.5px; color:var(--ink-faint); margin-top:3px; }
   .field label .info-hint{ color:var(--ink-faint); font-weight:400; cursor:help; }
 
-  .dist-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; }
-  .dist-cell{ background:var(--surface-soft); border-radius:var(--radius-sm); padding:10px 12px; text-align:center; }
-  .dist-pct{ color:var(--teal-400); font-weight:700; font-family:'Taviraj',serif; font-size:19px; display:block; }
-  .dist-label{ color:var(--ink); font-weight:600; font-size:12px; margin-top:3px; display:block; }
-  .dist-count{ color:var(--ink-faint); font-weight:400; font-size:11px; }
+  .stats-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:16px 14px; }
+  .stats-group-title{ font-size:11px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px; }
+  .dist-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(84px, 1fr)); gap:6px; }
+  .dist-cell{ background:var(--surface-soft); border-radius:var(--radius-sm); padding:7px 8px; text-align:center; }
+  .dist-pct{ color:var(--teal-400); font-weight:700; font-family:'Taviraj',serif; font-size:15px; display:block; }
+  .dist-label{ color:var(--ink); font-weight:600; font-size:10.5px; margin-top:2px; display:block; line-height:1.3; }
+  .dist-count{ color:var(--ink-faint); font-weight:400; font-size:9.5px; }
 
   .btn{ border:none; border-radius:var(--radius-sm); padding:12px 16px; font-size:14px; font-weight:600; cursor:pointer; transition:transform .12s var(--ease), background .15s var(--ease), opacity .15s var(--ease); }
   .btn-primary{ background:linear-gradient(135deg, var(--teal-500), var(--teal-600)); color:#fff; width:100%; box-shadow:0 6px 16px rgba(31,110,95,.35); }
@@ -947,8 +949,8 @@ function renderOverviewDashboard(tabs){
 function distributionCardHtml(title, items){
   if(!items || items.length === 0) return '';
   return `
-    <div class="card">
-      <h3>${escapeHtml(title)}</h3>
+    <div class="stats-group">
+      <div class="stats-group-title">${escapeHtml(title)}</div>
       <div class="dist-list">
         ${items.map(it=>`
           <div class="dist-cell">
@@ -967,19 +969,21 @@ function renderClosuresSummary(tabs){
   let statsHtml = '';
   if(closures.length > 0){
     if(showClosureStats){
-      statsHtml = `
-        <div class="card">
-          <div class="farm-title-row" style="margin-bottom:0;">
-            <h3 style="margin:0;">สถิติสรุป</h3>
-            <button type="button" id="btn-toggle-closure-stats" class="action-btn">ซ่อนสถิติ</button>
-          </div>
-        </div>` +
+      const statsGroupsHtml =
         distributionCardHtml('ชนิดกุ้ง', buildDistribution(closures, c=>speciesShortLabel(c.species))) +
         distributionCardHtml('ลูกกุ้งจากไหน', buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null)) +
         distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
         distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
         distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
         distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate)));
+      statsHtml = `
+        <div class="card">
+          <div class="farm-title-row" style="margin-bottom:14px;">
+            <h3 style="margin:0;">สถิติสรุป</h3>
+            <button type="button" id="btn-toggle-closure-stats" class="action-btn">ซ่อนสถิติ</button>
+          </div>
+          <div class="stats-grid">${statsGroupsHtml}</div>
+        </div>`;
     } else {
       statsHtml = `
         <div class="card">
