@@ -101,6 +101,7 @@
   }
   .weather-today{ display:flex; align-items:center; gap:14px; }
   .wb-icon{ font-size:42px; line-height:1; flex:none; }
+  .wb-location{ font-size:11.5px; color:rgba(255,255,255,.7); font-weight:600; letter-spacing:.02em; margin-bottom:2px; }
   .wb-temp{ font-size:32px; font-weight:700; font-family:'Taviraj',serif; color:#fff; line-height:1; }
   .wb-label{ font-size:12.5px; color:rgba(255,255,255,.82); margin-top:4px; font-weight:500; }
   .weather-forecast{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; margin-top:14px; -webkit-overflow-scrolling:touch; }
@@ -520,6 +521,7 @@ const SPECIES_OPTIONS = ['กุ้งขาว (Vannamei)','กุ้งกุ�
 
 /* ---------------- Weather ---------------- */
 const WEATHER_API_URL = 'https://api.open-meteo.com/v1/forecast?latitude=7.9514&longitude=98.9978&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,rain,precipitation,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FBangkok&forecast_days=7';
+const WEATHER_LOCATION_LABEL = 'กระบี่';
 const WEATHER_CACHE_KEY = 'shrimpfarm_weather_cache_v1';
 const WEATHER_CODE_MAP = {
   0:{icon:'☀️',label:'ท้องฟ้าแจ่มใส'}, 1:{icon:'🌤️',label:'มีเมฆบางส่วน'}, 2:{icon:'⛅',label:'มีเมฆเป็นบางช่วง'}, 3:{icon:'☁️',label:'เมฆมาก'},
@@ -603,6 +605,7 @@ function weatherBannerHtml(){
       <div class="weather-today">
         <span class="wb-icon">${icon}</span>
         <div>
+          <div class="wb-location">📍 ${escapeHtml(WEATHER_LOCATION_LABEL)}</div>
           <div class="wb-temp">${Math.round(weatherData.tempC)}°C</div>
           <div class="wb-label">${escapeHtml(label)}${weatherData.rainPct!=null ? ` · โอกาสฝน ${Math.round(weatherData.rainPct)}%` : ''}</div>
         </div>
