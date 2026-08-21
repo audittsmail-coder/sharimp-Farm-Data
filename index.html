@@ -1335,7 +1335,6 @@ function renderPondDetail(){
         <div class="action-row">
           <button class="action-btn" id="btn-edit-pond">${ICONS.edit} แก้ไขข้อมูลบ่อ</button>
           <button class="action-btn" id="btn-open-biomass">คำนวณ Biomass</button>
-          ${records.length>0 ? `<button class="action-btn" id="btn-archive-batch">${ICONS.archive} บันทึกรุ่นนี้เก็บไว้</button>` : ''}
           <button class="action-btn danger" id="btn-delete-pond">${ICONS.trash} ลบบ่อนี้</button>
         </div>
       </div>
@@ -2307,20 +2306,6 @@ function bindDashboardEvents(){
     writeBatch.delete(db.collection('ponds').doc(pondId));
     await writeBatch.commit().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
     currentPondId = null;
-    render();
-  };
-
-  const btnArchiveBatch = document.getElementById('btn-archive-batch');
-  if(btnArchiveBatch) btnArchiveBatch.onclick = async ()=>{
-    const pondId = currentPondId;
-    const pond = state.ponds.find(p=>p.id===pondId);
-    if(!pond) return;
-    const pondRecords = recordsForPond(pondId);
-    if(pondRecords.length===0) return;
-    if(!confirm(`บันทึกข้อมูล ${pondRecords.length} รายการของบ่อนี้เก็บไว้เป็นประวัติ แล้วล้างเพื่อเริ่มบันทึกรุ่นใหม่? การกระทำนี้ไม่สามารถย้อนกลับได้`)) return;
-    try{
-      await archivePondCycle(pond);
-    }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
     render();
   };
 
