@@ -107,13 +107,18 @@
   .weather-forecast{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; margin-top:14px; -webkit-overflow-scrolling:touch; }
   .weather-forecast::-webkit-scrollbar{ display:none; }
   .wf-day{
-    flex:none; min-width:60px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16);
-    padding:9px 6px; text-align:center;
+    flex:none; min-width:70px; background:linear-gradient(160deg, rgba(255,255,255,.17), rgba(255,255,255,.05));
+    border:1px solid rgba(255,255,255,.2); border-radius:20px;
+    padding:13px 8px; text-align:center; box-shadow:0 4px 12px rgba(4,20,17,.18);
   }
-  .wf-day-label{ font-size:10px; color:rgba(255,255,255,.68); font-weight:700; text-transform:uppercase; letter-spacing:.02em; }
-  .wf-icon{ font-size:19px; margin:5px 0; }
+  .wf-day:first-child{
+    background:linear-gradient(160deg, rgba(255,255,255,.36), rgba(255,255,255,.14));
+    border-color:rgba(255,255,255,.45);
+  }
+  .wf-day-label{ font-size:10px; color:rgba(255,255,255,.7); font-weight:700; text-transform:uppercase; letter-spacing:.02em; }
+  .wf-icon{ font-size:21px; margin:6px 0; }
   .wf-temp{ font-size:11.5px; font-weight:700; color:#fff; }
-  .wf-rain{ font-size:9.5px; color:rgba(255,255,255,.7); margin-top:2px; }
+  .wf-rain{ font-size:9.5px; color:rgba(255,255,255,.75); margin-top:3px; }
   .icon-btn{
     background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff;
     width:36px; height:36px; border-radius:0; display:flex; align-items:center; justify-content:center;
