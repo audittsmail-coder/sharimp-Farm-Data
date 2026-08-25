@@ -1311,7 +1311,8 @@ function renderPondDetail(){
       </tr>`;
   }).join('');
 
-  const pathogenHistoryCount = pathogenHistoryForPond(p).length;
+  const pathogenHistory = pathogenHistoryForPond(p);
+  const pathogenHistoryCount = pathogenHistory.length;
   const pathogenDaysAgo = (pathogenRec && pathogenRec.weekDate) ? daysBetween(pathogenRec.weekDate, todayISO()) : null;
   const pathogenLatestHtml = pathogenRec ? `
     <div class="card">
@@ -1439,6 +1440,11 @@ function renderPondDetail(){
         <div class="card chart-card">
           <h3>ADG (ก./วัน)</h3>
           <div class="chart-wrap" id="chart-adg"></div>
+        </div>` : ''}
+        ${pathogenHistoryCount>=2 ? `
+        <div class="card chart-card">
+          <h3>แนวโน้มผลเชื้อ</h3>
+          <div class="chart-wrap">${pathogenTrendChartHtml(pathogenHistory)}</div>
         </div>` : ''}
       </div>
       <div class="card">
@@ -1873,7 +1879,8 @@ function renderBatchDetail(){
       </tr>`;
   }).join('');
 
-  const batchPathogenEntries = (batch.pathogenHistory || []).slice().sort((a,b)=>(a.weekDate||'').localeCompare(b.weekDate||'')).reverse();
+  const batchPathogenEntriesAsc = (batch.pathogenHistory || []).slice().sort((a,b)=>(a.weekDate||'').localeCompare(b.weekDate||''));
+  const batchPathogenEntries = batchPathogenEntriesAsc.slice().reverse();
   const batchPathogenHistoryHtml = batchPathogenEntries.length ? `
     <div class="card">
       <h3>ผลตรวจเชื้อรายสัปดาห์</h3>
@@ -1942,6 +1949,11 @@ function renderBatchDetail(){
         <div class="card chart-card">
           <h3>ADG (ก./วัน)</h3>
           <div class="chart-wrap" id="chart-adg"></div>
+        </div>` : ''}
+        ${batchPathogenEntriesAsc.length>=2 ? `
+        <div class="card chart-card">
+          <h3>แนวโน้มผลเชื้อ</h3>
+          <div class="chart-wrap">${pathogenTrendChartHtml(batchPathogenEntriesAsc)}</div>
         </div>` : ''}
       </div>
       ${batchPathogenHistoryHtml}
@@ -2031,6 +2043,51 @@ function svgLineChart({labels, values, color, fillColor}){
 
   return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:${height}px;display:block">
     ${gridLines}${areaHtml}${linesHtml}${pointsHtml}${xLabelsHtml}
+  </svg>`;
+}
+
+const PATHOGEN_SEVERITY_RANK = { normal:0, watch:1, critical:2 };
+const PATHOGEN_SEVERITY_COLOR = { normal:'#52B7E0', watch:'#EFB753', critical:'#E8815F' };
+function pathogenTrendChartHtml(history){
+  if(!history || history.length===0){
+    return `<div style="display:flex;align-items:center;justify-content:center;height:110px;color:var(--ink-faint);font-size:12.5px">ยังไม่มีข้อมูลเพียงพอ</div>`;
+  }
+  const width = 300, height = 110;
+  const padL = 46, padR = 8, padT = 10, padB = 20;
+  const innerW = width - padL - padR;
+  const innerH = height - padT - padB;
+  const n = history.length;
+  const xFor = i => n<=1 ? padL+innerW/2 : padL + (innerW * i/(n-1));
+  const yFor = rank => padT + innerH * (1 - rank/2);
+
+  let gridLines = '';
+  [['วิกฤต',2],['เฝ้าระวัง',1],['ปกติ',0]].forEach(([lab,rank])=>{
+    const gy = yFor(rank);
+    gridLines += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${width-padR}" y2="${gy.toFixed(1)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+    gridLines += `<text x="${padL-6}" y="${(gy+3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6B8698">${lab}</text>`;
+  });
+
+  const pts = history.map((h,i)=>[xFor(i), yFor(PATHOGEN_SEVERITY_RANK[h.severity]??0)]);
+  const lineD = pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const linesHtml = pts.length>=2 ? `<path d="${lineD}" fill="none" stroke="#9DB7C8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` : '';
+
+  let pointsHtml = '';
+  history.forEach((h,i)=>{
+    const [x,y] = pts[i];
+    pointsHtml += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${PATHOGEN_SEVERITY_COLOR[h.severity]||'#9DB7C8'}" stroke="#081824" stroke-width="1.5"/>`;
+  });
+
+  let xLabelsHtml = '';
+  const maxLabels = 3;
+  const step = Math.max(1, Math.ceil(n/maxLabels));
+  history.forEach((h,i)=>{
+    if(i%step===0 || i===n-1){
+      xLabelsHtml += `<text x="${xFor(i).toFixed(1)}" y="${height-5}" text-anchor="middle" font-size="9" fill="#6B8698">${escapeHtml(fmtDate(h.weekDate))}</text>`;
+    }
+  });
+
+  return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:${height}px;display:block">
+    ${gridLines}${linesHtml}${pointsHtml}${xLabelsHtml}
   </svg>`;
 }
 
