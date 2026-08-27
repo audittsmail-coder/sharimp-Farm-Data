@@ -405,9 +405,9 @@
   #app.harvest-mode table.rec-table td{ border-bottom-color:#212A58; }
   #app.harvest-mode .back-btn{ background:#141A3D; }
 
-  .summary-strip{ display:flex; gap:10px; margin:16px 0; }
+  .summary-strip{ display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; }
   .summary-box{
-    flex:1; background:linear-gradient(150deg, var(--teal-500), var(--teal-700)); color:#fff;
+    flex:1; min-width:78px; background:linear-gradient(150deg, var(--teal-500), var(--teal-700)); color:#fff;
     border-radius:var(--radius); padding:13px; text-align:center; box-shadow:var(--shadow-sm);
   }
   .summary-box .n{ font-size:20px; font-weight:700; font-family:'Taviraj',serif; }
@@ -1550,6 +1550,10 @@ function renderPondDetail(){
           <div class="n">${weeklyAdg!==null ? weeklyAdg.toFixed(2) : (cumAdg!==null?cumAdg.toFixed(2):'-')}</div>
           <div class="l">ADG (ก./วัน)</div>
         </div>
+        <div class="summary-box">
+          <div class="n">${cumAdg!==null ? cumAdg.toFixed(2) : '-'}</div>
+          <div class="l">PDG (ก./วัน)</div>
+        </div>
       </div>
 
       <div class="card" style="padding:14px 16px;">
@@ -2129,6 +2133,10 @@ function renderBatchDetail(){
         <div class="summary-box coral">
           <div class="n">${weeklyAdg!==null ? weeklyAdg.toFixed(2) : (cumAdg!==null?cumAdg.toFixed(2):'-')}</div>
           <div class="l">ADG (ก./วัน)</div>
+        </div>
+        <div class="summary-box">
+          <div class="n">${cumAdg!==null ? cumAdg.toFixed(2) : '-'}</div>
+          <div class="l">PDG (ก./วัน)</div>
         </div>
       </div>
 
