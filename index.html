@@ -623,26 +623,27 @@ function initWeather(){
   fetchWeather();
 }
 function weatherManualNoteHtml(){
+  const todayNote = todayWeatherNoteVal();
   if(editingWeatherNote){
     return `
       <div class="wb-manual-edit">
-        <input type="text" id="weather-note-input" placeholder="เช่น ฝนตกหนัก, แดดจัด" maxlength="80" value="${escapeHtml(todayWeatherNote ? (todayWeatherNote.note||'') : '')}">
+        <input type="text" id="weather-note-input" placeholder="เช่น ฝนตกหนัก, แดดจัด" maxlength="80" value="${escapeHtml(todayNote ? (todayNote.note||'') : '')}">
         <div class="wb-manual-edit-actions">
           <button type="button" id="btn-save-weather-note">บันทึก</button>
           <button type="button" id="btn-cancel-weather-note">ยกเลิก</button>
         </div>
       </div>`;
   }
-  const hasNote = todayWeatherNote && todayWeatherNote.note;
+  const hasNote = todayNote && todayNote.note;
   return `
     <div class="wb-manual-row">
-      ${hasNote ? `<span class="wb-manual-note">📝 ${escapeHtml(todayWeatherNote.note)}</span>` : `<span class="wb-manual-hint">ยังไม่ได้บันทึกสภาพอากาศวันนี้เอง</span>`}
+      ${hasNote ? `<span class="wb-manual-note">📝 ${escapeHtml(todayNote.note)}</span>` : `<span class="wb-manual-hint">ยังไม่ได้บันทึกสภาพอากาศวันนี้เอง</span>`}
       <button type="button" id="btn-edit-weather-note">${hasNote ? 'แก้ไข' : '+ บันทึกเอง'}</button>
     </div>`;
 }
 function weatherBannerHtml(){
   const hasForecast = !!weatherData;
-  if(!hasForecast && !todayWeatherNote && !editingWeatherNote) return '';
+  if(!hasForecast && !todayWeatherNoteVal() && !editingWeatherNote) return '';
   const iconLabel = hasForecast ? weatherIconLabel(weatherData.code) : { icon:'', label:'' };
   const daily = hasForecast ? (weatherData.daily || []) : [];
   return `
@@ -700,9 +701,10 @@ function el(html){ const t=document.createElement('template'); t.innerHTML=html.
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* ---------------- Data layer (Firestore, real-time sync + offline cache) ---------------- */
-let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null, unsubClosures = null, unsubWeatherNote = null;
+let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null, unsubClosures = null, unsubWeatherNotes = null;
 let seededFarms = false;
-let todayWeatherNote = null; // { note, updatedAt } for today's manually-entered weather, or null
+let weatherNotesByDate = {}; // { 'YYYY-MM-DD': { note, updatedAt } } — every day's manually-entered weather, kept permanently
+function todayWeatherNoteVal(){ return weatherNotesByDate[todayISO()] || null; }
 
 async function ensureFarmsSeeded(){
   if(seededFarms) return;
@@ -756,8 +758,10 @@ function attachFirestoreListeners(){
     render();
   }, (e)=>console.error('closures listener error', e));
 
-  unsubWeatherNote = db.collection('weatherNotes').doc(todayISO()).onSnapshot((doc)=>{
-    todayWeatherNote = doc.exists ? doc.data() : null;
+  unsubWeatherNotes = db.collection('weatherNotes').onSnapshot((snap)=>{
+    const byDate = {};
+    snap.docs.forEach(d=>{ byDate[d.id] = d.data(); });
+    weatherNotesByDate = byDate;
     render();
   }, (e)=>console.error('weatherNotes listener error', e));
 }
@@ -769,9 +773,10 @@ function detachFirestoreListeners(){
   if(unsubBatches) unsubBatches();
   if(unsubHarvests) unsubHarvests();
   if(unsubClosures) unsubClosures();
-  if(unsubWeatherNote) unsubWeatherNote();
-  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = unsubClosures = unsubWeatherNote = null;
+  if(unsubWeatherNotes) unsubWeatherNotes();
+  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = unsubClosures = unsubWeatherNotes = null;
   state = { farms: [], ponds: [], records: [], batches: [], harvests: [], closures: [] };
+  weatherNotesByDate = {};
   currentFarmId = 'overview';
   currentPondId = null;
 }
@@ -1358,9 +1363,11 @@ function renderPondDetail(){
   const rows = records.slice().reverse().map(r=>{
     const w = weightFromCount(r.sizeCount);
     const recDoc = p.releaseDate ? daysBetween(p.releaseDate, r.weekDate) : null;
+    const weatherNote = weatherNotesByDate[r.weekDate];
     return `
       <tr>
         <td>${fmtDate(r.weekDate)}</td>
+        <td>${weatherNote ? '📝 '+escapeHtml(weatherNote.note) : '-'}</td>
         <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
         <td>${r.sizeCount!=null ? r.sizeCount+' ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">'+(w?w.toFixed(1)+' ก.':'')+'</span>' : '-'}</td>
         <td>${r.feedPerDay!=null ? r.feedPerDay+' กก.' : '-'}</td>
@@ -1511,7 +1518,7 @@ function renderPondDetail(){
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>หมายเหตุ</th><th></th></tr></thead>
+            <thead><tr><th>วันที่</th><th>สภาพอากาศ</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>หมายเหตุ</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -1928,9 +1935,11 @@ function renderBatchDetail(){
   const rows = records.slice().reverse().map(r=>{
     const w = weightFromCount(r.sizeCount);
     const recDoc = batch.releaseDate ? daysBetween(batch.releaseDate, r.weekDate) : null;
+    const weatherNote = weatherNotesByDate[r.weekDate];
     return `
       <tr>
         <td>${fmtDate(r.weekDate)}</td>
+        <td>${weatherNote ? '📝 '+escapeHtml(weatherNote.note) : '-'}</td>
         <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
         <td>${r.sizeCount!=null ? r.sizeCount+' ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">'+(w?w.toFixed(1)+' ก.':'')+'</span>' : '-'}</td>
         <td>${r.feedPerDay!=null ? r.feedPerDay+' กก.' : '-'}</td>
@@ -2022,7 +2031,7 @@ function renderBatchDetail(){
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>หมายเหตุ</th></tr></thead>
+            <thead><tr><th>วันที่</th><th>สภาพอากาศ</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>หมายเหตุ</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
