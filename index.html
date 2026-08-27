@@ -1477,6 +1477,9 @@ function renderPondDetail(){
     if(weightG===null) return null;
     return estimatedSurviving * weightG / 1000;
   })();
+  const latestTotalFeedRecord = records.slice().reverse().find(r=>r.totalFeedKg!=null);
+  const cumulativeBiomassKg = (estimatedYieldKg||0) + totalHarvestedKg;
+  const currentFcr = (latestTotalFeedRecord && cumulativeBiomassKg>0) ? (latestTotalFeedRecord.totalFeedKg / cumulativeBiomassKg) : null;
 
   const rows = records.slice().reverse().map(r=>{
     const w = weightFromCount(r.sizeCount);
@@ -1489,6 +1492,7 @@ function renderPondDetail(){
         <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
         <td>${r.sizeCount!=null ? r.sizeCount+' ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">'+(w?w.toFixed(1)+' ก.':'')+'</span>' : '-'}</td>
         <td>${r.feedPerDay!=null ? r.feedPerDay+' กก.' : '-'}</td>
+        <td>${r.totalFeedKg!=null ? r.totalFeedKg.toLocaleString('th-TH')+' กก.' : '-'}</td>
         <td>${r.survivalRate!=null ? r.survivalRate+'%' : '-'}</td>
         <td>${r.note ? escapeHtml(r.note) : '-'}</td>
         <td><button class="row-del" data-edit-record="${r.id}" style="color:var(--teal-500)">แก้ไข</button> <button class="row-del" data-del-record="${r.id}">ลบ</button></td>
@@ -1554,6 +1558,10 @@ function renderPondDetail(){
           <div class="n">${cumAdg!==null ? cumAdg.toFixed(2) : '-'}</div>
           <div class="l">PDG (ก./วัน)</div>
         </div>
+        <div class="summary-box">
+          <div class="n">${currentFcr!==null ? currentFcr.toFixed(2) : '-'}</div>
+          <div class="l">FCR โดยประมาณ</div>
+        </div>
       </div>
 
       <div class="card" style="padding:14px 16px;">
@@ -1599,6 +1607,11 @@ function renderPondDetail(){
             </div>
           </div>
           <div class="field">
+            <label>อาหารสะสมทั้งหมด (กก.) (ถ้าทราบ)</label>
+            <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" placeholder="เช่น 3200 (สะสมตั้งแต่ปล่อยกุ้ง)" value="${editingRecordThisRender && editingRecordThisRender.totalFeedKg!=null ? editingRecordThisRender.totalFeedKg : ''}">
+            <div class="hint">ไม่บังคับกรอก ใส่เพื่อให้แอปคำนวณ FCR (อัตราแลกเนื้อ) โดยประมาณให้</div>
+          </div>
+          <div class="field">
             <label>หมายเหตุ (ถ้ามี)</label>
             <input type="text" name="note" placeholder="เช่น น้ำขุ่น, ลดอาหาร" value="${editingRecordThisRender ? escapeHtml(editingRecordThisRender.note||'') : ''}">
           </div>
@@ -1640,7 +1653,7 @@ function renderPondDetail(){
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>สภาพอากาศ</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>หมายเหตุ</th><th></th></tr></thead>
+            <thead><tr><th>วันที่</th><th>สภาพอากาศ</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อาหารสะสม</th><th>อัตรารอด</th><th>หมายเหตุ</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -2068,6 +2081,10 @@ function renderBatchDetail(){
     if(dDays>0 && wPrev!==null && wLast!==null) weeklyAdg = (wLast-wPrev)/dDays;
   }
   const estimatedYieldKg = last ? estimatedBiomassKg(batch.releaseCount, last.survivalRate, last.sizeCount) : null;
+  const batchTotalHarvestedKg = (batch.harvests || []).reduce((sum,h)=> sum + (h.weightKg||0), 0);
+  const latestTotalFeedRecord = records.slice().reverse().find(r=>r.totalFeedKg!=null);
+  const batchCumulativeBiomassKg = (estimatedYieldKg||0) + batchTotalHarvestedKg;
+  const currentFcr = (latestTotalFeedRecord && batchCumulativeBiomassKg>0) ? (latestTotalFeedRecord.totalFeedKg / batchCumulativeBiomassKg) : null;
 
   const rows = records.slice().reverse().map(r=>{
     const w = weightFromCount(r.sizeCount);
@@ -2080,6 +2097,7 @@ function renderBatchDetail(){
         <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
         <td>${r.sizeCount!=null ? r.sizeCount+' ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">'+(w?w.toFixed(1)+' ก.':'')+'</span>' : '-'}</td>
         <td>${r.feedPerDay!=null ? r.feedPerDay+' กก.' : '-'}</td>
+        <td>${r.totalFeedKg!=null ? r.totalFeedKg.toLocaleString('th-TH')+' กก.' : '-'}</td>
         <td>${r.survivalRate!=null ? r.survivalRate+'%' : '-'}</td>
         <td>${r.note ? escapeHtml(r.note) : '-'}</td>
       </tr>`;
@@ -2138,6 +2156,10 @@ function renderBatchDetail(){
           <div class="n">${cumAdg!==null ? cumAdg.toFixed(2) : '-'}</div>
           <div class="l">PDG (ก./วัน)</div>
         </div>
+        <div class="summary-box">
+          <div class="n">${currentFcr!==null ? currentFcr.toFixed(2) : '-'}</div>
+          <div class="l">FCR โดยประมาณ</div>
+        </div>
       </div>
 
       <div class="card" style="text-align:center; padding:14px 16px;">
@@ -2172,7 +2194,7 @@ function renderBatchDetail(){
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>สภาพอากาศ</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อัตรารอด</th><th>หมายเหตุ</th></tr></thead>
+            <thead><tr><th>วันที่</th><th>สภาพอากาศ</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อาหารสะสม</th><th>อัตรารอด</th><th>หมายเหตุ</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -2420,6 +2442,7 @@ async function archivePondCycle(pond, extraPondFields){
   if(pondRecords.length>0 || pondHarvests.length>0){
     const archivedRecords = pondRecords.map(r=>({
       weekDate:r.weekDate, sizeCount:r.sizeCount, feedPerDay:r.feedPerDay,
+      totalFeedKg:r.totalFeedKg!=null?r.totalFeedKg:null,
       survivalRate:r.survivalRate!=null?r.survivalRate:null, note:r.note||'',
     }));
     const archivedHarvests = pondHarvests.map(h=>({
@@ -3075,6 +3098,7 @@ function bindDashboardEvents(){
         weekDate,
         sizeCount: fd.get('sizeCount') ? parseFloat(fd.get('sizeCount')) : null,
         feedPerDay: parseFloat(fd.get('feedPerDay')),
+        totalFeedKg: fd.get('totalFeedKg') ? parseFloat(fd.get('totalFeedKg')) : null,
         survivalRate: fd.get('survivalRate') ? parseFloat(fd.get('survivalRate')) : null,
         note: (fd.get('note')||'').trim(),
         updatedAt: Date.now(),
