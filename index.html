@@ -677,7 +677,7 @@ function weatherBannerHtml(){
     </div>`;
 }
 
-let state = { farms: [], ponds: [], records: [], batches: [], harvests: [], closures: [] };
+let state = { farms: [], ponds: [], records: [], batches: [], harvests: [], closures: [], marketPrices: [] };
 let currentFarmId = 'overview';
 let currentPondId = null;
 let viewingBatchId = null;
@@ -688,6 +688,9 @@ let editingClosureId = null;
 let showSettingsSheet = false;
 let showDeleteAllConfirm = false;
 let editingWeatherNote = false;
+let showBulkPriceImport = false;
+let marketPriceChartSize = null;
+let bulkPriceImportResultHtml = '';
 let showClosureStats = false;
 let overviewSortBy = '';
 let showPondFormSheet = false;
@@ -704,7 +707,7 @@ function el(html){ const t=document.createElement('template'); t.innerHTML=html.
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* ---------------- Data layer (Firestore, real-time sync + offline cache) ---------------- */
-let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null, unsubClosures = null, unsubWeatherNotes = null;
+let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null, unsubClosures = null, unsubWeatherNotes = null, unsubMarketPrices = null;
 let seededFarms = false;
 let weatherNotesByDate = {}; // { 'YYYY-MM-DD': { note, updatedAt } } — every day's manually-entered weather, kept permanently
 function todayWeatherNoteVal(){ return weatherNotesByDate[todayISO()] || null; }
@@ -767,6 +770,11 @@ function attachFirestoreListeners(){
     weatherNotesByDate = byDate;
     render();
   }, (e)=>console.error('weatherNotes listener error', e));
+
+  unsubMarketPrices = db.collection('marketPrices').onSnapshot((snap)=>{
+    state.marketPrices = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    render();
+  }, (e)=>console.error('marketPrices listener error', e));
 }
 
 function detachFirestoreListeners(){
@@ -777,8 +785,9 @@ function detachFirestoreListeners(){
   if(unsubHarvests) unsubHarvests();
   if(unsubClosures) unsubClosures();
   if(unsubWeatherNotes) unsubWeatherNotes();
-  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = unsubClosures = unsubWeatherNotes = null;
-  state = { farms: [], ponds: [], records: [], batches: [], harvests: [], closures: [] };
+  if(unsubMarketPrices) unsubMarketPrices();
+  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = unsubClosures = unsubWeatherNotes = unsubMarketPrices = null;
+  state = { farms: [], ponds: [], records: [], batches: [], harvests: [], closures: [], marketPrices: [] };
   weatherNotesByDate = {};
   currentFarmId = 'overview';
   currentPondId = null;
@@ -1049,10 +1058,12 @@ function renderFarmDashboard(){
     state.farms.map(f => `
     <button class="farm-tab ${f.id===currentFarmId?'active':''}" data-farm="${f.id}">${escapeHtml(f.name)}</button>
   `).join('') +
+    `<button class="farm-tab ${currentFarmId==='marketprice'?'active':''}" data-farm="marketprice">ราคาตลาด</button>` +
     `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>`;
 
   if(currentFarmId === 'overview') return renderOverviewDashboard(tabs);
   if(currentFarmId === 'closures') return renderClosuresSummary(tabs);
+  if(currentFarmId === 'marketprice') return renderMarketPriceTab(tabs);
 
   const farm = state.farms.find(f=>f.id===currentFarmId);
   const allFarmPonds = pondsForFarm(currentFarmId);
@@ -1282,6 +1293,110 @@ function renderClosuresSummary(tabs){
         <h2>สรุปผลที่ผ่านมา</h2>
       </div>
       ${bodyHtml}
+    </main>
+  `;
+}
+
+function marketPricesSorted(){
+  return state.marketPrices.slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.createdAt||0)-(b.createdAt||0));
+}
+function marketPriceSizes(){
+  const set = new Set(state.marketPrices.map(m=>m.sizeCount).filter(v=>v!=null));
+  return [...set].sort((a,b)=>a-b);
+}
+function renderMarketPriceTab(tabs){
+  const sortedAsc = marketPricesSorted();
+  const sizes = marketPriceSizes();
+  const activeSize = (marketPriceChartSize!=null && sizes.includes(marketPriceChartSize)) ? marketPriceChartSize : (sizes.length ? sizes[sizes.length-1] : null);
+  const chartEntries = activeSize!=null ? sortedAsc.filter(m=>m.sizeCount===activeSize) : [];
+  const chartHtml = chartEntries.length>0 ? svgLineChart({
+    labels: chartEntries.map(m=>fmtDate(m.date)),
+    values: chartEntries.map(m=>m.pricePerKg),
+    color:'#52B7E0', fillColor:'rgba(82,183,224,.18)',
+  }) : `<div class="empty-state" style="padding:24px 12px;">${ICONS.shrimp}<p>ยังไม่มีข้อมูลราคาพอสำหรับไซส์นี้</p></div>`;
+
+  const historyDesc = state.marketPrices.slice().sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.createdAt||0)-(a.createdAt||0));
+
+  return `
+    <div class="farm-tabs">${tabs}</div>
+    <main>
+      <div class="farm-title-row">
+        <h2>ราคากุ้งตลาด</h2>
+      </div>
+
+      <div class="card">
+        <h3>เพิ่มราคาใหม่</h3>
+        <form id="market-price-form">
+          <div class="field-row">
+            <div class="field">
+              <label>วันที่</label>
+              <input type="date" name="date" id="mp-date" value="${todayISO()}" required>
+            </div>
+            <div class="field">
+              <label>ไซส์ (ตัว/กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="sizeCount" id="mp-size" placeholder="เช่น 60" required>
+            </div>
+          </div>
+          <div class="field">
+            <label>ราคา (บาท/กก.)</label>
+            <input type="number" inputmode="decimal" step="0.1" name="pricePerKg" id="mp-price" placeholder="เช่น 140" required>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" type="submit" style="flex:1">${ICONS.plus} บันทึกราคา</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="farm-title-row" style="margin-bottom:${showBulkPriceImport?'14px':'0'};">
+          <h3 style="margin:0;">นำเข้าหลายรายการ</h3>
+          <button type="button" id="btn-toggle-bulk-price" class="action-btn">${showBulkPriceImport ? 'ปิด' : 'วางข้อมูลย้อนหลัง'}</button>
+        </div>
+        ${showBulkPriceImport ? `
+        <p class="hint" style="margin-top:0;">วางข้อมูลทีละบรรทัด รูปแบบ: <b>วันที่, ไซส์, ราคา</b> (คั่นด้วยจุลภาคหรือ Tab) เช่น<br>2026-08-01, 60, 140<br>2026-08-08, 60, 145</p>
+        <div class="field">
+          <textarea id="mp-bulk-text" rows="6" placeholder="2026-08-01, 60, 140&#10;2026-08-08, 60, 145&#10;2026-08-01, 70, 130" style="width:100%; background:var(--surface-hi); border:1.5px solid var(--line); color:var(--ink); font-size:14px; padding:10px 12px; font-family:inherit; border-radius:0;"></textarea>
+        </div>
+        <div id="mp-bulk-result" class="hint">${bulkPriceImportResultHtml}</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" type="button" id="btn-import-bulk-price" style="flex:1">นำเข้าข้อมูล</button>
+        </div>` : ''}
+      </div>
+
+      ${sizes.length>0 ? `
+      <div class="card">
+        <div class="farm-title-row" style="margin-bottom:10px;">
+          <h3 style="margin:0;">แนวโน้มราคา</h3>
+          <select id="mp-chart-size-select" class="sort-select">
+            ${sizes.map(s=>`<option value="${s}" ${s===activeSize?'selected':''}>ไซส์ ${s} ตัว/กก.</option>`).join('')}
+          </select>
+        </div>
+        <div class="chart-wrap" style="height:180px;">${chartHtml}</div>
+      </div>` : ''}
+
+      ${historyDesc.length>0 ? `
+      <div class="card">
+        <h3>ประวัติราคา</h3>
+        <div style="overflow-x:auto">
+          <table class="rec-table">
+            <thead><tr><th>วันที่</th><th>ไซส์</th><th>ราคา</th><th></th></tr></thead>
+            <tbody>
+              ${historyDesc.map(m=>`
+                <tr>
+                  <td>${fmtDate(m.date)}</td>
+                  <td>${m.sizeCount!=null ? m.sizeCount+' ตัว/กก.' : '-'}</td>
+                  <td>${m.pricePerKg!=null ? m.pricePerKg.toLocaleString('th-TH')+' บ./กก.' : '-'}</td>
+                  <td><button class="row-del" data-del-market-price="${m.id}">ลบ</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : `
+      <div class="empty-state">
+        ${ICONS.shrimp}
+        <p><b>ยังไม่มีข้อมูลราคากุ้ง</b></p>
+        <p>กรอกราคาใหม่ด้านบน หรือวางข้อมูลย้อนหลังหลายรายการพร้อมกันได้</p>
+      </div>`}
     </main>
   `;
 }
@@ -2448,6 +2563,75 @@ function bindDashboardEvents(){
     weatherNoteInput.focus();
     weatherNoteInput.setSelectionRange(weatherNoteInput.value.length, weatherNoteInput.value.length);
   }
+
+  const marketPriceForm = document.getElementById('market-price-form');
+  if(marketPriceForm){
+    marketPriceForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(marketPriceForm);
+      const date = fd.get('date');
+      const sizeCount = parseFloat(fd.get('sizeCount'));
+      const pricePerKg = parseFloat(fd.get('pricePerKg'));
+      if(!date || isNaN(sizeCount) || isNaN(pricePerKg)) return;
+      try{
+        await db.collection('marketPrices').add({ date, sizeCount, pricePerKg, createdAt: Date.now() });
+      }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
+      marketPriceChartSize = sizeCount;
+      render();
+    });
+  }
+
+  const btnToggleBulkPrice = document.getElementById('btn-toggle-bulk-price');
+  if(btnToggleBulkPrice) btnToggleBulkPrice.onclick = ()=>{ showBulkPriceImport = !showBulkPriceImport; render(); };
+
+  const btnImportBulkPrice = document.getElementById('btn-import-bulk-price');
+  if(btnImportBulkPrice) btnImportBulkPrice.onclick = async ()=>{
+    const textarea = document.getElementById('mp-bulk-text');
+    if(!textarea) return;
+    const lines = textarea.value.split('\n').map(l=>l.trim()).filter(Boolean);
+    const rows = [];
+    const errors = [];
+    lines.forEach((line, i)=>{
+      const parts = line.split(/[,\t]+/).map(s=>s.trim()).filter(Boolean);
+      if(parts.length < 3){ errors.push(`บรรทัด ${i+1}: ข้อมูลไม่ครบ (ต้องมี วันที่, ไซส์, ราคา)`); return; }
+      const [dateStr, sizeStr, priceStr] = parts;
+      const sizeCount = parseFloat(sizeStr);
+      const pricePerKg = parseFloat(priceStr);
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || isNaN(sizeCount) || isNaN(pricePerKg)){
+        errors.push(`บรรทัด ${i+1}: รูปแบบไม่ถูกต้อง (ต้องเป็น YYYY-MM-DD, ตัวเลข, ตัวเลข)`);
+        return;
+      }
+      rows.push({ date: dateStr, sizeCount, pricePerKg, createdAt: Date.now() });
+    });
+    if(rows.length===0){
+      bulkPriceImportResultHtml = errors.length ? `<span style="color:var(--danger)">ไม่พบข้อมูลที่นำเข้าได้<br>${errors.slice(0,5).join('<br>')}</span>` : 'ยังไม่ได้วางข้อมูล';
+      render();
+      return;
+    }
+    const writeBatch = db.batch();
+    rows.forEach(row=>writeBatch.set(db.collection('marketPrices').doc(), row));
+    try{
+      await writeBatch.commit();
+      bulkPriceImportResultHtml = `<span style="color:var(--teal-400)">นำเข้าสำเร็จ ${rows.length} รายการ${errors.length ? ` (ข้าม ${errors.length} บรรทัดที่ผิดรูปแบบ)` : ''}</span>`;
+    }catch(e){
+      bulkPriceImportResultHtml = `<span style="color:var(--danger)">นำเข้าไม่สำเร็จ: ${escapeHtml(e.message)}</span>`;
+    }
+    render();
+  };
+
+  const mpChartSizeSelect = document.getElementById('mp-chart-size-select');
+  if(mpChartSizeSelect) mpChartSizeSelect.onchange = ()=>{
+    marketPriceChartSize = parseFloat(mpChartSizeSelect.value);
+    render();
+  };
+
+  document.querySelectorAll('[data-del-market-price]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(!confirm('ลบราคานี้?')) return;
+      const id = btn.getAttribute('data-del-market-price');
+      await db.collection('marketPrices').doc(id).delete().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
+    };
+  });
 
   const overviewSortSelect = document.getElementById('overview-sort-select');
   if(overviewSortSelect) overviewSortSelect.onchange = ()=>{
