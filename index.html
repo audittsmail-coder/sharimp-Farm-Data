@@ -119,6 +119,22 @@
   .wf-icon{ font-size:21px; margin:6px 0; }
   .wf-temp{ font-size:11.5px; font-weight:700; color:#fff; }
   .wf-rain{ font-size:9.5px; color:rgba(255,255,255,.75); margin-top:3px; }
+  .wb-manual-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.14); }
+  .wb-manual-note{ font-size:12.5px; color:#fff; font-weight:600; }
+  .wb-manual-hint{ font-size:12px; color:rgba(255,255,255,.6); }
+  .wb-manual-row button, .wb-manual-edit-actions button{
+    background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3); color:#fff;
+    font-size:11.5px; font-weight:600; padding:5px 10px; cursor:pointer; flex:none; font-family:inherit;
+  }
+  .wb-manual-row button:hover, .wb-manual-edit-actions button:hover{ background:rgba(255,255,255,.26); }
+  .wb-manual-edit{ margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.14); }
+  .wb-manual-edit input{
+    width:100%; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3); color:#fff;
+    font-size:13px; padding:8px 10px; font-family:inherit; border-radius:0;
+  }
+  .wb-manual-edit input::placeholder{ color:rgba(255,255,255,.5); }
+  .wb-manual-edit-actions{ display:flex; gap:8px; margin-top:8px; }
+  .wb-manual-edit-actions button:first-child{ background:rgba(255,255,255,.92); color:var(--teal-700); border-color:transparent; }
   .icon-btn{
     background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff;
     width:36px; height:36px; border-radius:0; display:flex; align-items:center; justify-content:center;
@@ -606,20 +622,40 @@ function initWeather(){
   if(cached) weatherData = cached;
   fetchWeather();
 }
+function weatherManualNoteHtml(){
+  if(editingWeatherNote){
+    return `
+      <div class="wb-manual-edit">
+        <input type="text" id="weather-note-input" placeholder="เช่น ฝนตกหนัก, แดดจัด" maxlength="80" value="${escapeHtml(todayWeatherNote ? (todayWeatherNote.note||'') : '')}">
+        <div class="wb-manual-edit-actions">
+          <button type="button" id="btn-save-weather-note">บันทึก</button>
+          <button type="button" id="btn-cancel-weather-note">ยกเลิก</button>
+        </div>
+      </div>`;
+  }
+  const hasNote = todayWeatherNote && todayWeatherNote.note;
+  return `
+    <div class="wb-manual-row">
+      ${hasNote ? `<span class="wb-manual-note">📝 ${escapeHtml(todayWeatherNote.note)}</span>` : `<span class="wb-manual-hint">ยังไม่ได้บันทึกสภาพอากาศวันนี้เอง</span>`}
+      <button type="button" id="btn-edit-weather-note">${hasNote ? 'แก้ไข' : '+ บันทึกเอง'}</button>
+    </div>`;
+}
 function weatherBannerHtml(){
-  if(!weatherData) return '';
-  const { icon, label } = weatherIconLabel(weatherData.code);
-  const daily = weatherData.daily || [];
+  const hasForecast = !!weatherData;
+  if(!hasForecast && !todayWeatherNote && !editingWeatherNote) return '';
+  const iconLabel = hasForecast ? weatherIconLabel(weatherData.code) : { icon:'', label:'' };
+  const daily = hasForecast ? (weatherData.daily || []) : [];
   return `
     <div class="weather-banner">
+      ${hasForecast ? `
       <div class="weather-today">
-        <span class="wb-icon">${icon}</span>
+        <span class="wb-icon">${iconLabel.icon}</span>
         <div>
           <div class="wb-location">📍 ${escapeHtml(WEATHER_LOCATION_LABEL)}</div>
           <div class="wb-temp">${Math.round(weatherData.tempC)}°C</div>
-          <div class="wb-label">${escapeHtml(label)}${weatherData.rainPct!=null ? ` · โอกาสฝน ${Math.round(weatherData.rainPct)}%` : ''}</div>
+          <div class="wb-label">${escapeHtml(iconLabel.label)}${weatherData.rainPct!=null ? ` · โอกาสฝน ${Math.round(weatherData.rainPct)}%` : ''}</div>
         </div>
-      </div>
+      </div>` : ''}
       ${daily.length>0 ? `
       <div class="weather-forecast">
         ${daily.map((d,i)=>{
@@ -633,6 +669,7 @@ function weatherBannerHtml(){
             </div>`;
         }).join('')}
       </div>` : ''}
+      ${weatherManualNoteHtml()}
     </div>`;
 }
 
@@ -646,6 +683,7 @@ let viewingBiomassPondId = null;
 let editingClosureId = null;
 let showSettingsSheet = false;
 let showDeleteAllConfirm = false;
+let editingWeatherNote = false;
 let showClosureStats = false;
 let overviewSortBy = '';
 let showPondFormSheet = false;
@@ -662,8 +700,9 @@ function el(html){ const t=document.createElement('template'); t.innerHTML=html.
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* ---------------- Data layer (Firestore, real-time sync + offline cache) ---------------- */
-let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null, unsubClosures = null;
+let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null, unsubClosures = null, unsubWeatherNote = null;
 let seededFarms = false;
+let todayWeatherNote = null; // { note, updatedAt } for today's manually-entered weather, or null
 
 async function ensureFarmsSeeded(){
   if(seededFarms) return;
@@ -716,6 +755,11 @@ function attachFirestoreListeners(){
     state.closures = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     render();
   }, (e)=>console.error('closures listener error', e));
+
+  unsubWeatherNote = db.collection('weatherNotes').doc(todayISO()).onSnapshot((doc)=>{
+    todayWeatherNote = doc.exists ? doc.data() : null;
+    render();
+  }, (e)=>console.error('weatherNotes listener error', e));
 }
 
 function detachFirestoreListeners(){
@@ -725,7 +769,8 @@ function detachFirestoreListeners(){
   if(unsubBatches) unsubBatches();
   if(unsubHarvests) unsubHarvests();
   if(unsubClosures) unsubClosures();
-  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = unsubClosures = null;
+  if(unsubWeatherNote) unsubWeatherNote();
+  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = unsubClosures = unsubWeatherNote = null;
   state = { farms: [], ponds: [], records: [], batches: [], harvests: [], closures: [] };
   currentFarmId = 'overview';
   currentPondId = null;
@@ -2338,6 +2383,35 @@ function bindDashboardEvents(){
       render();
     };
   });
+
+  const btnEditWeatherNote = document.getElementById('btn-edit-weather-note');
+  if(btnEditWeatherNote) btnEditWeatherNote.onclick = ()=>{ editingWeatherNote = true; render(); };
+
+  const btnCancelWeatherNote = document.getElementById('btn-cancel-weather-note');
+  if(btnCancelWeatherNote) btnCancelWeatherNote.onclick = ()=>{ editingWeatherNote = false; render(); };
+
+  const saveWeatherNote = async ()=>{
+    const input = document.getElementById('weather-note-input');
+    if(!input) return;
+    const text = input.value.trim();
+    try{
+      if(text){
+        await db.collection('weatherNotes').doc(todayISO()).set({ note: text, updatedAt: Date.now() });
+      } else {
+        await db.collection('weatherNotes').doc(todayISO()).delete();
+      }
+    }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
+    editingWeatherNote = false;
+    render();
+  };
+  const btnSaveWeatherNote = document.getElementById('btn-save-weather-note');
+  if(btnSaveWeatherNote) btnSaveWeatherNote.onclick = saveWeatherNote;
+  const weatherNoteInput = document.getElementById('weather-note-input');
+  if(weatherNoteInput){
+    weatherNoteInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') saveWeatherNote(); });
+    weatherNoteInput.focus();
+    weatherNoteInput.setSelectionRange(weatherNoteInput.value.length, weatherNoteInput.value.length);
+  }
 
   const overviewSortSelect = document.getElementById('overview-sort-select');
   if(overviewSortSelect) overviewSortSelect.onchange = ()=>{
