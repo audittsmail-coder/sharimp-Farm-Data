@@ -145,11 +145,14 @@
 
   .backbar{ display:flex; align-items:center; gap:8px; padding:14px 16px 0 16px; }
   .back-btn{
-    background:var(--surface); border:1px solid var(--line); color:var(--heading); font-size:13.5px; font-weight:600;
-    display:flex; align-items:center; gap:5px; cursor:pointer; padding:7px 12px 7px 8px; border-radius:0;
-    transition:background .15s var(--ease);
+    background:var(--surface-hi); border:1.5px solid var(--teal-500); color:var(--heading); font-size:14.5px; font-weight:700;
+    display:flex; align-items:center; gap:6px; cursor:pointer; padding:9px 16px 9px 12px; border-radius:0;
+    transition:background .15s var(--ease), border-color .15s var(--ease), transform .12s var(--ease);
   }
-  .back-btn:active{ background:var(--surface-soft); }
+  .back-btn:hover{ background:var(--teal-100); border-color:var(--teal-400); }
+  .back-btn:active{ background:var(--surface-soft); transform:scale(.97); }
+  .backbar-bottom{ padding:8px 16px 4px 16px; }
+  .backbar-bottom .back-btn{ width:100%; justify-content:center; padding:12px 16px; }
 
   main{ flex:1; padding:16px 16px 32px 16px; animation:viewIn .28s var(--ease); }
   @keyframes viewIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:translateY(0);} }
@@ -1546,6 +1549,9 @@ function renderPondDetail(){
           }).join('')}
         </div>
       </div>` : ''}
+      <div class="backbar-bottom">
+        <button class="back-btn" id="btn-back-bottom">${ICONS.back} กลับ</button>
+      </div>
     </main>
   `;
 }
@@ -1648,6 +1654,9 @@ function renderHarvestForm(){
           </table>
         </div>
       </div>` : `<div class="empty-state">${ICONS.shrimp}<p>ยังไม่มีประวัติการแบ่งจับ</p></div>`}
+      <div class="backbar-bottom">
+        <button class="back-btn" id="btn-back-harvest-bottom" type="button">${ICONS.back} กลับ</button>
+      </div>
     </main>
     </div>
   `;
@@ -1760,6 +1769,9 @@ function renderCloseForm(){
           </div>
         </form>
       </div>
+      <div class="backbar-bottom">
+        <button class="back-btn" id="btn-back-close-bottom" type="button">${ICONS.back} กลับ</button>
+      </div>
     </main>
   `;
 }
@@ -1814,6 +1826,9 @@ function renderBiomassCalc(){
             <div class="calc-tile"><div class="n" id="biomass-calc-feed">-</div><div class="l">อาหารที่ควรให้/วัน (กก.)</div></div>
           </div>
         </div>
+      </div>
+      <div class="backbar-bottom">
+        <button class="back-btn" id="btn-back-biomass-bottom" type="button">${ICONS.back} กลับ</button>
       </div>
     </main>
   `;
@@ -1909,6 +1924,9 @@ function renderClosureEditForm(){
             <button class="btn btn-primary" type="submit" style="flex:1">${ICONS.edit} บันทึกการแก้ไข</button>
           </div>
         </form>
+      </div>
+      <div class="backbar-bottom">
+        <button class="back-btn" id="btn-back-close-edit-bottom" type="button">${ICONS.back} กลับ</button>
       </div>
     </main>
   `;
@@ -2037,6 +2055,9 @@ function renderBatchDetail(){
         </div>
       </div>
       ` : `<div class="empty-state">${ICONS.shrimp}<p>ไม่มีข้อมูลบันทึกในรุ่นนี้</p></div>`}
+      <div class="backbar-bottom">
+        <button class="back-btn" id="btn-back-batch-bottom" type="button">${ICONS.back} กลับ</button>
+      </div>
     </main>
   `;
 }
@@ -2309,6 +2330,12 @@ async function archivePondCycle(pond, extraPondFields){
 }
 
 /* ---------------- Event binding ---------------- */
+function bindClickByIds(ids, handler){
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.onclick = handler;
+  });
+}
 function bindDashboardEvents(){
   const btnSettings = document.getElementById('btn-settings');
   if(btnSettings) btnSettings.onclick = ()=>{ showSettingsSheet=true; showDeleteAllConfirm=false; render(); };
@@ -2458,8 +2485,7 @@ function bindDashboardEvents(){
     };
   });
 
-  const btnBack = document.getElementById('btn-back');
-  if(btnBack) btnBack.onclick = ()=>{ currentPondId=null; editingRecordId=null; viewingHarvestPondId=null; render(); };
+  bindClickByIds(['btn-back','btn-back-bottom'], ()=>{ currentPondId=null; editingRecordId=null; viewingHarvestPondId=null; render(); });
 
   const btnEditPond = document.getElementById('btn-edit-pond');
   if(btnEditPond) btnEditPond.onclick = ()=>{
@@ -2484,20 +2510,17 @@ function bindDashboardEvents(){
   const btnOpenHarvest = document.getElementById('btn-open-harvest');
   if(btnOpenHarvest) btnOpenHarvest.onclick = ()=>{ viewingHarvestPondId = currentPondId; render(); };
 
-  const btnBackHarvest = document.getElementById('btn-back-harvest');
-  if(btnBackHarvest) btnBackHarvest.onclick = ()=>{ viewingHarvestPondId = null; render(); };
+  bindClickByIds(['btn-back-harvest','btn-back-harvest-bottom'], ()=>{ viewingHarvestPondId = null; render(); });
 
   const btnClosePond = document.getElementById('btn-close-pond');
   if(btnClosePond) btnClosePond.onclick = ()=>{ viewingClosePondId = currentPondId; render(); };
 
-  const btnBackClose = document.getElementById('btn-back-close');
-  if(btnBackClose) btnBackClose.onclick = ()=>{ viewingClosePondId = null; render(); };
+  bindClickByIds(['btn-back-close','btn-back-close-bottom'], ()=>{ viewingClosePondId = null; render(); });
 
   const btnOpenBiomass = document.getElementById('btn-open-biomass');
   if(btnOpenBiomass) btnOpenBiomass.onclick = ()=>{ viewingBiomassPondId = currentPondId; render(); };
 
-  const btnBackBiomass = document.getElementById('btn-back-biomass');
-  if(btnBackBiomass) btnBackBiomass.onclick = ()=>{ viewingBiomassPondId = null; render(); };
+  bindClickByIds(['btn-back-biomass','btn-back-biomass-bottom'], ()=>{ viewingBiomassPondId = null; render(); });
 
   const biomassRelease = document.getElementById('biomass-release');
   const biomassSurvival = document.getElementById('biomass-survival');
@@ -2630,8 +2653,7 @@ function bindDashboardEvents(){
     });
   }
 
-  const btnBackCloseEdit = document.getElementById('btn-back-close-edit');
-  if(btnBackCloseEdit) btnBackCloseEdit.onclick = ()=>{ editingClosureId = null; render(); };
+  bindClickByIds(['btn-back-close-edit','btn-back-close-edit-bottom'], ()=>{ editingClosureId = null; render(); });
 
   const closeEditForm = document.getElementById('close-edit-form');
   if(closeEditForm){
@@ -2771,8 +2793,7 @@ function bindDashboardEvents(){
     });
   }
 
-  const btnBackBatch = document.getElementById('btn-back-batch');
-  if(btnBackBatch) btnBackBatch.onclick = ()=>{ viewingBatchId=null; render(); };
+  bindClickByIds(['btn-back-batch','btn-back-batch-bottom'], ()=>{ viewingBatchId=null; render(); });
 
   document.querySelectorAll('[data-view-batch]').forEach(btn=>{
     btn.onclick = ()=>{ viewingBatchId = btn.getAttribute('data-view-batch'); render(); };
