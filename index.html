@@ -2438,8 +2438,8 @@ function renderPondFormPanel(){
 }
 function closePondSheet(){ showPondFormSheet=false; editingPond=null; render(); }
 
-/* ---------------- Archive the current cycle's records/harvests into `batches`, then clear the pond for a fresh cycle ---------------- */
-async function archivePondCycle(pond, extraPondFields){
+/* ---------------- Archive the current cycle's records/harvests into `batches`, then delete the pond (closing removes it entirely) ---------------- */
+async function archivePondCycle(pond){
   const pondRecords = recordsForPond(pond.id);
   const pondHarvests = harvestsForPond(pond.id);
   if(pondRecords.length>0 || pondHarvests.length>0){
@@ -2466,15 +2466,7 @@ async function archivePondCycle(pond, extraPondFields){
   const writeBatch = db.batch();
   pondRecords.forEach(r=>writeBatch.delete(db.collection('records').doc(r.id)));
   pondHarvests.forEach(h=>writeBatch.delete(db.collection('harvests').doc(h.id)));
-  writeBatch.update(db.collection('ponds').doc(pond.id), {
-    pathogenHistory: [],
-    pathogenStatus: firebase.firestore.FieldValue.delete(),
-    pathogenSeverity: firebase.firestore.FieldValue.delete(),
-    pathogenWorsened: firebase.firestore.FieldValue.delete(),
-    pathogenDate: firebase.firestore.FieldValue.delete(),
-    pathogenReportId: firebase.firestore.FieldValue.delete(),
-    ...(extraPondFields||{}),
-  });
+  writeBatch.delete(db.collection('ponds').doc(pond.id));
   await writeBatch.commit();
 }
 
@@ -2683,8 +2675,18 @@ function bindDashboardEvents(){
     const pondId = row.getAttribute('data-open-closure-pond');
     if(!pondId) return;
     row.onclick = ()=>{
-      currentPondId = pondId;
       currentFarmId = row.getAttribute('data-open-closure-farm') || 'overview';
+      // closing a pond now deletes it, so jump straight to its archived batch
+      // (the pond itself no longer exists to navigate into).
+      const batch = state.batches.filter(b=>b.pondId===pondId).slice().sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''))[0];
+      if(batch){
+        viewingBatchId = batch.id;
+        render();
+        return;
+      }
+      const pondStillExists = state.ponds.some(p=>p.id===pondId);
+      if(!pondStillExists) return;
+      currentPondId = pondId;
       editingRecordId = null;
       viewingHarvestPondId = null;
       viewingClosePondId = null;
@@ -2872,7 +2874,7 @@ function bindDashboardEvents(){
       };
       try{
         await db.collection('closures').add(data);
-        await archivePondCycle(pond, { closedAt: Date.now() });
+        await archivePondCycle(pond);
       }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
       viewingClosePondId = null;
       currentPondId = null;
