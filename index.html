@@ -1279,7 +1279,10 @@ function renderClosuresSummary(tabs){
                 <td>${c.survivalRatePct!=null ? c.survivalRatePct.toFixed(1)+'%' : '-'}</td>
                 <td>${c.fcr!=null ? c.fcr.toFixed(2) : '-'}</td>
                 <td>${c.revenue!=null ? c.revenue.toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-'}</td>
-                <td><button type="button" class="action-btn" data-edit-closure="${c.id}">${ICONS.edit} แก้ไข</button></td>
+                <td style="white-space:nowrap;">
+                  <button type="button" class="action-btn" data-edit-closure="${c.id}">${ICONS.edit} แก้ไข</button>
+                  <button type="button" class="row-del" data-del-closure="${c.id}">ลบ</button>
+                </td>
               </tr>`).join('')}
           </tbody>
         </table>
@@ -2697,6 +2700,15 @@ function bindDashboardEvents(){
       e.stopPropagation();
       editingClosureId = btn.getAttribute('data-edit-closure');
       render();
+    };
+  });
+
+  document.querySelectorAll('[data-del-closure]').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      if(!confirm('ลบประวัติปิดบ่อนี้?')) return;
+      const id = btn.getAttribute('data-del-closure');
+      await db.collection('closures').doc(id).delete().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
     };
   });
 
