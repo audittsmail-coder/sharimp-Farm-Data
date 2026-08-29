@@ -270,8 +270,8 @@
     position:relative; padding-left:11px;
   }
   .card h3::before{ content:''; position:absolute; left:0; top:1px; bottom:1px; width:3px; border-radius:0; background:currentColor; opacity:.55; }
-  .field{ margin-bottom:13px; }
-  .field label{ display:block; font-size:12.5px; color:var(--heading); margin-bottom:6px; font-weight:700; letter-spacing:.01em; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12.5px; color:var(--ink-soft); margin-bottom:6px; font-weight:600; letter-spacing:.01em; }
   .field input, .field select, .field textarea{
     width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:var(--radius-sm);
     font-size:15px; font-weight:600; color:var(--ink); background:var(--surface-hi);
@@ -1596,27 +1596,29 @@ function renderPondDetail(){
               <div class="hint" id="record-doc-hint">${p.releaseDate ? 'อายุกุ้ง ณ วันที่บันทึก: '+daysBetween(p.releaseDate, editingRecordThisRender ? editingRecordThisRender.weekDate : todayISO())+' วัน' : 'ยังไม่ได้ระบุวันที่ปล่อยกุ้งของบ่อนี้'}</div>
             </div>
             <div class="field">
-              <label>ไซส์กุ้ง (ตัว/กก.)</label>
-              <input type="number" inputmode="decimal" step="0.1" name="sizeCount" placeholder="เช่น 60 (เว้นว่างได้ถ้ายังไม่สุ่มไซส์)" value="${editingRecordThisRender && editingRecordThisRender.sizeCount!=null ? editingRecordThisRender.sizeCount : ''}">
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
               <label>อาหารต่อวัน (กก.)</label>
               <input type="number" inputmode="decimal" step="0.1" name="feedPerDay" placeholder="เช่น 25" value="${editingRecordThisRender ? editingRecordThisRender.feedPerDay : ''}" required>
             </div>
+          </div>
+
+          <div class="form-section-label">ข้อมูลสุ่มกุ้ง (ไม่บังคับ)</div>
+          <div class="field-row">
             <div class="field">
-              <label>อัตรารอด (%) (ถ้าทราบ)</label>
+              <label>ไซส์กุ้ง (ตัว/กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="sizeCount" placeholder="เช่น 60" value="${editingRecordThisRender && editingRecordThisRender.sizeCount!=null ? editingRecordThisRender.sizeCount : ''}">
+            </div>
+            <div class="field">
+              <label>อัตรารอด (%)</label>
               <input type="number" inputmode="decimal" step="0.1" min="0" max="100" name="survivalRate" placeholder="เช่น 85" value="${editingRecordThisRender && editingRecordThisRender.survivalRate!=null ? editingRecordThisRender.survivalRate : ''}">
             </div>
           </div>
           <div class="field">
-            <label>อาหารสะสมทั้งหมด (กก.) (ถ้าทราบ)</label>
-            <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" placeholder="เช่น 3200 (สะสมตั้งแต่ปล่อยกุ้ง)" value="${editingRecordThisRender && editingRecordThisRender.totalFeedKg!=null ? editingRecordThisRender.totalFeedKg : ''}">
-            <div class="hint">ไม่บังคับกรอก ใส่เพื่อให้แอปคำนวณ FCR (อัตราแลกเนื้อ) โดยประมาณให้</div>
+            <label>อาหารสะสมทั้งหมด (กก.)</label>
+            <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" placeholder="เช่น 3200" value="${editingRecordThisRender && editingRecordThisRender.totalFeedKg!=null ? editingRecordThisRender.totalFeedKg : ''}">
+            <div class="hint">สะสมตั้งแต่ปล่อยกุ้ง ใช้คำนวณ FCR (อัตราแลกเนื้อ) โดยประมาณให้</div>
           </div>
           <div class="field">
-            <label>หมายเหตุ (ถ้ามี)</label>
+            <label>หมายเหตุ</label>
             <input type="text" name="note" placeholder="เช่น น้ำขุ่น, ลดอาหาร" value="${editingRecordThisRender ? escapeHtml(editingRecordThisRender.note||'') : ''}">
           </div>
           <div class="btn-row">
