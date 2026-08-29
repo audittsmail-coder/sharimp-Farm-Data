@@ -1281,6 +1281,7 @@ function renderClosuresSummary(tabs){
                 <td>${c.revenue!=null ? c.revenue.toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-'}</td>
                 <td style="white-space:nowrap;">
                   <button type="button" class="action-btn" data-edit-closure="${c.id}">${ICONS.edit} แก้ไข</button>
+                  <button type="button" class="action-btn" data-restore-closure="${c.id}">กู้คืนบ่อ</button>
                   <button type="button" class="row-del" data-del-closure="${c.id}">ลบ</button>
                 </td>
               </tr>`).join('')}
@@ -2711,6 +2712,50 @@ function bindDashboardEvents(){
       if(!confirm('ลบประวัติปิดบ่อนี้?')) return;
       const id = btn.getAttribute('data-del-closure');
       await db.collection('closures').doc(id).delete().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
+    };
+  });
+
+  document.querySelectorAll('[data-restore-closure]').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const id = btn.getAttribute('data-restore-closure');
+      const closure = state.closures.find(c=>c.id===id);
+      if(!closure) return;
+      if(!confirm(`กู้คืนบ่อ "${closure.pondName||''}"? ระบบจะย้อนกลับข้อมูลปิดบ่อนี้ และนำบ่อกลับไปกรอกข้อมูลรายสัปดาห์ต่อได้เหมือนเดิม`)) return;
+
+      const batch = state.batches
+        .filter(b=>b.pondId===closure.pondId)
+        .sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''))[0];
+
+      const pondData = batch ? {
+        name: batch.pondName||closure.pondName||'', farmId: batch.farmId||closure.farmId||'',
+        species: batch.species||'', brand: batch.brand||'',
+        releaseCount: batch.releaseCount||null, releaseDate: batch.releaseDate||'',
+        pathogenHistory: batch.pathogenHistory||[],
+      } : {
+        name: closure.pondName||'', farmId: closure.farmId||'',
+        species: closure.species||'', brand: '',
+        releaseCount: closure.releaseCount||null, releaseDate: '',
+        pathogenHistory: [],
+      };
+
+      const restoreBatch = db.batch();
+      restoreBatch.set(db.collection('ponds').doc(closure.pondId), pondData);
+      (batch ? batch.records||[] : []).forEach(r=>{
+        restoreBatch.set(db.collection('records').doc(), { pondId: closure.pondId, ...r });
+      });
+      (batch ? batch.harvests||[] : []).forEach(h=>{
+        restoreBatch.set(db.collection('harvests').doc(), { pondId: closure.pondId, ...h });
+      });
+      if(batch) restoreBatch.delete(db.collection('batches').doc(batch.id));
+      restoreBatch.delete(db.collection('closures').doc(closure.id));
+
+      try{
+        await restoreBatch.commit();
+      }catch(e){ alert('กู้คืนไม่สำเร็จ: '+e.message); return; }
+      currentPondId = closure.pondId;
+      currentFarmId = closure.farmId || 'overview';
+      render();
     };
   });
 
