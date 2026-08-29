@@ -484,7 +484,12 @@
     font-weight:700; font-size:13px; cursor:pointer; flex:none;
   }
 
-  @media (max-width:380px){ .field-row{ flex-direction:column; } }
+  @media (max-width:380px){
+    .field-row{ flex-direction:column; }
+    .field-row > .field,
+    .field-row > .field:has(input[type=number]),
+    .field-row > .field:has(input[type=date]){ flex:0 0 auto; }
+  }
 
   .login-wrap{
     min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
