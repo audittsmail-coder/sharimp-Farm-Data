@@ -94,6 +94,7 @@
   }
   .topbar h1{ font-size:19.5px; margin:0; color:#fff; flex:1; letter-spacing:.1px; }
   .topbar .sub{ font-size:11.5px; color:rgba(255,255,255,.8); margin-top:2px; font-weight:500; }
+  .topbar .sub-highlight{ color:var(--orange); font-weight:700; }
 
   .weather-banner{
     background:linear-gradient(155deg, var(--teal-600) 0%, var(--teal-700) 65%, #0E3049 100%);
@@ -1014,7 +1015,7 @@ function render(){
         <div class="wave">${ICONS.wave}</div>
         <div style="flex:1; min-width:0;">
           <h1>บันทึกสุ่มกุ้งอนันต์ฟาร์ม</h1>
-          <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม · กุ้งขาว ${whiteShrimpPondCount} บ่อ · กุ้งดำ ${blackTigerPondCount} บ่อ · รวม ${totalPondCount} บ่อ</div>
+          <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม · <span class="sub-highlight">กุ้งขาว ${whiteShrimpPondCount} บ่อ · กุ้งดำ ${blackTigerPondCount} บ่อ · รวม ${totalPondCount} บ่อ</span></div>
         </div>
         <button class="icon-btn" id="btn-settings" title="ตั้งค่า">${ICONS.gear}</button>
       </div>
