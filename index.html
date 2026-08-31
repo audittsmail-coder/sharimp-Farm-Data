@@ -45,6 +45,8 @@
     --line:#1E3A4E;
     --line-soft:#17293A;
     --danger:#E2695A;
+    --slate:#9BA3AC;
+    --slate-hi:#B0B8C0;
     --radius-sm:0;
     --radius:0;
     --radius-lg:0;
@@ -409,31 +411,31 @@
   #app.harvest-mode table.rec-table td{ border-bottom-color:#212A58; }
   #app.harvest-mode .back-btn{ background:#141A3D; }
 
-  /* Close-pond ("ปิดบ่อ") page: distinct dark-red backdrop + coral accent so it visually reads as a separate mode */
+  /* Close-pond ("ปิดบ่อ") page: distinct dark-slate backdrop + gray accent so it visually reads as a separate mode */
   .close-page{ display:contents; }
-  .close-page .back-btn{ color:var(--coral); border-color:rgba(232,129,95,.35); }
-  .close-page .pond-head h2{ color:var(--coral); }
-  .close-page .card h3{ color:var(--coral); }
-  .close-page .card{ border-color:rgba(232,129,95,.18); }
-  .close-page .btn-primary{ background:linear-gradient(135deg, var(--coral), #B85640); box-shadow:0 6px 16px rgba(232,129,95,.35); }
-  .close-page .btn-primary:hover{ box-shadow:0 8px 20px rgba(232,129,95,.45); }
+  .close-page .back-btn{ color:var(--slate-hi); border-color:rgba(155,163,172,.35); }
+  .close-page .pond-head h2{ color:var(--slate-hi); }
+  .close-page .card h3{ color:var(--slate-hi); }
+  .close-page .card{ border-color:rgba(155,163,172,.18); }
+  .close-page .btn-primary{ background:linear-gradient(135deg, var(--slate), #6B7480); box-shadow:0 6px 16px rgba(155,163,172,.35); }
+  .close-page .btn-primary:hover{ box-shadow:0 8px 20px rgba(155,163,172,.45); }
   .close-page .field input:focus, .close-page .field select:focus, .close-page .field textarea:focus{
-    border-color:var(--coral); box-shadow:0 0 0 3px rgba(232,129,95,.22);
+    border-color:var(--slate); box-shadow:0 0 0 3px rgba(155,163,172,.22);
   }
-  .close-page table.rec-table th{ color:var(--coral); opacity:.85; }
-  .close-page .form-section-label{ color:var(--coral); }
+  .close-page table.rec-table th{ color:var(--slate-hi); opacity:.85; }
+  .close-page .form-section-label{ color:var(--slate-hi); }
 
   #app.close-mode{
-    background:#1E0E0C;
-    background-image:radial-gradient(1200px 600px at 50% -10%, rgba(232,129,95,.10), transparent 60%);
+    background:#15181B;
+    background-image:radial-gradient(1200px 600px at 50% -10%, rgba(155,163,172,.08), transparent 60%);
   }
-  #app.close-mode .card{ background:#2A1512; }
+  #app.close-mode .card{ background:#22262B; }
   #app.close-mode .field input, #app.close-mode .field select, #app.close-mode .field textarea{
-    background:#331A16; border-color:#4A2620;
+    background:#2B3036; border-color:#454C54;
   }
-  #app.close-mode table.rec-table th{ border-bottom-color:#4A2620; }
-  #app.close-mode table.rec-table td{ border-bottom-color:#3A1F1A; }
-  #app.close-mode .back-btn{ background:#2A1512; }
+  #app.close-mode table.rec-table th{ border-bottom-color:#454C54; }
+  #app.close-mode table.rec-table td{ border-bottom-color:#383D43; }
+  #app.close-mode .back-btn{ background:#22262B; }
 
   .summary-strip{ display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; }
   .summary-box{
