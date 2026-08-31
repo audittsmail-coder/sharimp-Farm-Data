@@ -92,8 +92,8 @@
     width:30px; height:30px; flex:none; padding:5px; border-radius:0;
     background:rgba(255,255,255,.14);
   }
-  .topbar h1{ font-size:19.5px; margin:0; color:#fff; flex:1; letter-spacing:.1px; }
-  .topbar .sub{ font-size:11.5px; color:rgba(255,255,255,.8); margin-top:2px; font-weight:500; }
+  .topbar h1{ font-size:21.5px; margin:0; color:#fff; flex:1; letter-spacing:.1px; }
+  .topbar .sub{ font-size:12.5px; color:rgba(255,255,255,.8); margin-top:2px; font-weight:500; }
   .topbar .sub-highlight{ color:var(--orange); font-weight:700; }
 
   .weather-banner{
@@ -1013,7 +1013,7 @@ function render(){
       <div class="app-banner">ซิงก์ข้อมูลกับทีมแบบเรียลไทม์ · ใช้งานออฟไลน์ได้</div>
       <div class="topbar">
         <div class="wave">${ICONS.wave}</div>
-        <div style="flex:1; min-width:0;">
+        <div style="flex:1; min-width:0; text-align:center;">
           <h1>บันทึกสุ่มกุ้งอนันต์ฟาร์ม</h1>
           <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม · <span class="sub-highlight">กุ้งขาว ${whiteShrimpPondCount} บ่อ · กุ้งดำ ${blackTigerPondCount} บ่อ · รวม ${totalPondCount} บ่อ</span></div>
         </div>
