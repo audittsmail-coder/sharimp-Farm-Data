@@ -409,6 +409,32 @@
   #app.harvest-mode table.rec-table td{ border-bottom-color:#212A58; }
   #app.harvest-mode .back-btn{ background:#141A3D; }
 
+  /* Close-pond ("ปิดบ่อ") page: distinct dark-red backdrop + coral accent so it visually reads as a separate mode */
+  .close-page{ display:contents; }
+  .close-page .back-btn{ color:var(--coral); border-color:rgba(232,129,95,.35); }
+  .close-page .pond-head h2{ color:var(--coral); }
+  .close-page .card h3{ color:var(--coral); }
+  .close-page .card{ border-color:rgba(232,129,95,.18); }
+  .close-page .btn-primary{ background:linear-gradient(135deg, var(--coral), #B85640); box-shadow:0 6px 16px rgba(232,129,95,.35); }
+  .close-page .btn-primary:hover{ box-shadow:0 8px 20px rgba(232,129,95,.45); }
+  .close-page .field input:focus, .close-page .field select:focus, .close-page .field textarea:focus{
+    border-color:var(--coral); box-shadow:0 0 0 3px rgba(232,129,95,.22);
+  }
+  .close-page table.rec-table th{ color:var(--coral); opacity:.85; }
+  .close-page .form-section-label{ color:var(--coral); }
+
+  #app.close-mode{
+    background:#1E0E0C;
+    background-image:radial-gradient(1200px 600px at 50% -10%, rgba(232,129,95,.10), transparent 60%);
+  }
+  #app.close-mode .card{ background:#2A1512; }
+  #app.close-mode .field input, #app.close-mode .field select, #app.close-mode .field textarea{
+    background:#331A16; border-color:#4A2620;
+  }
+  #app.close-mode table.rec-table th{ border-bottom-color:#4A2620; }
+  #app.close-mode table.rec-table td{ border-bottom-color:#3A1F1A; }
+  #app.close-mode .back-btn{ background:#2A1512; }
+
   .summary-strip{ display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; }
   .summary-box{
     flex:1; min-width:78px; background:linear-gradient(150deg, var(--teal-500), var(--teal-700)); color:#fff;
@@ -1004,6 +1030,7 @@ function render(){
     return;
   }
   app.classList.toggle('harvest-mode', !!viewingHarvestPondId);
+  app.classList.toggle('close-mode', !!viewingClosePondId);
   try{
     const totalPondCount = state.ponds.length;
     const whiteShrimpPondCount = state.ponds.filter(p=>p.species===SPECIES_OPTIONS[0]).length;
@@ -1276,7 +1303,7 @@ function renderClosuresSummary(tabs){
       <h3>ประวัติการปิดบ่อทั้งหมด</h3>
       <div style="overflow-x:auto">
         <table class="rec-table">
-          <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>มูลค่า</th><th></th></tr></thead>
+          <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>มูลค่า</th><th>หมายเหตุ</th><th></th></tr></thead>
           <tbody>
             ${closures.map(c=>`
               <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" style="cursor:pointer;">
@@ -1291,6 +1318,7 @@ function renderClosuresSummary(tabs){
                 <td>${c.survivalRatePct!=null ? c.survivalRatePct.toFixed(1)+'%' : '-'}</td>
                 <td>${c.fcr!=null ? c.fcr.toFixed(2) : '-'}</td>
                 <td>${c.revenue!=null ? c.revenue.toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-'}</td>
+                <td>${c.note ? escapeHtml(c.note) : '-'}</td>
                 <td style="white-space:nowrap;">
                   <button type="button" class="action-btn" data-edit-closure="${c.id}">${ICONS.edit} แก้ไข</button>
                   <button type="button" class="action-btn" data-restore-closure="${c.id}">กู้คืนบ่อ</button>
@@ -1838,6 +1866,7 @@ function renderCloseForm(){
   const initialDoc = p.releaseDate ? daysBetween(p.releaseDate, todayISO()) : '';
 
   return `
+    <div class="close-page">
     <div class="backbar">
       <button class="back-btn" id="btn-back-close">${ICONS.back} กลับ</button>
     </div>
@@ -1908,6 +1937,10 @@ function renderCloseForm(){
               <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" id="close-feed" placeholder="เช่น 750">
             </div>
           </div>
+          <div class="field">
+            <label>หมายเหตุ (ถ้ามี)</label>
+            <input type="text" name="note" id="close-note" placeholder="เช่น น้ำเสีย, ลูกค้าพิเศษ">
+          </div>
 
           ${pondHarvests.length>0 ? `
           <div class="info-note">
@@ -1933,6 +1966,7 @@ function renderCloseForm(){
         <button class="back-btn" id="btn-back-close-bottom" type="button">${ICONS.back} กลับ</button>
       </div>
     </main>
+    </div>
   `;
 }
 
@@ -2068,6 +2102,10 @@ function renderClosureEditForm(){
               <label>อาหารรวมทั้งหมด (กก.)</label>
               <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" id="close-edit-feed" placeholder="เช่น 750" value="${c.totalFeedKg!=null?c.totalFeedKg:''}">
             </div>
+          </div>
+          <div class="field">
+            <label>หมายเหตุ (ถ้ามี)</label>
+            <input type="text" name="note" id="close-edit-note" placeholder="เช่น น้ำเสีย, ลูกค้าพิเศษ" value="${escapeHtml(c.note||'')}">
           </div>
 
           <div class="calc-box">
@@ -2940,6 +2978,7 @@ function bindDashboardEvents(){
       const pricePerKg = fd.get('pricePerKg') ? parseFloat(fd.get('pricePerKg')) : null;
       const weightKg = fd.get('weightKg') ? parseFloat(fd.get('weightKg')) : null;
       const totalFeedKg = fd.get('totalFeedKg') ? parseFloat(fd.get('totalFeedKg')) : null;
+      const note = (fd.get('note')||'').trim();
 
       const thisCaughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
       const totalCaughtCount = (thisCaughtCount!==null || priorCaughtCount) ? priorCaughtCount + (thisCaughtCount||0) : null;
@@ -2952,7 +2991,7 @@ function bindDashboardEvents(){
       const data = {
         pondId: pond.id, farmId: pond.farmId,
         closeDate, doc, farmName, pondName, releaseCount, species, hatchery,
-        sizeCount, pricePerKg, weightKg: totalWeightKg, totalFeedKg,
+        sizeCount, pricePerKg, weightKg: totalWeightKg, totalFeedKg, note,
         caughtCount: totalCaughtCount, survivalRatePct, fcr, revenue: totalRevenue,
         createdAt: Date.now(),
       };
@@ -3012,6 +3051,7 @@ function bindDashboardEvents(){
       const pricePerKg = fd.get('pricePerKg') ? parseFloat(fd.get('pricePerKg')) : null;
       const weightKg = fd.get('weightKg') ? parseFloat(fd.get('weightKg')) : null;
       const totalFeedKg = fd.get('totalFeedKg') ? parseFloat(fd.get('totalFeedKg')) : null;
+      const note = (fd.get('note')||'').trim();
 
       const caughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
       const survivalRatePct = (caughtCount!==null && releaseCount) ? (caughtCount / releaseCount * 100) : null;
@@ -3020,7 +3060,7 @@ function bindDashboardEvents(){
 
       const data = {
         closeDate, doc, farmName, pondName, releaseCount, species, hatchery,
-        sizeCount, pricePerKg, weightKg, totalFeedKg,
+        sizeCount, pricePerKg, weightKg, totalFeedKg, note,
         caughtCount, survivalRatePct, fcr, revenue,
       };
       try{
