@@ -1004,6 +1004,9 @@ function render(){
   }
   app.classList.toggle('harvest-mode', !!viewingHarvestPondId);
   try{
+    const totalPondCount = state.ponds.length;
+    const whiteShrimpPondCount = state.ponds.filter(p=>p.species===SPECIES_OPTIONS[0]).length;
+    const blackTigerPondCount = state.ponds.filter(p=>p.species===SPECIES_OPTIONS[1]).length;
     let html = `
       ${weatherBannerHtml()}
       <div class="app-banner">ซิงก์ข้อมูลกับทีมแบบเรียลไทม์ · ใช้งานออฟไลน์ได้</div>
@@ -1011,7 +1014,7 @@ function render(){
         <div class="wave">${ICONS.wave}</div>
         <div style="flex:1; min-width:0;">
           <h1>บันทึกสุ่มกุ้งอนันต์ฟาร์ม</h1>
-          <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม</div>
+          <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม · กุ้งขาว ${whiteShrimpPondCount} บ่อ · กุ้งดำ ${blackTigerPondCount} บ่อ · รวม ${totalPondCount} บ่อ</div>
         </div>
         <button class="icon-btn" id="btn-settings" title="ตั้งค่า">${ICONS.gear}</button>
       </div>
