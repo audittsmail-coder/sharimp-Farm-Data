@@ -131,11 +131,11 @@
   }
   .wb-manual-row button:hover, .wb-manual-edit-actions button:hover{ background:rgba(255,255,255,.26); }
   .wb-manual-edit{ margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.14); }
-  .wb-manual-edit input{
+  .wb-manual-edit input, .wb-manual-edit select{
     display:block; width:100%; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3); color:#fff;
     font-size:13px; padding:8px 10px; font-family:inherit; border-radius:0; color-scheme:dark;
   }
-  .wb-manual-edit input + input{ margin-top:8px; }
+  .wb-manual-edit input + input, .wb-manual-edit input + select, .wb-manual-edit select + input, .wb-manual-edit select + select{ margin-top:8px; }
   .wb-manual-edit input::placeholder{ color:rgba(255,255,255,.5); }
   .wb-manual-edit-actions{ display:flex; gap:8px; margin-top:8px; }
   .wb-manual-edit-actions button:first-child{ background:rgba(255,255,255,.92); color:var(--teal-700); border-color:transparent; }
@@ -590,6 +590,7 @@ const SPECIES_OPTIONS = ['กุ้งขาว (Vannamei)','กุ้งกุ�
 
 /* ---------------- Weather ---------------- */
 const WEATHER_API_URL = 'https://api.open-meteo.com/v1/forecast?latitude=7.9514&longitude=98.9978&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,rain,precipitation,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FBangkok&forecast_days=7';
+const WEATHER_NOTE_OPTIONS = ['แดดจัด','แดดปกติ','มืดครึ้ม','ฝนปรอย','ฝนตกหนัก','ฝนตกทั้งวัน','ลมแรง','อากาศเย็น','อื่นๆ (ระบุเอง)'];
 const WEATHER_LOCATION_LABEL = 'กระบี่';
 const WEATHER_CACHE_KEY = 'shrimpfarm_weather_cache_v1';
 const WEATHER_CODE_MAP = {
@@ -670,10 +671,19 @@ function weatherManualNoteHtml(){
   if(editingWeatherNote){
     const editDate = editingWeatherNoteDate || todayISO();
     const noteForDate = weatherNotesByDate[editDate];
+    const existingText = noteForDate ? (noteForDate.note||'') : '';
+    const presetOptions = WEATHER_NOTE_OPTIONS.slice(0, -1);
+    const otherOption = WEATHER_NOTE_OPTIONS[WEATHER_NOTE_OPTIONS.length-1];
+    const isPreset = presetOptions.includes(existingText);
+    const selectedValue = existingText === '' ? '' : (isPreset ? existingText : otherOption);
     return `
       <div class="wb-manual-edit">
         <input type="date" id="weather-note-date" max="${todayISO()}" value="${editDate}">
-        <input type="text" id="weather-note-input" placeholder="เช่น ฝนตกหนัก, แดดจัด" maxlength="80" value="${escapeHtml(noteForDate ? (noteForDate.note||'') : '')}">
+        <select id="weather-note-select">
+          <option value="" ${selectedValue===''?'selected':''}>-- เลือกสภาพอากาศ --</option>
+          ${WEATHER_NOTE_OPTIONS.map(opt=>`<option value="${escapeHtml(opt)}" ${selectedValue===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('')}
+        </select>
+        <input type="text" id="weather-note-custom" placeholder="ระบุสภาพอากาศเอง" maxlength="80" value="${escapeHtml(selectedValue===otherOption ? existingText : '')}" style="${selectedValue===otherOption ? '' : 'display:none;'}">
         <div class="wb-manual-edit-actions">
           <button type="button" id="btn-save-weather-note">บันทึก</button>
           <button type="button" id="btn-cancel-weather-note">ยกเลิก</button>
@@ -2640,11 +2650,13 @@ function bindDashboardEvents(){
   if(btnCancelWeatherNote) btnCancelWeatherNote.onclick = ()=>{ editingWeatherNote = false; editingWeatherNoteDate = null; render(); };
 
   const saveWeatherNote = async ()=>{
-    const input = document.getElementById('weather-note-input');
+    const select = document.getElementById('weather-note-select');
+    const customInput = document.getElementById('weather-note-custom');
     const dateInput = document.getElementById('weather-note-date');
-    if(!input) return;
+    if(!select) return;
     const date = (dateInput && dateInput.value) ? dateInput.value : todayISO();
-    const text = input.value.trim();
+    const otherOption = WEATHER_NOTE_OPTIONS[WEATHER_NOTE_OPTIONS.length-1];
+    const text = (select.value === otherOption) ? (customInput ? customInput.value.trim() : '') : select.value.trim();
     try{
       if(text){
         await db.collection('weatherNotes').doc(date).set({ note: text, updatedAt: Date.now() });
@@ -2663,11 +2675,21 @@ function bindDashboardEvents(){
     editingWeatherNoteDate = weatherNoteDateInput.value || todayISO();
     render();
   };
-  const weatherNoteInput = document.getElementById('weather-note-input');
-  if(weatherNoteInput){
-    weatherNoteInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') saveWeatherNote(); });
-    weatherNoteInput.focus();
-    weatherNoteInput.setSelectionRange(weatherNoteInput.value.length, weatherNoteInput.value.length);
+  const weatherNoteSelect = document.getElementById('weather-note-select');
+  const weatherNoteCustom = document.getElementById('weather-note-custom');
+  if(weatherNoteSelect && weatherNoteCustom){
+    weatherNoteSelect.onchange = ()=>{
+      const otherOption = WEATHER_NOTE_OPTIONS[WEATHER_NOTE_OPTIONS.length-1];
+      if(weatherNoteSelect.value === otherOption){
+        weatherNoteCustom.style.display = '';
+        weatherNoteCustom.focus();
+      } else {
+        weatherNoteCustom.style.display = 'none';
+      }
+    };
+  }
+  if(weatherNoteCustom){
+    weatherNoteCustom.addEventListener('keydown', (e)=>{ if(e.key==='Enter') saveWeatherNote(); });
   }
 
   const marketPriceForm = document.getElementById('market-price-form');
