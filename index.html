@@ -132,9 +132,10 @@
   .wb-manual-row button:hover, .wb-manual-edit-actions button:hover{ background:rgba(255,255,255,.26); }
   .wb-manual-edit{ margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.14); }
   .wb-manual-edit input{
-    width:100%; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3); color:#fff;
-    font-size:13px; padding:8px 10px; font-family:inherit; border-radius:0;
+    display:block; width:100%; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3); color:#fff;
+    font-size:13px; padding:8px 10px; font-family:inherit; border-radius:0; color-scheme:dark;
   }
+  .wb-manual-edit input + input{ margin-top:8px; }
   .wb-manual-edit input::placeholder{ color:rgba(255,255,255,.5); }
   .wb-manual-edit-actions{ display:flex; gap:8px; margin-top:8px; }
   .wb-manual-edit-actions button:first-child{ background:rgba(255,255,255,.92); color:var(--teal-700); border-color:transparent; }
@@ -667,9 +668,12 @@ function initWeather(){
 function weatherManualNoteHtml(){
   const todayNote = todayWeatherNoteVal();
   if(editingWeatherNote){
+    const editDate = editingWeatherNoteDate || todayISO();
+    const noteForDate = weatherNotesByDate[editDate];
     return `
       <div class="wb-manual-edit">
-        <input type="text" id="weather-note-input" placeholder="เช่น ฝนตกหนัก, แดดจัด" maxlength="80" value="${escapeHtml(todayNote ? (todayNote.note||'') : '')}">
+        <input type="date" id="weather-note-date" max="${todayISO()}" value="${editDate}">
+        <input type="text" id="weather-note-input" placeholder="เช่น ฝนตกหนัก, แดดจัด" maxlength="80" value="${escapeHtml(noteForDate ? (noteForDate.note||'') : '')}">
         <div class="wb-manual-edit-actions">
           <button type="button" id="btn-save-weather-note">บันทึก</button>
           <button type="button" id="btn-cancel-weather-note">ยกเลิก</button>
@@ -727,6 +731,7 @@ let editingClosureId = null;
 let showSettingsSheet = false;
 let showDeleteAllConfirm = false;
 let editingWeatherNote = false;
+let editingWeatherNoteDate = null;
 let showBulkPriceImport = false;
 let marketPriceChartSize = null;
 let bulkPriceImportResultHtml = '';
@@ -2629,27 +2634,35 @@ function bindDashboardEvents(){
   });
 
   const btnEditWeatherNote = document.getElementById('btn-edit-weather-note');
-  if(btnEditWeatherNote) btnEditWeatherNote.onclick = ()=>{ editingWeatherNote = true; render(); };
+  if(btnEditWeatherNote) btnEditWeatherNote.onclick = ()=>{ editingWeatherNote = true; editingWeatherNoteDate = todayISO(); render(); };
 
   const btnCancelWeatherNote = document.getElementById('btn-cancel-weather-note');
-  if(btnCancelWeatherNote) btnCancelWeatherNote.onclick = ()=>{ editingWeatherNote = false; render(); };
+  if(btnCancelWeatherNote) btnCancelWeatherNote.onclick = ()=>{ editingWeatherNote = false; editingWeatherNoteDate = null; render(); };
 
   const saveWeatherNote = async ()=>{
     const input = document.getElementById('weather-note-input');
+    const dateInput = document.getElementById('weather-note-date');
     if(!input) return;
+    const date = (dateInput && dateInput.value) ? dateInput.value : todayISO();
     const text = input.value.trim();
     try{
       if(text){
-        await db.collection('weatherNotes').doc(todayISO()).set({ note: text, updatedAt: Date.now() });
+        await db.collection('weatherNotes').doc(date).set({ note: text, updatedAt: Date.now() });
       } else {
-        await db.collection('weatherNotes').doc(todayISO()).delete();
+        await db.collection('weatherNotes').doc(date).delete();
       }
     }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
     editingWeatherNote = false;
+    editingWeatherNoteDate = null;
     render();
   };
   const btnSaveWeatherNote = document.getElementById('btn-save-weather-note');
   if(btnSaveWeatherNote) btnSaveWeatherNote.onclick = saveWeatherNote;
+  const weatherNoteDateInput = document.getElementById('weather-note-date');
+  if(weatherNoteDateInput) weatherNoteDateInput.onchange = ()=>{
+    editingWeatherNoteDate = weatherNoteDateInput.value || todayISO();
+    render();
+  };
   const weatherNoteInput = document.getElementById('weather-note-input');
   if(weatherNoteInput){
     weatherNoteInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') saveWeatherNote(); });
