@@ -361,12 +361,14 @@
 
   .pond-head{ margin-bottom:4px; }
   .pond-head h2{ font-size:22px; margin:0; color:var(--heading); }
-  .meta-row{ display:flex; flex-wrap:wrap; align-items:baseline; margin-top:12px; font-size:13.5px; color:var(--ink); }
-  .meta-item{ font-weight:600; white-space:nowrap; }
-  .meta-item.coral{ color:var(--coral); }
-  .meta-item.amber{ color:var(--amber); }
-  .meta-item.good{ color:var(--teal-400); }
-  .meta-dot{ margin:0 9px; color:var(--ink-faint); font-weight:400; }
+  .meta-row{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px; color:var(--ink); }
+  .meta-item{
+    font-weight:600; font-size:14.5px; white-space:nowrap;
+    border:1px solid var(--line); background:var(--surface-soft); padding:5px 11px; border-radius:0;
+  }
+  .meta-item.coral{ color:var(--coral); border-color:rgba(232,129,95,.35); }
+  .meta-item.amber{ color:var(--amber); border-color:rgba(239,183,83,.35); }
+  .meta-item.good{ color:var(--teal-400); border-color:rgba(82,183,224,.35); }
 
   .pathogen-chip{
     display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:0;
@@ -988,7 +990,7 @@ function metaRowHtml(items){
   if(valid.length === 0) return '';
   return `
     <div class="meta-row">
-      ${valid.map((it,i)=>`${i>0 ? '<span class="meta-dot">·</span>' : ''}<span class="meta-item ${it.cls||''}">${it.text}</span>`).join('')}
+      ${valid.map(it=>`<span class="meta-item ${it.cls||''}">${it.text}</span>`).join('')}
     </div>`;
 }
 function computeAdgForPond(p, recs){
