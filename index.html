@@ -163,6 +163,7 @@
   @keyframes viewIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:translateY(0);} }
 
   .farm-tabs{ display:flex; flex-wrap:wrap; gap:8px; padding:14px 16px 4px 16px; }
+  .farm-tabs-break{ flex-basis:100%; height:0; }
   .farm-tab{
     flex:none; padding:8px 15px; border-radius:0; border:1px solid var(--line);
     background:var(--surface); color:var(--ink-soft); font-size:13.5px; font-weight:500;
@@ -1120,6 +1121,7 @@ function renderFarmDashboard(){
     state.farms.map(f => `
     <button class="farm-tab ${f.id===currentFarmId?'active':''}" data-farm="${f.id}">${escapeHtml(f.name)}</button>
   `).join('') +
+    `<span class="farm-tabs-break"></span>` +
     `<button class="farm-tab ${currentFarmId==='marketprice'?'active':''}" data-farm="marketprice">ราคาตลาด</button>` +
     `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>`;
 
