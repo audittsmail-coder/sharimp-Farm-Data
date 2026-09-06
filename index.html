@@ -1123,6 +1123,7 @@ function renderFarmDashboard(){
   `).join('') +
     `<span class="farm-tabs-break"></span>` +
     `<button class="farm-tab ${currentFarmId==='marketprice'?'active':''}" data-farm="marketprice">ราคาตลาด</button>` +
+    `<span class="farm-tabs-break"></span>` +
     `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>`;
 
   if(currentFarmId === 'overview') return renderOverviewDashboard(tabs);
