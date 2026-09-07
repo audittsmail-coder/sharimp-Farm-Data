@@ -524,18 +524,6 @@
 
   .app-version{ font-size:11px; color:var(--ink-faint); margin-top:10px; }
 
-  .update-toast{
-    position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom)); max-width:696px; margin:0 auto;
-    background:linear-gradient(135deg, var(--teal-500), var(--teal-700)); color:#fff; padding:13px 15px; border-radius:var(--radius);
-    box-shadow:var(--shadow-lg); display:flex; align-items:center; gap:10px; font-size:13.5px; z-index:50;
-    animation:toastIn .3s var(--ease);
-  }
-  @keyframes toastIn{ from{ opacity:0; transform:translateY(12px);} to{ opacity:1; transform:translateY(0);} }
-  .update-toast button{
-    background:#fff; color:var(--teal-700); border:none; border-radius:var(--radius-sm); padding:9px 14px;
-    font-weight:700; font-size:13px; cursor:pointer; flex:none;
-  }
-
   @media (max-width:380px){
     .field-row{ flex-direction:column; }
     .field-row > .field,
@@ -3385,7 +3373,6 @@ initWeather();
 /* ---------------- PWA: service worker registration + auto-update ---------------- */
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    const hadController = !!navigator.serviceWorker.controller;
     // Stamp the registration URL with the build version. Some browsers are
     // unreliable about byte-comparing a static './sw.js' URL to notice an
     // update (can silently keep an old worker in control indefinitely,
@@ -3398,27 +3385,8 @@ if('serviceWorker' in navigator){
       document.addEventListener('visibilitychange', ()=>{
         if(document.visibilityState === 'visible') reg.update();
       });
-      reg.addEventListener('updatefound', ()=>{
-        const newWorker = reg.installing;
-        if(!newWorker) return;
-        newWorker.addEventListener('statechange', ()=>{
-          if(newWorker.state === 'activated' && hadController){
-            showUpdateToast();
-          }
-        });
-      });
     }).catch((e)=>console.warn('Service worker registration failed', e));
   });
-}
-
-function showUpdateToast(){
-  if(document.getElementById('update-toast')) return;
-  const toast = document.createElement('div');
-  toast.id = 'update-toast';
-  toast.className = 'update-toast';
-  toast.innerHTML = `<span style="flex:1">มีอัปเดตเวอร์ชันใหม่ของแอป</span><button id="update-toast-btn">โหลดใหม่</button>`;
-  document.body.appendChild(toast);
-  document.getElementById('update-toast-btn').onclick = ()=>location.reload();
 }
 </script>
 </body>
