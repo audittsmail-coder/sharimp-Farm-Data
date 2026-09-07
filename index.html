@@ -332,6 +332,7 @@
   .field label .info-hint{ color:var(--ink-faint); font-weight:400; cursor:help; }
 
   .stats-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:22px 26px; }
+  .stats-group-full{ grid-column:1 / -1; }
   .stats-group-title{ font-size:11px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; display:flex; align-items:center; gap:7px; }
   .stats-group-title::before{ content:''; width:9px; height:9px; background:linear-gradient(135deg, var(--teal-400), var(--teal-600)); flex:none; }
   .dist-bars{ display:flex; flex-direction:column; gap:8px; }
@@ -992,7 +993,7 @@ function sizeCompareStats(closures){
   });
   return { smallWeight, smallCount, bigWeight, bigCount };
 }
-function sizeCompareCardHtml(closures){
+function sizeCompareGroupHtml(closures){
   const { smallWeight, smallCount, bigWeight, bigCount } = sizeCompareStats(closures);
   if(smallCount === 0 && bigCount === 0) return '';
   const maxW = Math.max(smallWeight, bigWeight, 1);
@@ -1007,9 +1008,8 @@ function sizeCompareCardHtml(closures){
     verdictHtml = `<div class="sc-verdict">🏆 ไซส์${winnerIsSmall?'เล็ก':'ใหญ่'}ให้ผลผลิตมากกว่า ${diffPct.toFixed(0)}% (${winW.toLocaleString('th-TH',{maximumFractionDigits:0})} กก. เทียบกับ ${loseW.toLocaleString('th-TH',{maximumFractionDigits:0})} กก.)</div>`;
   }
   return `
-    <div class="card">
-      <h3 style="margin:0 0 4px;">เปรียบเทียบผลผลิต: ไซส์เล็ก vs ไซส์ใหญ่</h3>
-      <p style="color:var(--ink-faint); font-size:12px; margin:0 0 16px;">น้ำหนักรวมที่จับได้ แบ่งตามช่วงไซส์กุ้ง (ตัว/กก.)</p>
+    <div class="stats-group stats-group-full">
+      <div class="stats-group-title">เปรียบเทียบผลผลิต: ไซส์เล็ก vs ไซส์ใหญ่</div>
       <div class="size-compare-grid">
         <div class="sc-tile">
           <div class="sc-label sc-small">ไซส์เล็ก · 70-100 ตัว/กก.</div>
@@ -1375,7 +1375,8 @@ function renderClosuresSummary(tabs){
         distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
         distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
         distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
-        distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate)));
+        distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate))) +
+        sizeCompareGroupHtml(closures);
       statsHtml = `
         <div class="card">
           <div class="farm-title-row" style="margin-bottom:14px;">
@@ -1402,7 +1403,6 @@ function renderClosuresSummary(tabs){
       <p>เมื่อกด "ปิดบ่อ" แล้วบันทึกข้อมูลจากหน้ารายละเอียดบ่อ รายการจะมาแสดงที่นี่</p>
     </div>` : `
     ${statsHtml}
-    ${sizeCompareCardHtml(closures)}
     <div class="card">
       <h3>ประวัติการปิดบ่อทั้งหมด</h3>
       <div style="overflow-x:auto">
