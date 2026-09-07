@@ -977,10 +977,11 @@ function buildDistribution(closures, labelFn){
     .sort((a,b)=> b.count-a.count);
 }
 const SIZE_COMPARE_BUCKETS = [
-  { min:80, max:100, label:'80-100 ตัว/กก.' },
-  { min:60, max:79,  label:'60-79 ตัว/กก.'  },
-  { min:40, max:59,  label:'40-59 ตัว/กก.'  },
-  { min:20, max:39,  label:'20-39 ตัว/กก.'  },
+  { min:101, max:120, label:'100-120 ตัว/กก.' },
+  { min:80,  max:100, label:'80-100 ตัว/กก.'  },
+  { min:60,  max:79,  label:'60-79 ตัว/กก.'   },
+  { min:40,  max:59,  label:'40-59 ตัว/กก.'   },
+  { min:20,  max:39,  label:'20-39 ตัว/กก.'   },
 ];
 function sizeCompareStats(closures){
   const stats = SIZE_COMPARE_BUCKETS.map(b => ({ ...b, weight:0, count:0 }));
