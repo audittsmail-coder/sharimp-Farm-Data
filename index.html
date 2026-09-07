@@ -337,22 +337,30 @@
   @media (max-width:700px){ .stats-group-full.sc-compare{ max-width:100%; } }
   .stats-group-title{ font-size:11px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; margin-bottom:10px; display:flex; align-items:center; gap:7px; }
   .stats-group-title::before{ content:''; width:9px; height:9px; background:linear-gradient(135deg, var(--teal-400), var(--teal-600)); flex:none; }
-  .pie-row{ display:flex; align-items:center; gap:16px; }
-  .pie-chart{ flex:none; }
-  .pie-chart svg{ display:block; animation:pieIn .5s var(--ease) backwards; }
-  @keyframes pieIn{ from{ opacity:0; transform:scale(.7); } }
-  .pie-legend{ display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-width:0; }
-  .pie-legend-row{ display:flex; align-items:center; gap:7px; }
-  .pie-dot{ width:9px; height:9px; flex:none; }
-  .pie-legend-label{
-    flex:1 1 auto; min-width:0; font-size:12px; font-weight:600; color:var(--ink);
+  .dist-bars{ display:flex; flex-direction:column; gap:8px; }
+  .dist-bar-row{ display:flex; align-items:center; gap:10px; }
+  .dist-bar-label{
+    flex:0 0 auto; width:36%; max-width:130px; font-size:12px; font-weight:600; color:var(--ink);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  .pie-legend-val{ flex:none; font-family:'Taviraj',serif; font-weight:700; font-size:13px; color:var(--heading); white-space:nowrap; }
-  .pie-legend-count{ font-family:inherit; font-weight:400; font-size:9.5px; color:var(--ink-faint); margin-left:2px; }
-  .sc-compare .pie-legend-label{ font-size:11px; font-weight:500; }
-  .sc-compare .pie-legend-val{ font-size:11.5px; }
-  .sc-verdict{ margin-top:12px; padding:7px 10px; background:var(--surface-soft); color:var(--ink-soft); font-size:11px; font-weight:500; text-align:center; }
+  .dist-bar-track{ flex:1 1 auto; height:20px; background:var(--surface-soft); position:relative; overflow:hidden; }
+  .dist-bar-fill{ height:100%; animation:growBar .7s var(--ease) backwards; position:relative; }
+  .dist-bar-fill::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0));
+  }
+  .dist-bar-fill.rank-0{ background:linear-gradient(90deg, var(--teal-600), var(--teal-400)); }
+  .dist-bar-fill.rank-1{ background:linear-gradient(90deg, var(--orange), var(--orange-hi)); }
+  .dist-bar-fill.rank-2{ background:var(--slate-hi); opacity:.8; }
+  .dist-bar-fill.rank-3plus{ background:var(--slate); opacity:.6; }
+  .dist-bar-meta{ flex:0 0 auto; font-family:'Taviraj',serif; font-weight:700; font-size:13.5px; color:var(--heading); min-width:42px; text-align:right; }
+  .dist-bar-count{ font-family:inherit; font-weight:400; font-size:9.5px; color:var(--ink-faint); margin-left:2px; }
+  @keyframes growBar{ from{ width:0; } }
+
+  .sc-compare .dist-bar-track{ height:13px; }
+  .sc-compare .dist-bar-label{ font-size:11px; font-weight:500; }
+  .sc-bar-meta{ flex:0 0 auto; font-family:'Taviraj',serif; font-weight:600; font-size:11.5px; color:var(--ink); min-width:86px; text-align:right; white-space:nowrap; }
+  .sc-verdict{ margin-top:10px; padding:7px 10px; background:var(--surface-soft); color:var(--ink-soft); font-size:11px; font-weight:500; text-align:center; }
 
   .btn{ border:none; border-radius:var(--radius-sm); padding:12px 16px; font-size:14px; font-weight:600; cursor:pointer; transition:transform .12s var(--ease), background .15s var(--ease), opacity .15s var(--ease); }
   .btn-sm{ padding:8px 16px; font-size:15.5px; }
@@ -972,60 +980,31 @@ function sizeCompareStats(closures){
   });
   return stats;
 }
-const PIE_COLORS = ['#4FC3F7','#FFB74D','#F06292','#81C784','#BA68C8','#FFD54F','#4DB6AC','#E57373'];
-function pieColor(i){ return PIE_COLORS[i % PIE_COLORS.length]; }
-function donutChartSvg(items, size){
-  size = size || 96;
-  const r = 40, cx = 50, cy = 50, strokeWidth = 18;
-  const circumference = 2 * Math.PI * r;
-  let offset = 0;
-  const segs = items.map((it,i)=>{
-    const len = (it.pct/100) * circumference;
-    const dasharray = `${len.toFixed(2)} ${(circumference-len).toFixed(2)}`;
-    const dashoffset = (-offset).toFixed(2);
-    offset += len;
-    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${pieColor(i)}" stroke-width="${strokeWidth}" stroke-dasharray="${dasharray}" stroke-dashoffset="${dashoffset}" />`;
-  }).join('');
-  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" style="transform:rotate(-90deg)">${segs}</svg>`;
-}
-function pieGroupHtml(title, items, opts){
-  opts = opts || {};
-  if(!items || items.length === 0) return '';
-  const metaFn = opts.metaFn || (it => `${it.pct.toFixed(0)}%<span class="pie-legend-count">(${it.count})</span>`);
-  const groupClass = ['stats-group'].concat(opts.extraClass ? [opts.extraClass] : []).join(' ');
-  return `
-    <div class="${groupClass}">
-      <div class="stats-group-title">${escapeHtml(title)}</div>
-      <div class="pie-row">
-        <div class="pie-chart">${donutChartSvg(items, opts.size)}</div>
-        <div class="pie-legend">
-          ${items.map((it,i)=>`
-            <div class="pie-legend-row">
-              <span class="pie-dot" style="background:${pieColor(i)}"></span>
-              <span class="pie-legend-label" title="${escapeHtml(it.label)}">${escapeHtml(it.label)}</span>
-              <span class="pie-legend-val">${metaFn(it)}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-      ${opts.footerHtml || ''}
-    </div>`;
-}
 function sizeCompareGroupHtml(closures){
   const stats = sizeCompareStats(closures).filter(b => b.count > 0);
   if(stats.length === 0) return '';
   const sorted = stats.slice().sort((a,b)=> b.weight-a.weight);
-  const totalW = sorted.reduce((sum,b)=>sum+b.weight, 0) || 1;
-  const items = sorted.map(b => ({ label:b.label, pct: b.weight/totalW*100, count:b.count, weight:b.weight }));
+  const maxW = sorted[0].weight || 1;
+  const rankClass = i => i===0 ? 'rank-0' : i===1 ? 'rank-1' : i===2 ? 'rank-2' : 'rank-3plus';
   const verdictHtml = sorted.length > 1
     ? `<div class="sc-verdict">🏆 ช่วงไซส์ ${escapeHtml(sorted[0].label)} ให้ผลผลิตมากที่สุด (${sorted[0].weight.toLocaleString('th-TH',{maximumFractionDigits:0})} กก.)</div>`
     : '';
-  return pieGroupHtml('เปรียบเทียบผลผลิตตามช่วงไซส์ (น้ำหนักรวมที่จับได้)', items, {
-    size: 72,
-    extraClass: 'stats-group-full sc-compare',
-    metaFn: it => `${it.weight.toLocaleString('th-TH',{maximumFractionDigits:0})} กก.<span class="pie-legend-count">(${it.count} รุ่น)</span>`,
-    footerHtml: verdictHtml,
-  });
+  return `
+    <div class="stats-group stats-group-full sc-compare">
+      <div class="stats-group-title">เปรียบเทียบผลผลิตตามช่วงไซส์ (น้ำหนักรวมที่จับได้)</div>
+      <div class="dist-bars">
+        ${sorted.map((b,i)=>`
+          <div class="dist-bar-row">
+            <div class="dist-bar-label" title="${escapeHtml(b.label)}">${escapeHtml(b.label)}</div>
+            <div class="dist-bar-track">
+              <div class="dist-bar-fill ${rankClass(i)}" style="width:${b.weight/maxW*100}%"></div>
+            </div>
+            <div class="sc-bar-meta">${b.weight.toLocaleString('th-TH',{maximumFractionDigits:0})} กก.<span class="dist-bar-count">(${b.count} รุ่น)</span></div>
+          </div>
+        `).join('')}
+      </div>
+      ${verdictHtml}
+    </div>`;
 }
 
 /* ---------------- Pathogen results (written by the weekly culture-log app) ---------------- */
@@ -1344,7 +1323,23 @@ function renderOverviewDashboard(tabs){
 }
 
 function distributionCardHtml(title, items){
-  return pieGroupHtml(title, items);
+  if(!items || items.length === 0) return '';
+  const rankClass = i => i===0 ? 'rank-0' : i===1 ? 'rank-1' : i===2 ? 'rank-2' : 'rank-3plus';
+  return `
+    <div class="stats-group">
+      <div class="stats-group-title">${escapeHtml(title)}</div>
+      <div class="dist-bars">
+        ${items.map((it,i)=>`
+          <div class="dist-bar-row">
+            <div class="dist-bar-label" title="${escapeHtml(it.label)}">${escapeHtml(it.label)}</div>
+            <div class="dist-bar-track">
+              <div class="dist-bar-fill ${rankClass(i)}" style="width:${it.pct}%"></div>
+            </div>
+            <div class="dist-bar-meta">${it.pct.toFixed(0)}%<span class="dist-bar-count">(${it.count})</span></div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
 }
 
 function renderClosuresSummary(tabs){
