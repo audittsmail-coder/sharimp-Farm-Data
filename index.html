@@ -354,6 +354,21 @@
   .dist-bar-count{ font-family:inherit; font-weight:400; font-size:9.5px; color:var(--ink-faint); margin-left:2px; }
   @keyframes growBar{ from{ width:0; } }
 
+  .size-compare-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:480px){ .size-compare-grid{ grid-template-columns:1fr; } }
+  .sc-tile{ background:var(--surface-soft); padding:16px; }
+  .sc-label{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; margin-bottom:9px; }
+  .sc-label.sc-small{ color:var(--teal-400); }
+  .sc-label.sc-big{ color:var(--orange-hi); }
+  .sc-value{ font-family:'Taviraj',serif; font-weight:700; font-size:26px; color:var(--heading); line-height:1; }
+  .sc-value .sc-unit{ font-size:13px; font-weight:600; color:var(--ink-faint); margin-left:5px; }
+  .sc-sub{ font-size:11px; color:var(--ink-faint); margin-top:4px; margin-bottom:11px; }
+  .sc-bar-track{ height:10px; background:var(--surface-hi); overflow:hidden; }
+  .sc-bar-fill{ height:100%; animation:growBar .7s var(--ease) backwards; }
+  .sc-bar-fill.sc-small{ background:linear-gradient(90deg, var(--teal-600), var(--teal-400)); }
+  .sc-bar-fill.sc-big{ background:linear-gradient(90deg, var(--orange), var(--orange-hi)); }
+  .sc-verdict{ margin-top:16px; padding:11px 14px; background:var(--teal-100); color:var(--heading); font-size:13px; font-weight:600; text-align:center; }
+
   .btn{ border:none; border-radius:var(--radius-sm); padding:12px 16px; font-size:14px; font-weight:600; cursor:pointer; transition:transform .12s var(--ease), background .15s var(--ease), opacity .15s var(--ease); }
   .btn-sm{ padding:8px 16px; font-size:15.5px; }
   .btn.btn-sm{ width:auto; }
@@ -968,6 +983,50 @@ function buildDistribution(closures, labelFn){
     .map(([label,count])=>({ label, count, pct: total ? (count/total*100) : 0 }))
     .sort((a,b)=> b.count-a.count);
 }
+function sizeCompareStats(closures){
+  let smallWeight=0, smallCount=0, bigWeight=0, bigCount=0;
+  closures.forEach(c=>{
+    if(c.sizeCount==null || c.weightKg==null) return;
+    if(c.sizeCount>70 && c.sizeCount<=100){ smallWeight+=c.weightKg; smallCount++; }
+    else if(c.sizeCount>=40 && c.sizeCount<=70){ bigWeight+=c.weightKg; bigCount++; }
+  });
+  return { smallWeight, smallCount, bigWeight, bigCount };
+}
+function sizeCompareCardHtml(closures){
+  const { smallWeight, smallCount, bigWeight, bigCount } = sizeCompareStats(closures);
+  if(smallCount === 0 && bigCount === 0) return '';
+  const maxW = Math.max(smallWeight, bigWeight, 1);
+  const smallPct = smallWeight/maxW*100;
+  const bigPct = bigWeight/maxW*100;
+  let verdictHtml = '';
+  if(smallWeight>0 && bigWeight>0 && smallWeight!==bigWeight){
+    const winnerIsSmall = smallWeight > bigWeight;
+    const winW = winnerIsSmall ? smallWeight : bigWeight;
+    const loseW = winnerIsSmall ? bigWeight : smallWeight;
+    const diffPct = loseW>0 ? ((winW-loseW)/loseW*100) : 100;
+    verdictHtml = `<div class="sc-verdict">🏆 ไซส์${winnerIsSmall?'เล็ก':'ใหญ่'}ให้ผลผลิตมากกว่า ${diffPct.toFixed(0)}% (${winW.toLocaleString('th-TH',{maximumFractionDigits:0})} กก. เทียบกับ ${loseW.toLocaleString('th-TH',{maximumFractionDigits:0})} กก.)</div>`;
+  }
+  return `
+    <div class="card">
+      <h3 style="margin:0 0 4px;">เปรียบเทียบผลผลิต: ไซส์เล็ก vs ไซส์ใหญ่</h3>
+      <p style="color:var(--ink-faint); font-size:12px; margin:0 0 16px;">น้ำหนักรวมที่จับได้ แบ่งตามช่วงไซส์กุ้ง (ตัว/กก.)</p>
+      <div class="size-compare-grid">
+        <div class="sc-tile">
+          <div class="sc-label sc-small">ไซส์เล็ก · 70-100 ตัว/กก.</div>
+          <div class="sc-value">${smallWeight.toLocaleString('th-TH',{maximumFractionDigits:0})}<span class="sc-unit">กก.</span></div>
+          <div class="sc-sub">${smallCount} รุ่น</div>
+          <div class="sc-bar-track"><div class="sc-bar-fill sc-small" style="width:${smallPct}%"></div></div>
+        </div>
+        <div class="sc-tile">
+          <div class="sc-label sc-big">ไซส์ใหญ่ · 40-70 ตัว/กก.</div>
+          <div class="sc-value">${bigWeight.toLocaleString('th-TH',{maximumFractionDigits:0})}<span class="sc-unit">กก.</span></div>
+          <div class="sc-sub">${bigCount} รุ่น</div>
+          <div class="sc-bar-track"><div class="sc-bar-fill sc-big" style="width:${bigPct}%"></div></div>
+        </div>
+      </div>
+      ${verdictHtml}
+    </div>`;
+}
 
 /* ---------------- Pathogen results (written by the weekly culture-log app) ---------------- */
 // Pathogen fields live directly on the pond doc (pathogenStatus/pathogenSeverity/
@@ -1343,6 +1402,7 @@ function renderClosuresSummary(tabs){
       <p>เมื่อกด "ปิดบ่อ" แล้วบันทึกข้อมูลจากหน้ารายละเอียดบ่อ รายการจะมาแสดงที่นี่</p>
     </div>` : `
     ${statsHtml}
+    ${sizeCompareCardHtml(closures)}
     <div class="card">
       <h3>ประวัติการปิดบ่อทั้งหมด</h3>
       <div style="overflow-x:auto">
