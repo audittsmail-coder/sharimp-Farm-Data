@@ -374,15 +374,21 @@
   .btn-danger{ background:var(--danger); color:#fff; }
   .btn-danger:hover{ background:#EA7C6F; }
   .btn-danger:disabled{ opacity:.4; cursor:default; background:var(--surface-soft); color:var(--ink-faint); }
-  .btn-harvest{ background:var(--teal-400); color:#04121C; }
-  .btn-harvest:hover{ background:#6BC3E5; }
-  .btn-harvest:active{ transform:scale(.98); }
-  .btn-closepond{ background:var(--orange-hi); color:#3A2408; }
-  .btn-closepond:hover{ background:#F5AD6C; }
-  .btn-closepond:active{ transform:scale(.98); }
   .btn-block{ width:100%; }
   .btn-row{ display:flex; gap:10px; margin-top:4px; }
   .record-action-row{ justify-content:center; flex-wrap:wrap; gap:6px; }
+
+  .record-action-tabs{ display:flex; margin-top:10px; border:1px solid var(--line); }
+  .record-action-tab{
+    flex:1 1 0; border:none; background:var(--surface-soft); color:var(--ink-soft);
+    padding:11px 10px; font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;
+    transition:all .18s var(--ease);
+  }
+  .record-action-tab + .record-action-tab{ border-left:1px solid var(--line); }
+  .record-action-tab.tab-harvest:hover{ background:rgba(79,195,247,.12); color:var(--teal-400); }
+  .record-action-tab.tab-harvest:active{ background:var(--teal-400); color:#04121C; }
+  .record-action-tab.tab-closepond:hover{ background:rgba(255,183,77,.12); color:var(--orange-hi); }
+  .record-action-tab.tab-closepond:active{ background:var(--orange-hi); color:#3A2408; }
 
   .pond-head{ margin-bottom:4px; }
   .pond-head h2{ font-size:22px; margin:0; color:var(--heading); }
@@ -1756,11 +1762,13 @@ function renderPondDetail(){
           </div>
           <div class="btn-row record-action-row">
             ${editingRecordId ? `<button class="btn btn-sm btn-secondary" type="button" id="btn-cancel-edit-record">ยกเลิก</button>` : ''}
-            <button class="btn btn-sm btn-primary" type="submit">${editingRecordId ? 'บันทึกการแก้ไข' : 'บันทึก'}</button>
-            <button class="btn btn-sm btn-harvest" type="button" id="btn-open-harvest">แบ่งจับ</button>
-            <button class="btn btn-sm btn-closepond" type="button" id="btn-close-pond">ปิดบ่อ</button>
+            <button class="btn btn-sm btn-primary" type="submit" style="flex:1">${editingRecordId ? 'บันทึกการแก้ไข' : 'บันทึก'}</button>
           </div>
         </form>
+        <div class="record-action-tabs">
+          <button type="button" class="record-action-tab tab-harvest" id="btn-open-harvest">แบ่งจับ</button>
+          <button type="button" class="record-action-tab tab-closepond" id="btn-close-pond">ปิดบ่อ</button>
+        </div>
       </div>
 
       ${pathogenLatestHtml}
