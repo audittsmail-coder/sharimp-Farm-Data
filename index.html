@@ -485,6 +485,18 @@
   .summary-box .l{ font-size:10.5px; opacity:.8; margin-top:3px; font-weight:500; }
 
   .chart-wrap{ position:relative; height:180px; margin-top:8px; }
+  .chart-month-nav{ display:flex; align-items:center; gap:10px; }
+  .mp-nav-btn{
+    background:var(--surface-soft); border:1px solid var(--line); color:var(--ink);
+    width:26px; height:26px; border-radius:0; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex:none; font-size:14px; line-height:1; transition:all .15s var(--ease);
+  }
+  .mp-nav-btn:hover:not(:disabled){ border-color:var(--teal-500); color:var(--heading); }
+  .mp-nav-btn:disabled{ opacity:.3; cursor:default; }
+  .chart-month-label{ font-size:12.5px; font-weight:700; color:var(--heading); min-width:52px; text-align:center; }
+  .chart-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px; }
+  .chart-legend-item{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-soft); }
+  .chart-legend-dot{ width:8px; height:8px; flex:none; }
   .chart-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:16px; }
   .chart-card{ margin-bottom:0; padding:14px; }
   .chart-card h3{ font-size:12.5px; margin-bottom:6px; padding-left:9px; }
@@ -778,7 +790,7 @@ let showDeleteAllConfirm = false;
 let editingWeatherNote = false;
 let editingWeatherNoteDate = null;
 let showBulkPriceImport = false;
-let marketPriceChartSize = null;
+let marketPriceChartMonth = null;
 let bulkPriceImportResultHtml = '';
 let showClosureStats = false;
 let overviewSortBy = '';
@@ -1472,12 +1484,9 @@ function renderClosuresSummary(tabs){
   `;
 }
 
-function marketPricesSorted(){
-  return state.marketPrices.slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.createdAt||0)-(b.createdAt||0));
-}
-function marketPriceSizes(){
-  const set = new Set(state.marketPrices.map(m=>m.sizeCount).filter(v=>v!=null));
-  return [...set].sort((a,b)=>a-b);
+function marketPriceMonths(){
+  const set = new Set(state.marketPrices.filter(m=>m.date).map(m=>m.date.slice(0,7)));
+  return [...set].sort();
 }
 function monthLabel(ym){
   const d = new Date(ym+'-01T00:00:00');
@@ -1553,15 +1562,33 @@ function marketPriceQuickRowHtml(defaultSize){
     </div>`;
 }
 function renderMarketPriceTab(tabs){
-  const sortedAsc = marketPricesSorted();
-  const sizes = marketPriceSizes();
-  const activeSize = (marketPriceChartSize!=null && sizes.includes(marketPriceChartSize)) ? marketPriceChartSize : (sizes.length ? sizes[sizes.length-1] : null);
-  const chartEntries = activeSize!=null ? sortedAsc.filter(m=>m.sizeCount===activeSize) : [];
-  const chartHtml = chartEntries.length>0 ? svgLineChart({
-    labels: chartEntries.map(m=>fmtDate(m.date)),
-    values: chartEntries.map(m=>m.pricePerKg),
-    color:'#52B7E0', fillColor:'rgba(82,183,224,.18)',
-  }) : `<div class="empty-state" style="padding:24px 12px;">${ICONS.shrimp}<p>ยังไม่มีข้อมูลราคาพอสำหรับไซส์นี้</p></div>`;
+  const chartMonths = marketPriceMonths();
+  const activeChartMonth = (marketPriceChartMonth!=null && chartMonths.includes(marketPriceChartMonth)) ? marketPriceChartMonth : (chartMonths.length ? chartMonths[chartMonths.length-1] : null);
+  const monthIdx = activeChartMonth ? chartMonths.indexOf(activeChartMonth) : -1;
+  const hasPrevMonth = monthIdx > 0;
+  const hasNextMonth = monthIdx >= 0 && monthIdx < chartMonths.length-1;
+
+  let chartHtml, chartLegendHtml = '';
+  if(activeChartMonth){
+    const monthEntries = state.marketPrices.filter(m=>m.date && m.date.slice(0,7)===activeChartMonth && m.sizeCount!=null && m.pricePerKg!=null);
+    const days = [...new Set(monthEntries.map(m=>m.date))].sort();
+    const sizesInMonth = [...new Set(monthEntries.map(m=>m.sizeCount))].sort((a,b)=>a-b);
+    const series = sizesInMonth.map((size,idx)=>({
+      color: MULTI_CHART_COLORS[idx % MULTI_CHART_COLORS.length],
+      values: days.map(d=>{
+        const matching = monthEntries.filter(m=>m.date===d && m.sizeCount===size);
+        if(matching.length===0) return null;
+        return matching.reduce((s,m)=>s+m.pricePerKg,0)/matching.length;
+      }),
+    }));
+    chartHtml = days.length>0 ? svgMultiLineChart({ labels: days.map(d=>d.slice(8,10)), series }) : `<div class="empty-state" style="padding:24px 12px;">${ICONS.shrimp}<p>ยังไม่มีข้อมูลราคาในเดือนนี้</p></div>`;
+    chartLegendHtml = sizesInMonth.length>0 ? `
+      <div class="chart-legend">
+        ${sizesInMonth.map((size,idx)=>`<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${MULTI_CHART_COLORS[idx % MULTI_CHART_COLORS.length]}"></span>${size} ตัว/กก.</span>`).join('')}
+      </div>` : '';
+  } else {
+    chartHtml = `<div class="empty-state" style="padding:24px 12px;">${ICONS.shrimp}<p>ยังไม่มีข้อมูลราคา</p></div>`;
+  }
 
   const historyDesc = state.marketPrices.slice().sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.createdAt||0)-(a.createdAt||0));
 
@@ -1608,15 +1635,18 @@ function renderMarketPriceTab(tabs){
         </div>` : ''}
       </div>
 
-      ${sizes.length>0 ? `
+      ${chartMonths.length>0 ? `
       <div class="card">
         <div class="farm-title-row" style="margin-bottom:10px;">
           <h3 style="margin:0;">แนวโน้มราคา</h3>
-          <select id="mp-chart-size-select" class="sort-select">
-            ${sizes.map(s=>`<option value="${s}" ${s===activeSize?'selected':''}>ไซส์ ${s} ตัว/กก.</option>`).join('')}
-          </select>
+          <div class="chart-month-nav">
+            <button type="button" id="btn-mp-chart-prev-month" class="mp-nav-btn" ${!hasPrevMonth?'disabled':''}>‹</button>
+            <span class="chart-month-label">${activeChartMonth ? monthLabel(activeChartMonth) : '-'}</span>
+            <button type="button" id="btn-mp-chart-next-month" class="mp-nav-btn" ${!hasNextMonth?'disabled':''}>›</button>
+          </div>
         </div>
-        <div class="chart-wrap" style="height:180px;">${chartHtml}</div>
+        <div class="chart-wrap" style="height:190px;">${chartHtml}</div>
+        ${chartLegendHtml}
       </div>` : ''}
 
       ${historyDesc.length>0 ? `
@@ -2526,6 +2556,79 @@ function svgLineChart({labels, values, color, fillColor}){
   </svg>`;
 }
 
+const MULTI_CHART_COLORS = ['#4FC3F7','#FFB74D','#F06292','#81C784','#BA68C8','#FFD54F','#4DB6AC','#E57373'];
+function svgMultiLineChart({labels, series}){
+  const width = 300, height = 130;
+  const padL = 32, padR = 8, padT = 10, padB = 20;
+  const innerW = width - padL - padR;
+  const innerH = height - padT - padB;
+  const n = labels.length;
+
+  const allValid = series.flatMap(s=>s.values.map((v,i)=>({v,i})).filter(d=>d.v!==null && d.v!==undefined && !isNaN(d.v)));
+  if(allValid.length===0){
+    return `<div style="display:flex;align-items:center;justify-content:center;height:${height}px;color:var(--ink-faint);font-size:12.5px">ยังไม่มีข้อมูลเพียงพอ</div>`;
+  }
+
+  let min = Math.min(...allValid.map(d=>d.v));
+  let max = Math.max(...allValid.map(d=>d.v));
+  if(min === max){ const bump = Math.abs(min)*0.1 || 1; min -= bump; max += bump; }
+  const rangePad = (max-min)*0.15;
+  min -= rangePad; max += rangePad;
+  if(min < 0 && allValid.every(d=>d.v>=0)) min = 0;
+
+  const xFor = i => n<=1 ? padL+innerW/2 : padL + (innerW * i/(n-1));
+  const yFor = v => padT + innerH * (1 - (v-min)/(max-min));
+
+  let gridLines = '';
+  const gridCount = 3;
+  for(let g=0; g<=gridCount; g++){
+    const gv = min + (max-min)*g/gridCount;
+    const gy = yFor(gv);
+    gridLines += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${width-padR}" y2="${gy.toFixed(1)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+    gridLines += `<text x="${padL-6}" y="${(gy+3).toFixed(1)}" text-anchor="end" font-size="9" fill="#6B8698">${gv.toFixed(Math.abs(gv)<10?1:0)}</text>`;
+  }
+
+  let seriesHtml = '';
+  series.forEach(s=>{
+    let pathSegments = [], currentSeg = [];
+    s.values.forEach((v,i)=>{
+      if(v===null || v===undefined || isNaN(v)){
+        if(currentSeg.length) pathSegments.push(currentSeg);
+        currentSeg = [];
+      } else {
+        currentSeg.push([xFor(i), yFor(v)]);
+      }
+    });
+    if(currentSeg.length) pathSegments.push(currentSeg);
+    const pointRadius = 3;
+    pathSegments.forEach(seg=>{
+      if(seg.length>=2){
+        const d = seg.map((p,idx)=> (idx===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+        seriesHtml += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+      } else if(seg.length===1){
+        seriesHtml += `<circle cx="${seg[0][0].toFixed(1)}" cy="${seg[0][1].toFixed(1)}" r="${pointRadius}" fill="${s.color}" stroke="#081824" stroke-width="1.5"/>`;
+      }
+    });
+    s.values.forEach((v,i)=>{
+      if(v===null || v===undefined || isNaN(v)) return;
+      seriesHtml += `<circle cx="${xFor(i).toFixed(1)}" cy="${yFor(v).toFixed(1)}" r="${pointRadius}" fill="${s.color}" stroke="#081824" stroke-width="1.5"/>`;
+    });
+  });
+
+  let xLabelsHtml = '';
+  const maxLabels = 6;
+  const step = Math.max(1, Math.ceil(n/maxLabels));
+  labels.forEach((lab,i)=>{
+    if(i%step===0 || i===n-1){
+      xLabelsHtml += `<text x="${xFor(i).toFixed(1)}" y="${height-5}" text-anchor="middle" font-size="9" fill="#6B8698">${escapeHtml(lab)}</text>`;
+    }
+  });
+
+  return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:${height}px;display:block">
+    ${gridLines}${seriesHtml}${xLabelsHtml}
+  </svg>`;
+}
+
 const PATHOGEN_SEVERITY_RANK = { normal:0, watch:1, critical:2 };
 const PATHOGEN_SEVERITY_COLOR = { normal:'#52B7E0', watch:'#EFB753', critical:'#E8815F' };
 function pathogenTrendChartHtml(history){
@@ -2872,7 +2975,7 @@ function bindDashboardEvents(){
       try{
         await writeBatch.commit();
       }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); return; }
-      marketPriceChartSize = rows[rows.length-1].sizeCount;
+      marketPriceChartMonth = null;
       render();
     });
   }
@@ -2921,10 +3024,17 @@ function bindDashboardEvents(){
     render();
   };
 
-  const mpChartSizeSelect = document.getElementById('mp-chart-size-select');
-  if(mpChartSizeSelect) mpChartSizeSelect.onchange = ()=>{
-    marketPriceChartSize = parseFloat(mpChartSizeSelect.value);
-    render();
+  const btnMpChartPrevMonth = document.getElementById('btn-mp-chart-prev-month');
+  if(btnMpChartPrevMonth) btnMpChartPrevMonth.onclick = ()=>{
+    const months = marketPriceMonths();
+    const idx = months.indexOf(marketPriceChartMonth!=null && months.includes(marketPriceChartMonth) ? marketPriceChartMonth : months[months.length-1]);
+    if(idx > 0){ marketPriceChartMonth = months[idx-1]; render(); }
+  };
+  const btnMpChartNextMonth = document.getElementById('btn-mp-chart-next-month');
+  if(btnMpChartNextMonth) btnMpChartNextMonth.onclick = ()=>{
+    const months = marketPriceMonths();
+    const idx = months.indexOf(marketPriceChartMonth!=null && months.includes(marketPriceChartMonth) ? marketPriceChartMonth : months[months.length-1]);
+    if(idx >= 0 && idx < months.length-1){ marketPriceChartMonth = months[idx+1]; render(); }
   };
 
   document.querySelectorAll('[data-del-market-price]').forEach(btn=>{
