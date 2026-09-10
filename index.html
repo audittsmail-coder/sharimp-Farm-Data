@@ -496,9 +496,17 @@
   table.rec-table tr:last-child td{ border-bottom:none; }
   table.rec-table tr:hover td{ background:var(--surface-soft); }
   .row-del{ color:var(--danger); font-size:11px; background:none; border:none; cursor:pointer; text-decoration:underline;}
-  table.rec-table tr.ph-day-row td{ background:var(--surface-soft); font-weight:700; color:var(--heading); padding:7px 7px; border-bottom:1px solid var(--line); }
-  table.rec-table tr.ph-day-row:hover td{ background:var(--surface-soft); }
-  .ph-day-count{ font-weight:400; color:var(--ink-faint); font-size:11px; }
+
+  table.price-matrix{ border-collapse:collapse; font-size:12px; white-space:nowrap; }
+  table.price-matrix th, table.price-matrix td{ padding:7px 11px; border-bottom:1px solid var(--line-soft); text-align:right; }
+  table.price-matrix thead th{ color:var(--ink-faint); font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--line); }
+  table.price-matrix tbody tr:hover td{ background:var(--surface-soft); }
+  table.price-matrix th:first-child, table.price-matrix td:first-child{
+    text-align:left; position:sticky; left:0; background:var(--surface); font-weight:700; color:var(--ink);
+  }
+  table.price-matrix td.pm-month-col{ color:var(--ink-soft); }
+  table.price-matrix td.pm-empty{ color:var(--ink-faint); }
+  .pm-cell-del{ color:var(--danger); font-size:9.5px; margin-left:5px; cursor:pointer; text-decoration:underline; }
 
   .overview-table tbody tr:not(.ov-zone-row){ cursor:pointer; }
   .overview-table th:nth-child(n+2), .overview-table td:nth-child(n+2){ text-align:right; }
@@ -1471,17 +1479,65 @@ function marketPriceSizes(){
   const set = new Set(state.marketPrices.map(m=>m.sizeCount).filter(v=>v!=null));
   return [...set].sort((a,b)=>a-b);
 }
-function marketPriceHistoryGroups(historyDesc){
-  const groups = [];
-  let current = null;
-  historyDesc.forEach(m=>{
-    if(!current || current.date !== m.date){
-      current = { date: m.date, items: [] };
-      groups.push(current);
-    }
-    current.items.push(m);
+function monthLabel(ym){
+  const d = new Date(ym+'-01T00:00:00');
+  return d.toLocaleDateString('th-TH',{month:'short',year:'2-digit'});
+}
+function marketPriceMatrix(){
+  const all = state.marketPrices.filter(m=>m.date && m.sizeCount!=null && m.pricePerKg!=null);
+  if(all.length===0) return null;
+  const sizes = [...new Set(all.map(m=>m.sizeCount))].sort((a,b)=>a-b);
+  const byMonth = {};
+  all.forEach(m=>{
+    const ym = m.date.slice(0,7);
+    (byMonth[ym] = byMonth[ym]||[]).push(m);
   });
-  return groups;
+  const months = Object.keys(byMonth).sort();
+  const latestMonth = months[months.length-1];
+  const pastMonths = months.slice(0,-1);
+
+  const columns = pastMonths.map(ym=>({ type:'month', label: monthLabel(ym), entries: byMonth[ym] }));
+  const days = [...new Set(byMonth[latestMonth].map(m=>m.date))].sort();
+  days.forEach(date=>{
+    columns.push({ type:'day', label: date.slice(8,10), entries: byMonth[latestMonth].filter(m=>m.date===date) });
+  });
+
+  const rows = sizes.map(size=>({
+    size,
+    cells: columns.map(col=>{
+      const matching = col.entries.filter(m=>m.sizeCount===size);
+      if(matching.length===0) return null;
+      const avg = matching.reduce((s,m)=>s+m.pricePerKg,0)/matching.length;
+      return { value: avg, delId: matching.length===1 ? matching[0].id : null };
+    }),
+  }));
+
+  return { columns, rows, currentMonthLabel: monthLabel(latestMonth) };
+}
+function marketPriceMatrixHtml(matrix){
+  return `
+    <p class="hint" style="margin-top:0;">รายวันของเดือน ${matrix.currentMonthLabel}${matrix.columns.some(c=>c.type==='month') ? ' · เดือนก่อนหน้ารวมเป็นค่าเฉลี่ยต่อเดือน' : ''}</p>
+    <div style="overflow-x:auto">
+      <table class="price-matrix">
+        <thead>
+          <tr>
+            <th>ไซส์</th>
+            ${matrix.columns.map(c=>`<th class="${c.type==='month'?'pm-month-col':''}">${escapeHtml(c.label)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${matrix.rows.map(r=>`
+            <tr>
+              <td>${r.size} ตัว/กก.</td>
+              ${r.cells.map(cell=>{
+                if(!cell) return `<td class="pm-empty">-</td>`;
+                const val = cell.value.toLocaleString('th-TH',{maximumFractionDigits:0});
+                return `<td>${val}${cell.delId ? `<span class="pm-cell-del" data-del-market-price="${cell.delId}">ลบ</span>` : ''}</td>`;
+              }).join('')}
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 function marketPriceQuickRowHtml(){
   return `
@@ -1566,21 +1622,7 @@ function renderMarketPriceTab(tabs){
       ${historyDesc.length>0 ? `
       <div class="card">
         <h3>ประวัติราคา</h3>
-        <div style="overflow-x:auto">
-          <table class="rec-table">
-            <thead><tr><th>ไซส์</th><th>ราคา</th><th></th></tr></thead>
-            <tbody>
-              ${marketPriceHistoryGroups(historyDesc).map(g=>`
-                <tr class="ph-day-row"><td colspan="3">${fmtDate(g.date)} <span class="ph-day-count">(${g.items.length} รายการ)</span></td></tr>
-                ${g.items.map(m=>`
-                <tr>
-                  <td>${m.sizeCount!=null ? m.sizeCount+' ตัว/กก.' : '-'}</td>
-                  <td>${m.pricePerKg!=null ? m.pricePerKg.toLocaleString('th-TH')+' บ./กก.' : '-'}</td>
-                  <td><button class="row-del" data-del-market-price="${m.id}">ลบ</button></td>
-                </tr>`).join('')}`).join('')}
-            </tbody>
-          </table>
-        </div>
+        ${marketPriceMatrixHtml(marketPriceMatrix())}
       </div>` : `
       <div class="empty-state">
         ${ICONS.shrimp}
