@@ -497,20 +497,18 @@
   .chart-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px; }
   .chart-legend-item{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-soft); }
   .chart-legend-dot{ width:8px; height:8px; flex:none; }
-  .mp-chart-card{ max-width:460px; }
-  @media (max-width:700px){ .mp-chart-card{ max-width:100%; } }
-  .mp-form-card{ max-width:460px; }
-  @media (max-width:700px){ .mp-form-card{ max-width:100%; } }
-  .mp-form-card .field{ margin-bottom:10px; }
-  .mp-form-card .field label{ font-size:11.5px; margin-bottom:4px; }
-  .mp-form-card .field input, .mp-form-card .field select, .mp-form-card .field textarea{
+  .mp-card{ max-width:560px; }
+  @media (max-width:700px){ .mp-card{ max-width:100%; } }
+  .mp-card .field{ margin-bottom:10px; }
+  .mp-card .field label{ font-size:11.5px; margin-bottom:4px; }
+  .mp-card .field input, .mp-card .field select, .mp-card .field textarea{
     padding:8px 10px; font-size:13px;
   }
-  .mp-form-card .field input[type=number], .mp-form-card .field input[type=date]{ max-width:150px; }
-  .mp-form-card .field-row > .field:has(input[type=number]), .mp-form-card .field-row > .field:has(input[type=date]){ flex:0 1 150px; }
-  .mp-form-card .field-row{ gap:8px; }
-  .mp-form-card .btn{ padding:9px 14px; font-size:12.5px; }
-  .mp-form-card h3{ font-size:15.5px; }
+  .mp-card .field input[type=number], .mp-card .field input[type=date]{ max-width:150px; }
+  .mp-card .field-row > .field:has(input[type=number]), .mp-card .field-row > .field:has(input[type=date]){ flex:0 1 150px; }
+  .mp-card .field-row{ gap:8px; }
+  .mp-card .btn{ padding:9px 14px; font-size:12.5px; }
+  .mp-card h3{ font-size:15.5px; }
   .chart-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:16px; }
   .chart-card{ margin-bottom:0; padding:14px; }
   .chart-card h3{ font-size:12.5px; margin-bottom:6px; padding-left:9px; }
@@ -1620,7 +1618,7 @@ function renderMarketPriceTab(tabs){
         <h2>ราคากุ้งตลาด</h2>
       </div>
 
-      <div class="card mp-form-card">
+      <div class="card mp-card">
         <h3>เพิ่มราคาใหม่</h3>
         <p class="hint" style="margin-top:0;">ใส่ได้หลายไซส์พร้อมกันในวันเดียว เว้นแถวที่ไม่ใช้ว่างไว้ได้</p>
         <form id="market-price-form">
@@ -1640,7 +1638,7 @@ function renderMarketPriceTab(tabs){
         </form>
       </div>
 
-      <div class="card mp-form-card">
+      <div class="card mp-card">
         <div class="farm-title-row" style="margin-bottom:${showBulkPriceImport?'14px':'0'};">
           <h3 style="margin:0;">นำเข้าหลายรายการ</h3>
           <button type="button" id="btn-toggle-bulk-price" class="action-btn">${showBulkPriceImport ? 'ปิด' : 'วางข้อมูลย้อนหลัง'}</button>
@@ -1657,7 +1655,7 @@ function renderMarketPriceTab(tabs){
       </div>
 
       ${chartMonths.length>0 ? `
-      <div class="card mp-chart-card">
+      <div class="card mp-card">
         <div class="farm-title-row" style="margin-bottom:10px;">
           <h3 style="margin:0;">แนวโน้มราคา</h3>
           <div class="chart-month-nav">
@@ -1671,7 +1669,7 @@ function renderMarketPriceTab(tabs){
       </div>` : ''}
 
       ${historyDesc.length>0 ? `
-      <div class="card">
+      <div class="card mp-card">
         <h3>ประวัติราคา</h3>
         ${marketPriceMatrixHtml(marketPriceMatrix())}
       </div>` : `
