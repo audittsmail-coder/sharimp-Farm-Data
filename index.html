@@ -496,6 +496,9 @@
   table.rec-table tr:last-child td{ border-bottom:none; }
   table.rec-table tr:hover td{ background:var(--surface-soft); }
   .row-del{ color:var(--danger); font-size:11px; background:none; border:none; cursor:pointer; text-decoration:underline;}
+  table.rec-table tr.ph-day-row td{ background:var(--surface-soft); font-weight:700; color:var(--heading); padding:7px 7px; border-bottom:1px solid var(--line); }
+  table.rec-table tr.ph-day-row:hover td{ background:var(--surface-soft); }
+  .ph-day-count{ font-weight:400; color:var(--ink-faint); font-size:11px; }
 
   .overview-table tbody tr:not(.ov-zone-row){ cursor:pointer; }
   .overview-table th:nth-child(n+2), .overview-table td:nth-child(n+2){ text-align:right; }
@@ -1468,6 +1471,18 @@ function marketPriceSizes(){
   const set = new Set(state.marketPrices.map(m=>m.sizeCount).filter(v=>v!=null));
   return [...set].sort((a,b)=>a-b);
 }
+function marketPriceHistoryGroups(historyDesc){
+  const groups = [];
+  let current = null;
+  historyDesc.forEach(m=>{
+    if(!current || current.date !== m.date){
+      current = { date: m.date, items: [] };
+      groups.push(current);
+    }
+    current.items.push(m);
+  });
+  return groups;
+}
 function marketPriceQuickRowHtml(){
   return `
     <div class="field-row">
@@ -1553,15 +1568,16 @@ function renderMarketPriceTab(tabs){
         <h3>ประวัติราคา</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>ไซส์</th><th>ราคา</th><th></th></tr></thead>
+            <thead><tr><th>ไซส์</th><th>ราคา</th><th></th></tr></thead>
             <tbody>
-              ${historyDesc.map(m=>`
+              ${marketPriceHistoryGroups(historyDesc).map(g=>`
+                <tr class="ph-day-row"><td colspan="3">${fmtDate(g.date)} <span class="ph-day-count">(${g.items.length} รายการ)</span></td></tr>
+                ${g.items.map(m=>`
                 <tr>
-                  <td>${fmtDate(m.date)}</td>
                   <td>${m.sizeCount!=null ? m.sizeCount+' ตัว/กก.' : '-'}</td>
                   <td>${m.pricePerKg!=null ? m.pricePerKg.toLocaleString('th-TH')+' บ./กก.' : '-'}</td>
                   <td><button class="row-del" data-del-market-price="${m.id}">ลบ</button></td>
-                </tr>`).join('')}
+                </tr>`).join('')}`).join('')}
             </tbody>
           </table>
         </div>
