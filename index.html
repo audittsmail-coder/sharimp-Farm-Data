@@ -497,6 +497,8 @@
   .chart-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px; }
   .chart-legend-item{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-soft); }
   .chart-legend-dot{ width:8px; height:8px; flex:none; }
+  .mp-chart-card{ max-width:460px; }
+  @media (max-width:700px){ .mp-chart-card{ max-width:100%; } }
   .chart-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:16px; }
   .chart-card{ margin-bottom:0; padding:14px; }
   .chart-card h3{ font-size:12.5px; margin-bottom:6px; padding-left:9px; }
@@ -1643,7 +1645,7 @@ function renderMarketPriceTab(tabs){
       </div>
 
       ${chartMonths.length>0 ? `
-      <div class="card">
+      <div class="card mp-chart-card">
         <div class="farm-title-row" style="margin-bottom:10px;">
           <h3 style="margin:0;">แนวโน้มราคา</h3>
           <div class="chart-month-nav">
@@ -1652,7 +1654,7 @@ function renderMarketPriceTab(tabs){
             <button type="button" id="btn-mp-chart-next-month" class="mp-nav-btn" ${!hasNextMonth?'disabled':''}>›</button>
           </div>
         </div>
-        <div class="chart-wrap" style="height:190px;">${chartHtml}</div>
+        <div class="chart-wrap" style="height:140px;">${chartHtml}</div>
         ${chartLegendHtml}
       </div>` : ''}
 
