@@ -1539,12 +1539,12 @@ function marketPriceMatrixHtml(matrix){
       </table>
     </div>`;
 }
-function marketPriceQuickRowHtml(){
+function marketPriceQuickRowHtml(defaultSize){
   return `
     <div class="field-row">
       <div class="field">
         <label>ไซส์ (ตัว/กก.)</label>
-        <input type="number" inputmode="decimal" step="0.1" name="mp-size" placeholder="เช่น 60">
+        <input type="number" inputmode="decimal" step="0.1" name="mp-size" placeholder="เช่น 60" value="${defaultSize!=null ? defaultSize : ''}">
       </div>
       <div class="field">
         <label>ราคา (บาท/กก.)</label>
@@ -1581,7 +1581,7 @@ function renderMarketPriceTab(tabs){
             <input type="date" name="date" id="mp-date" value="${todayISO()}" required>
           </div>
           <div id="mp-rows">
-            ${marketPriceQuickRowHtml()}${marketPriceQuickRowHtml()}${marketPriceQuickRowHtml()}
+            ${[40,50,60,70,80,90].map(s=>marketPriceQuickRowHtml(s)).join('')}
           </div>
           <div class="btn-row" style="margin-bottom:13px;">
             <button class="btn btn-secondary" type="button" id="btn-add-mp-row" style="flex:1">+ เพิ่มไซส์อีกแถว</button>
