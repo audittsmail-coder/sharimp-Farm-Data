@@ -1093,9 +1093,11 @@ function sizeCompareGroupHtml(closures){
 // Pathogen fields live directly on the pond doc (pathogenStatus/pathogenSeverity/
 // pathogenWorsened/pathogenDate = latest result, pathogenHistory[] = every week's result)
 // written by a separate lab-report import tool — not entered here, and never touching
-// `records` (this app's own weekly growth/feed log). ammonia/nitrite (mg/L) are optional
-// on both the flat pond fields (pathogenAmmonia/pathogenNitrite) and each history entry
-// (ammonia/nitrite) — shown only when the import tool actually supplied them.
+// `records` (this app's own weekly growth/feed log). Water-quality values (ammonia/nitrite/
+// pH/alkalinity/salinity) are optional on both the flat pond fields (pathogenAmmonia/
+// pathogenNitrite/pathogenPh/pathogenAlkalinity/pathogenSalinity) and each history entry
+// (ammonia/nitrite/ph/alkalinity/salinity) — shown only when the import tool actually
+// supplied them.
 const PATHOGEN_SEVERITY_LABEL = { critical:'วิกฤต', watch:'เฝ้าระวัง', normal:'ปกติ' };
 const PATHOGEN_SEVERITY_CLASS = { critical:'coral', watch:'amber', normal:'good' };
 function latestPathogenInfo(pond){
@@ -1103,6 +1105,8 @@ function latestPathogenInfo(pond){
   return {
     weekDate:pond.pathogenDate, status:pond.pathogenStatus, severity:pond.pathogenSeverity, worsened:pond.pathogenWorsened,
     ammonia:pond.pathogenAmmonia!=null?pond.pathogenAmmonia:null, nitrite:pond.pathogenNitrite!=null?pond.pathogenNitrite:null,
+    ph:pond.pathogenPh!=null?pond.pathogenPh:null, alkalinity:pond.pathogenAlkalinity!=null?pond.pathogenAlkalinity:null,
+    salinity:pond.pathogenSalinity!=null?pond.pathogenSalinity:null,
   };
 }
 function pathogenHistoryForPond(pond){
@@ -1113,6 +1117,9 @@ function pathogenExtraValuesHtml(entry){
   const parts = [];
   if(entry.ammonia!=null) parts.push(`แอมโมเนีย ${entry.ammonia} mg/L`);
   if(entry.nitrite!=null) parts.push(`ไนไตรต์ ${entry.nitrite} mg/L`);
+  if(entry.ph!=null) parts.push(`pH ${entry.ph}`);
+  if(entry.alkalinity!=null) parts.push(`อัลคาไลน์ ${entry.alkalinity} mg/L`);
+  if(entry.salinity!=null) parts.push(`ความเค็ม ${entry.salinity} ppt`);
   if(parts.length===0) return '';
   return `<div class="pe-water">${parts.join(' · ')}</div>`;
 }
