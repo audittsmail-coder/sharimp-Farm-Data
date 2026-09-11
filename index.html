@@ -1360,7 +1360,7 @@ function renderOverviewDashboard(tabs){
               <div class="ov-pond-name">${escapeHtml(pond.name)}${isNew ? ` <span class="ov-update-badge">อัปเดตใหม่</span>` : ''}${hasHarvest ? ` <span class="ov-harvest-badge">แบ่งจับแล้ว</span>` : ''}</div>
               ${speciesShort ? `<div class="ov-pond-species">${escapeHtml(speciesShort)}</div>` : ''}
             </td>
-            <td>${last && last.sizeCount!=null ? last.sizeCount+' ตัว/กก.' : '-'}</td>
+            <td>${last && last.sizeCount!=null ? last.sizeCount : '-'}</td>
             <td>${doc!==null ? doc+' วัน' : '-'}</td>
             <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
             <td>${pond.pathogenSeverity ? pathogenChipHtml(pond.pathogenSeverity, pond.pathogenStatus) : '-'}</td>
@@ -1372,7 +1372,7 @@ function renderOverviewDashboard(tabs){
       <div class="card">
         <div style="overflow-x:auto">
           <table class="rec-table overview-table">
-            <thead><tr><th>บ่อ</th><th>ไซส์ล่าสุด</th><th>DOC</th><th>ADG</th><th>ผลเชื้อ</th></tr></thead>
+            <thead><tr><th>บ่อ</th><th>ไซส์ล่าสุด (ตัว/กก.)</th><th>DOC</th><th>ADG</th><th>ผลเชื้อ</th></tr></thead>
             <tbody>${trs}</tbody>
           </table>
         </div>
