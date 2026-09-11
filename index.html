@@ -1769,7 +1769,7 @@ function renderPondDetail(){
         <td>${fmtDate(r.weekDate)}</td>
         <td>${weatherNote ? '📝 '+escapeHtml(weatherNote.note) : '-'}</td>
         <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
-        <td>${r.sizeCount!=null ? r.sizeCount+' ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">'+(w?w.toFixed(1)+' ก.':'')+'</span>' : '-'}</td>
+        <td>${r.sizeCount!=null ? r.sizeCount+'<br><span style="color:var(--ink-faint);font-size:11px">'+(w?w.toFixed(1)+' ก.':'')+'</span>' : '-'}</td>
         <td>${r.feedPerDay!=null ? r.feedPerDay+' กก.' : '-'}</td>
         <td>${r.totalFeedKg!=null ? r.totalFeedKg.toLocaleString('th-TH')+' กก.' : '-'}</td>
         <td>${r.survivalRate!=null ? r.survivalRate+'%' : '-'}</td>
@@ -1934,7 +1934,7 @@ function renderPondDetail(){
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>สภาพอากาศ</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อาหารสะสม</th><th>อัตรารอด</th><th>หมายเหตุ</th><th></th></tr></thead>
+            <thead><tr><th>วันที่</th><th>สภาพอากาศ</th><th>อายุ (DOC)</th><th>ไซส์ (ตัว/กก.)</th><th>อาหาร/วัน</th><th>อาหารสะสม</th><th>อัตรารอด</th><th>หมายเหตุ</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -2386,7 +2386,7 @@ function renderBatchDetail(){
         <td>${fmtDate(r.weekDate)}</td>
         <td>${weatherNote ? '📝 '+escapeHtml(weatherNote.note) : '-'}</td>
         <td>${recDoc!==null ? recDoc+' วัน' : '-'}</td>
-        <td>${r.sizeCount!=null ? r.sizeCount+' ตัว/กก.<br><span style="color:var(--ink-faint);font-size:11px">'+(w?w.toFixed(1)+' ก.':'')+'</span>' : '-'}</td>
+        <td>${r.sizeCount!=null ? r.sizeCount+'<br><span style="color:var(--ink-faint);font-size:11px">'+(w?w.toFixed(1)+' ก.':'')+'</span>' : '-'}</td>
         <td>${r.feedPerDay!=null ? r.feedPerDay+' กก.' : '-'}</td>
         <td>${r.totalFeedKg!=null ? r.totalFeedKg.toLocaleString('th-TH')+' กก.' : '-'}</td>
         <td>${r.survivalRate!=null ? r.survivalRate+'%' : '-'}</td>
@@ -2485,7 +2485,7 @@ function renderBatchDetail(){
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
           <table class="rec-table">
-            <thead><tr><th>วันที่</th><th>สภาพอากาศ</th><th>อายุ (DOC)</th><th>ไซส์</th><th>อาหาร/วัน</th><th>อาหารสะสม</th><th>อัตรารอด</th><th>หมายเหตุ</th></tr></thead>
+            <thead><tr><th>วันที่</th><th>สภาพอากาศ</th><th>อายุ (DOC)</th><th>ไซส์ (ตัว/กก.)</th><th>อาหาร/วัน</th><th>อาหารสะสม</th><th>อัตรารอด</th><th>หมายเหตุ</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
