@@ -1951,6 +1951,7 @@ function renderPondDetail(){
           <h3>แนวโน้มผลเชื้อ</h3>
           <div class="chart-wrap">${pathogenTrendChartHtml(pathogenHistory)}</div>
         </div>` : ''}
+        ${pathogenHistoryCount>=2 ? pathogenWaterChartCardHtml(pathogenHistory) : ''}
       </div>
       <div class="card">
         <h3>ประวัติการบันทึก</h3>
@@ -2501,6 +2502,7 @@ function renderBatchDetail(){
           <h3>แนวโน้มผลเชื้อ</h3>
           <div class="chart-wrap">${pathogenTrendChartHtml(batchPathogenEntriesAsc)}</div>
         </div>` : ''}
+        ${batchPathogenEntriesAsc.length>=2 ? pathogenWaterChartCardHtml(batchPathogenEntriesAsc) : ''}
       </div>
       ${batchPathogenHistoryHtml}
       <div class="card">
@@ -2713,6 +2715,23 @@ function pathogenTrendChartHtml(history){
   </svg>`;
 }
 
+function pathogenWaterChartCardHtml(history){
+  const entries = (history||[]).filter(h=>h.ammonia!=null || h.nitrite!=null);
+  if(entries.length===0) return '';
+  const labels = entries.map(h=>fmtDate(h.weekDate));
+  const series = [];
+  if(entries.some(h=>h.ammonia!=null)) series.push({ label:'แอมโมเนีย', color:MULTI_CHART_COLORS[0], values: entries.map(h=>h.ammonia!=null?h.ammonia:null) });
+  if(entries.some(h=>h.nitrite!=null)) series.push({ label:'ไนไตรต์', color:MULTI_CHART_COLORS[1], values: entries.map(h=>h.nitrite!=null?h.nitrite:null) });
+  const chartHtml = svgMultiLineChart({ labels, series });
+  return `
+    <div class="card chart-card">
+      <h3>แอมโมเนีย/ไนไตรต์ (mg/L)</h3>
+      <div class="chart-wrap" style="height:130px;">${chartHtml}</div>
+      <div class="chart-legend">
+        ${series.map(s=>`<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${s.color}"></span>${s.label} (mg/L)</span>`).join('')}
+      </div>
+    </div>`;
+}
 function drawChartsFor(records, releaseDate){
   if(records.length===0) return;
   const labels = records.map(r=>{
