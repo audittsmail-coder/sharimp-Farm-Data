@@ -363,6 +363,7 @@
   .dist-bar-fill.rank-3plus{ background:var(--slate); opacity:.6; }
   .dist-bar-meta{ flex:0 0 auto; font-family:'Taviraj',serif; font-weight:700; font-size:13.5px; color:var(--heading); min-width:42px; text-align:right; }
   .dist-bar-count{ font-family:inherit; font-weight:400; font-size:9.5px; color:var(--ink-faint); margin-left:2px; }
+  .dist-bar-survival{ font-family:inherit; font-weight:500; font-size:9.5px; color:var(--teal-400); margin-left:5px; white-space:nowrap; }
   @keyframes growBar{ from{ width:0; } }
 
   .sc-compare .dist-bar-track{ height:13px; }
@@ -1015,15 +1016,24 @@ function survivalRangeLabel(pct){
 }
 function buildDistribution(closures, labelFn){
   const counts = {};
+  const survivalSums = {};
+  const survivalCounts = {};
   let total = 0;
   closures.forEach(c=>{
     const label = labelFn(c);
     if(!label) return;
     counts[label] = (counts[label]||0) + 1;
     total++;
+    if(c.survivalRatePct!=null){
+      survivalSums[label] = (survivalSums[label]||0) + c.survivalRatePct;
+      survivalCounts[label] = (survivalCounts[label]||0) + 1;
+    }
   });
   return Object.entries(counts)
-    .map(([label,count])=>({ label, count, pct: total ? (count/total*100) : 0 }))
+    .map(([label,count])=>({
+      label, count, pct: total ? (count/total*100) : 0,
+      avgSurvival: survivalCounts[label] ? survivalSums[label]/survivalCounts[label] : null,
+    }))
     .sort((a,b)=> b.count-a.count);
 }
 const SIZE_COMPARE_BUCKETS = [
@@ -1421,7 +1431,8 @@ function renderOverviewDashboard(tabs){
   `;
 }
 
-function distributionCardHtml(title, items){
+function distributionCardHtml(title, items, opts){
+  opts = opts || {};
   if(!items || items.length === 0) return '';
   const rankClass = i => i===0 ? 'rank-0' : i===1 ? 'rank-1' : i===2 ? 'rank-2' : 'rank-3plus';
   return `
@@ -1434,7 +1445,7 @@ function distributionCardHtml(title, items){
             <div class="dist-bar-track">
               <div class="dist-bar-fill ${rankClass(i)}" style="width:${it.pct}%"></div>
             </div>
-            <div class="dist-bar-meta">${it.pct.toFixed(0)}%<span class="dist-bar-count">(${it.count})</span></div>
+            <div class="dist-bar-meta">${it.pct.toFixed(0)}%<span class="dist-bar-count">(${it.count})</span>${opts.showSurvival && it.avgSurvival!=null ? `<span class="dist-bar-survival">รอด ${it.avgSurvival.toFixed(0)}%</span>` : ''}</div>
           </div>
         `).join('')}
       </div>
@@ -1449,7 +1460,7 @@ function renderClosuresSummary(tabs){
     if(showClosureStats){
       const statsGroupsHtml =
         distributionCardHtml('ชนิดกุ้ง', buildDistribution(closures, c=>speciesShortLabel(c.species))) +
-        distributionCardHtml('ลูกกุ้งจากไหน', buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null)) +
+        distributionCardHtml('ลูกกุ้งจากไหน', buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null), {showSurvival:true}) +
         distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
         distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
         distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
