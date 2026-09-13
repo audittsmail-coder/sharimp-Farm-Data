@@ -506,6 +506,13 @@
   .chart-legend-dot{ width:8px; height:8px; flex:none; }
   .mp-card{ max-width:560px; }
   @media (max-width:700px){ .mp-card{ max-width:100%; } }
+  .mp-grid{ display:flex; flex-direction:column; }
+  @media (min-width:860px){
+    .mp-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+    .mp-grid > *{ margin-bottom:0; }
+    .mp-card{ max-width:none; }
+    .mp-card-full{ grid-column:1 / -1; }
+  }
   .mp-card .field{ margin-bottom:10px; }
   .mp-card .field label{ font-size:11.5px; margin-bottom:4px; }
   .mp-card .field input, .mp-card .field select, .mp-card .field textarea{
@@ -1657,6 +1664,7 @@ function renderMarketPriceTab(tabs){
         <h2>ราคากุ้งตลาด</h2>
       </div>
 
+      <div class="mp-grid">
       <div class="card mp-card">
         <h3>เพิ่มราคาใหม่</h3>
         <p class="hint" style="margin-top:0;">ใส่ได้หลายไซส์พร้อมกันในวันเดียว เว้นแถวที่ไม่ใช้ว่างไว้ได้</p>
@@ -1694,7 +1702,7 @@ function renderMarketPriceTab(tabs){
       </div>
 
       ${chartMonths.length>0 ? `
-      <div class="card mp-card">
+      <div class="card mp-card mp-card-full">
         <div class="farm-title-row" style="margin-bottom:10px;">
           <h3 style="margin:0;">แนวโน้มราคา</h3>
           <div class="chart-month-nav">
@@ -1708,15 +1716,16 @@ function renderMarketPriceTab(tabs){
       </div>` : ''}
 
       ${historyDesc.length>0 ? `
-      <div class="card mp-card">
+      <div class="card mp-card mp-card-full">
         <h3>ประวัติราคา</h3>
         ${marketPriceMatrixHtml(marketPriceMatrix())}
       </div>` : `
-      <div class="empty-state">
+      <div class="empty-state mp-card-full">
         ${ICONS.shrimp}
         <p><b>ยังไม่มีข้อมูลราคากุ้ง</b></p>
         <p>กรอกราคาใหม่ด้านบน หรือวางข้อมูลย้อนหลังหลายรายการพร้อมกันได้</p>
       </div>`}
+      </div>
     </main>
   `;
 }
