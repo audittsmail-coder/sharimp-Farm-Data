@@ -296,6 +296,14 @@
   .field-row > .field{ flex:1 1 200px; min-width:0; }
   .field-row > .field:has(input[type=number]), .field-row > .field:has(input[type=date]){ flex:0 1 220px; }
   .hint{ font-size:11.5px; color:var(--ink-faint); margin-top:5px; }
+  #record-form .field-row:has(> .field:nth-child(3)){ flex-wrap:wrap; row-gap:14px; }
+  @media (min-width:700px){
+    #record-form .field-row{ gap:20px; }
+    #record-form .field-row > .field,
+    #record-form .field-row > .field:has(input[type=number]),
+    #record-form .field-row > .field:has(input[type=date]){ flex:1 1 220px; max-width:300px; }
+    #record-form .field input[type=number], #record-form .field input[type=date]{ max-width:300px; }
+  }
 
   .feedpct-value{ color:var(--teal-400); font-weight:700; font-family:'Taviraj',serif; margin-left:4px; }
   .field input[type=range]{
@@ -1908,11 +1916,11 @@ function renderPondDetail(){
               <label>อัตรารอด (%)</label>
               <input type="number" inputmode="decimal" step="0.1" min="0" max="100" name="survivalRate" placeholder="เช่น 85" value="${editingRecordThisRender && editingRecordThisRender.survivalRate!=null ? editingRecordThisRender.survivalRate : ''}">
             </div>
-          </div>
-          <div class="field">
-            <label>อาหารสะสมทั้งหมด (กก.)</label>
-            <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" placeholder="เช่น 3200" value="${editingRecordThisRender && editingRecordThisRender.totalFeedKg!=null ? editingRecordThisRender.totalFeedKg : ''}">
-            <div class="hint">สะสมตั้งแต่ปล่อยกุ้ง ใช้คำนวณ FCR (อัตราแลกเนื้อ) โดยประมาณให้</div>
+            <div class="field">
+              <label>อาหารสะสมทั้งหมด (กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" placeholder="เช่น 3200" value="${editingRecordThisRender && editingRecordThisRender.totalFeedKg!=null ? editingRecordThisRender.totalFeedKg : ''}">
+              <div class="hint">สะสมตั้งแต่ปล่อยกุ้ง ใช้คำนวณ FCR (อัตราแลกเนื้อ) โดยประมาณให้</div>
+            </div>
           </div>
           <div class="field">
             <label>หมายเหตุ</label>
