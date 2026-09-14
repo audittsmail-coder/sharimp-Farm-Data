@@ -2669,28 +2669,14 @@ function svgMultiLineChart({labels, series}){
 
   let seriesHtml = '';
   series.forEach(s=>{
-    let pathSegments = [], currentSeg = [];
-    s.values.forEach((v,i)=>{
-      if(v===null || v===undefined || isNaN(v)){
-        if(currentSeg.length) pathSegments.push(currentSeg);
-        currentSeg = [];
-      } else {
-        currentSeg.push([xFor(i), yFor(v)]);
-      }
-    });
-    if(currentSeg.length) pathSegments.push(currentSeg);
-    const pointRadius = 3;
-    pathSegments.forEach(seg=>{
-      if(seg.length>=2){
-        const d = seg.map((p,idx)=> (idx===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
-        seriesHtml += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
-      } else if(seg.length===1){
-        seriesHtml += `<circle cx="${seg[0][0].toFixed(1)}" cy="${seg[0][1].toFixed(1)}" r="${pointRadius}" fill="${s.color}" stroke="#081824" stroke-width="1.5"/>`;
-      }
-    });
-    s.values.forEach((v,i)=>{
-      if(v===null || v===undefined || isNaN(v)) return;
-      seriesHtml += `<circle cx="${xFor(i).toFixed(1)}" cy="${yFor(v).toFixed(1)}" r="${pointRadius}" fill="${s.color}" stroke="#081824" stroke-width="1.5"/>`;
+    const valid = s.values.map((v,i)=>({v,i})).filter(d=>d.v!==null && d.v!==undefined && !isNaN(d.v));
+    const pointRadius = 2.8;
+    if(valid.length>=2){
+      const d = valid.map((p,idx)=> (idx===0?'M':'L')+xFor(p.i).toFixed(1)+','+yFor(p.v).toFixed(1)).join(' ');
+      seriesHtml += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+    valid.forEach(p=>{
+      seriesHtml += `<circle cx="${xFor(p.i).toFixed(1)}" cy="${yFor(p.v).toFixed(1)}" r="${pointRadius}" fill="${s.color}" stroke="#081824" stroke-width="1.2"/>`;
     });
   });
 
