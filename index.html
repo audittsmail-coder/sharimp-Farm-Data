@@ -190,12 +190,12 @@
   .action-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
   .action-btn{
     display:inline-flex; align-items:center; gap:6px;
-    background:var(--surface-soft); border:1px solid var(--line); color:var(--ink-soft); font-size:12px;
+    background:var(--surface-soft); border:1.5px solid var(--ink-faint); color:var(--ink-soft); font-size:12px;
     cursor:pointer; padding:7px 12px; border-radius:0; font-weight:600; transition:all .15s var(--ease);
   }
   .action-btn:hover{ color:var(--heading); border-color:var(--teal-500); }
-  .action-btn.danger{ color:var(--danger); }
-  .action-btn.danger:hover{ color:var(--danger); border-color:var(--danger); }
+  .action-btn.danger{ color:var(--danger); border-color:var(--danger); }
+  .action-btn.danger:hover{ color:var(--danger); background:rgba(232,129,95,.12); }
   .action-btn svg{ flex-shrink:0; opacity:.9; }
 
 
