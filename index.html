@@ -1782,7 +1782,7 @@ function renderMarketPriceTab(tabs){
             <button type="button" id="btn-mp-chart-next-month" class="mp-nav-btn" ${!hasNextMonth?'disabled':''}>›</button>
           </div>
         </div>
-        <div class="chart-wrap" style="height:140px;">${chartHtml}</div>
+        <div class="chart-wrap" style="height:220px;">${chartHtml}</div>
         ${chartLegendHtml}
       </div>` : ''}
 
@@ -2810,7 +2810,7 @@ function svgLineChart({labels, values, color, fillColor}){
 
 const MULTI_CHART_COLORS = ['#4FC3F7','#FFB74D','#F06292','#81C784','#BA68C8','#FFD54F','#4DB6AC','#E57373'];
 function svgMultiLineChart({labels, series, days}){
-  const width = 300, height = 130;
+  const width = 300, height = 210;
   const padL = 32, padR = 8, padT = 10, padB = 20;
   const innerW = width - padL - padR;
   const innerH = height - padT - padB;
@@ -2821,19 +2821,18 @@ function svgMultiLineChart({labels, series, days}){
     return `<div style="display:flex;align-items:center;justify-content:center;height:${height}px;color:var(--ink-faint);font-size:12.5px">ยังไม่มีข้อมูลเพียงพอ</div>`;
   }
 
-  const min = 80, max = 230;
+  const min = 80, max = 220;
 
   const xFor = i => n<=1 ? padL+innerW/2 : padL + (innerW * i/(n-1));
   const yFor = v => padT + innerH * (1 - (v-min)/(max-min));
 
   let gridLines = '';
-  const gridCount = 6;
-  for(let g=0; g<=gridCount; g++){
-    const gv = min + (max-min)*g/gridCount;
+  const gridValues = [80, 90, 100, 120, 140, 160, 180, 200, 220];
+  gridValues.forEach(gv=>{
     const gy = yFor(gv);
     gridLines += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${width-padR}" y2="${gy.toFixed(1)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
-    gridLines += `<text x="${padL-6}" y="${(gy+3).toFixed(1)}" text-anchor="end" font-size="8" font-family="'IBM Plex Sans Thai',sans-serif" fill="#fff">${gv.toFixed(Math.abs(gv)<10?1:0)}</text>`;
-  }
+    gridLines += `<text x="${padL-6}" y="${(gy+3).toFixed(1)}" text-anchor="end" font-size="8" font-family="'IBM Plex Sans Thai',sans-serif" fill="#fff">${gv}</text>`;
+  });
 
   let seriesHtml = '';
   series.forEach(s=>{
