@@ -2827,7 +2827,7 @@ function svgMultiLineChart({labels, series, days}){
   const yFor = v => padT + innerH * (1 - (v-min)/(max-min));
 
   let gridLines = '';
-  const gridCount = 5;
+  const gridCount = 6;
   for(let g=0; g<=gridCount; g++){
     const gv = min + (max-min)*g/gridCount;
     const gy = yFor(gv);
