@@ -602,9 +602,7 @@
   .freg-addr{ font-size:12px; color:var(--ink-soft); margin-top:10px; }
   .freg-area-row{ display:flex; align-items:center; gap:10px; margin-top:8px; font-size:12px; }
   .freg-area-row .lab{ width:110px; flex:none; color:var(--ink-faint); }
-  .freg-area-row .val{ width:52px; flex:none; text-align:right; font-weight:700; color:var(--ink); font-family:'Taviraj',serif; }
-  .freg-bar-track{ flex:1; height:8px; background:var(--surface-soft); border-radius:var(--radius-pill); overflow:hidden; }
-  .freg-bar-fill{ height:100%; border-radius:var(--radius-pill); }
+  .freg-area-row .val{ flex:1; text-align:right; font-weight:700; color:var(--ink); font-family:'Taviraj',serif; }
 
   table.overview-table th, table.overview-table td{ padding:6px 4px; white-space:nowrap; }
   table.overview-table th{ font-size:9px; line-height:1.3; white-space:normal; }
@@ -1833,7 +1831,6 @@ function renderFarmRegistry(tabs){
     const expClass = daysLeft < 0 ? 'due' : daysLeft <= 90 ? 'soon' : 'ok';
     return { ...f, daysLeft, expClass };
   }).sort((a,b)=> b.land-a.land);
-  const maxLand = Math.max(...farms.map(f=>f.land));
   const totalLand = farms.reduce((s,f)=>s+f.land,0);
   const totalOp = farms.reduce((s,f)=>s+f.op,0);
   const totalActive = farms.reduce((s,f)=>s+f.active,0);
@@ -1884,17 +1881,14 @@ function renderFarmRegistry(tabs){
         <div style="margin-top:12px;">
           <div class="freg-area-row">
             <div class="lab">ที่ดินทั้งหมด</div>
-            <div class="freg-bar-track"><div class="freg-bar-fill" style="width:${f.land/maxLand*100}%;background:var(--slate);"></div></div>
             <div class="val">${f.land.toFixed(1)}</div>
           </div>
           <div class="freg-area-row">
             <div class="lab">สถานประกอบกิจการ</div>
-            <div class="freg-bar-track"><div class="freg-bar-fill" style="width:${f.op/maxLand*100}%;background:var(--coral);"></div></div>
             <div class="val">${f.op.toFixed(1)}</div>
           </div>
           <div class="freg-area-row">
             <div class="lab">ประกอบกิจการ</div>
-            <div class="freg-bar-track"><div class="freg-bar-fill" style="width:${f.active/maxLand*100}%;background:var(--teal-400);"></div></div>
             <div class="val">${f.active.toFixed(1)}</div>
           </div>
         </div>
