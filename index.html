@@ -517,6 +517,17 @@
   .chart-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px; }
   .chart-legend-item{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--ink-soft); }
   .chart-legend-dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .chart-tap-wrap{ position:relative; }
+  .chart-hit{ cursor:pointer; }
+  .chart-tap-info{
+    margin-top:8px; padding:9px 11px; background:var(--surface-soft); border-radius:var(--radius-sm);
+    font-size:11.5px; color:var(--ink-faint); line-height:1.5;
+  }
+  .chart-tap-info .tap-date{ font-weight:700; color:var(--heading); margin-bottom:5px; font-size:12px; }
+  .chart-tap-info .tap-rows{ display:flex; flex-wrap:wrap; gap:5px 14px; }
+  .chart-tap-info .tap-row{ display:flex; align-items:center; gap:5px; color:var(--ink-soft); }
+  .chart-tap-info .tap-dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .chart-tap-info .tap-row b{ color:var(--heading); font-weight:700; }
   .mp-card{ max-width:560px; }
   @media (max-width:700px){ .mp-card{ max-width:100%; } }
   .mp-grid{ display:flex; flex-direction:column; }
@@ -1658,13 +1669,14 @@ function renderMarketPriceTab(tabs){
     const sizesInMonth = [...new Set(monthEntries.map(m=>m.sizeCount))].sort((a,b)=>a-b);
     const series = sizesInMonth.map((size,idx)=>({
       color: MULTI_CHART_COLORS[idx % MULTI_CHART_COLORS.length],
+      label: size+' ตัว/กก.',
       values: days.map(d=>{
         const matching = monthEntries.filter(m=>m.date===d && m.sizeCount===size);
         if(matching.length===0) return null;
         return matching.reduce((s,m)=>s+m.pricePerKg,0)/matching.length;
       }),
     }));
-    chartHtml = days.length>0 ? svgMultiLineChart({ labels: days.map(d=>d.slice(8,10)), series }) : `<div class="empty-state" style="padding:24px 12px;">${ICONS.shrimp}<p>ยังไม่มีข้อมูลราคาในเดือนนี้</p></div>`;
+    chartHtml = days.length>0 ? svgMultiLineChart({ labels: days.map(d=>d.slice(8,10)), series, days }) : `<div class="empty-state" style="padding:24px 12px;">${ICONS.shrimp}<p>ยังไม่มีข้อมูลราคาในเดือนนี้</p></div>`;
     chartLegendHtml = sizesInMonth.length>0 ? `
       <div class="chart-legend">
         ${sizesInMonth.map((size,idx)=>`<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${MULTI_CHART_COLORS[idx % MULTI_CHART_COLORS.length]}"></span>${size} ตัว/กก.</span>`).join('')}
@@ -2649,7 +2661,7 @@ function svgLineChart({labels, values, color, fillColor}){
 }
 
 const MULTI_CHART_COLORS = ['#4FC3F7','#FFB74D','#F06292','#81C784','#BA68C8','#FFD54F','#4DB6AC','#E57373'];
-function svgMultiLineChart({labels, series}){
+function svgMultiLineChart({labels, series, days}){
   const width = 300, height = 130;
   const padL = 32, padR = 8, padT = 10, padB = 20;
   const innerW = width - padL - padR;
@@ -2683,15 +2695,35 @@ function svgMultiLineChart({labels, series}){
   let seriesHtml = '';
   series.forEach(s=>{
     const valid = s.values.map((v,i)=>({v,i})).filter(d=>d.v!==null && d.v!==undefined && !isNaN(d.v));
-    const pointRadius = 2.8;
     if(valid.length>=2){
       const d = valid.map((p,idx)=> (idx===0?'M':'L')+xFor(p.i).toFixed(1)+','+yFor(p.v).toFixed(1)).join(' ');
       seriesHtml += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    } else if(valid.length===1){
+      seriesHtml += `<circle cx="${xFor(valid[0].i).toFixed(1)}" cy="${yFor(valid[0].v).toFixed(1)}" r="3" fill="${s.color}"/>`;
     }
-    valid.forEach(p=>{
-      seriesHtml += `<circle cx="${xFor(p.i).toFixed(1)}" cy="${yFor(p.v).toFixed(1)}" r="${pointRadius}" fill="${s.color}" stroke="#081824" stroke-width="1.2"/>`;
-    });
   });
+
+  let cursorHtml = '', hitHtml = '';
+  const tooltipData = [];
+  for(let i=0; i<n; i++){
+    const entries = series
+      .filter(s=> s.values[i]!==null && s.values[i]!==undefined && !isNaN(s.values[i]))
+      .map(s=>({ label:s.label||'', color:s.color, value:s.values[i] }));
+    tooltipData.push({ day: days ? fmtDate(days[i]) : labels[i], entries });
+    if(entries.length===0) continue;
+    const cx = xFor(i);
+    let dotsHtml = '';
+    entries.forEach(e=>{
+      dotsHtml += `<circle cx="${cx.toFixed(1)}" cy="${yFor(e.value).toFixed(1)}" r="4" fill="${e.color}" stroke="#081824" stroke-width="1.5"/>`;
+    });
+    cursorHtml += `<g class="chart-cursor" data-cursor="${i}" style="display:none">
+      <line x1="${cx.toFixed(1)}" y1="${padT.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${(padT+innerH).toFixed(1)}" stroke="rgba(255,255,255,.35)" stroke-width="1" stroke-dasharray="2,2"/>
+      ${dotsHtml}
+    </g>`;
+    const xLeft = i===0 ? padL : (xFor(i-1)+cx)/2;
+    const xRight = i===n-1 ? width-padR : (cx+xFor(i+1))/2;
+    hitHtml += `<rect data-day-idx="${i}" class="chart-hit" x="${xLeft.toFixed(1)}" y="${padT.toFixed(1)}" width="${(xRight-xLeft).toFixed(1)}" height="${innerH.toFixed(1)}" fill="transparent" pointer-events="all"/>`;
+  }
 
   let xLabelsHtml = '';
   const maxLabels = 6;
@@ -2702,9 +2734,12 @@ function svgMultiLineChart({labels, series}){
     }
   });
 
-  return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:${height}px;display:block">
-    ${gridLines}${seriesHtml}${xLabelsHtml}
-  </svg>`;
+  return `<div class="chart-tap-wrap" data-chart-tooltip='${escapeHtml(JSON.stringify(tooltipData))}'>
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:${height}px;display:block">
+      ${gridLines}${seriesHtml}${cursorHtml}${hitHtml}${xLabelsHtml}
+    </svg>
+    <div class="chart-tap-info">แตะที่กราฟเพื่อดูราคาของวันนั้น</div>
+  </div>`;
 }
 
 const PATHOGEN_SEVERITY_RANK = { normal:0, watch:1, critical:2 };
@@ -3142,6 +3177,29 @@ function bindDashboardEvents(){
     const idx = months.indexOf(marketPriceChartMonth!=null && months.includes(marketPriceChartMonth) ? marketPriceChartMonth : months[months.length-1]);
     if(idx >= 0 && idx < months.length-1){ marketPriceChartMonth = months[idx+1]; render(); }
   };
+
+  document.querySelectorAll('.chart-tap-wrap').forEach(wrap=>{
+    let tooltipData;
+    try{ tooltipData = JSON.parse(wrap.getAttribute('data-chart-tooltip')||'[]'); }catch(e){ return; }
+    const infoEl = wrap.querySelector('.chart-tap-info');
+    wrap.querySelectorAll('.chart-hit').forEach(rect=>{
+      rect.onclick = ()=>{
+        const i = parseInt(rect.getAttribute('data-day-idx'), 10);
+        const entry = tooltipData[i];
+        if(!entry || !entry.entries.length) return;
+        wrap.querySelectorAll('.chart-cursor').forEach(c=>{
+          c.style.display = (c.getAttribute('data-cursor')===String(i)) ? 'block' : 'none';
+        });
+        if(infoEl){
+          infoEl.innerHTML = `
+            <div class="tap-date">${escapeHtml(entry.day)}</div>
+            <div class="tap-rows">
+              ${entry.entries.map(e=>`<span class="tap-row"><span class="tap-dot" style="background:${e.color}"></span>${escapeHtml(e.label)}: <b>${e.value.toLocaleString('th-TH',{maximumFractionDigits:0})}</b> บาท</span>`).join('')}
+            </div>`;
+        }
+      };
+    });
+  });
 
   document.querySelectorAll('[data-del-market-price]').forEach(btn=>{
     btn.onclick = async ()=>{
