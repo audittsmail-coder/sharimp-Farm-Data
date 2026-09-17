@@ -570,6 +570,42 @@
   table.price-matrix td.pm-empty{ color:var(--ink-faint); }
   .pm-cell-del{ color:var(--danger); font-size:9.5px; margin-left:5px; cursor:pointer; text-decoration:underline; }
 
+  .legend{ display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--ink-faint); }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; flex:none; }
+  .note{
+    padding:10px 12px; background:var(--surface-soft); border-left:3px solid var(--orange);
+    border-radius:0 var(--radius-sm) var(--radius-sm) 0; font-size:12.5px; color:var(--ink-soft); line-height:1.55;
+  }
+
+  .freg-header-stats{ display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 16px 0; }
+  .freg-stat{ flex:1 1 110px; background:var(--surface-soft); border:1px solid var(--line-soft); border-radius:var(--radius-sm); padding:12px 14px; text-align:center; }
+  .freg-stat .n{ font-size:20px; font-weight:700; color:var(--heading); font-family:'Taviraj',serif; }
+  .freg-stat .l{ font-size:10.5px; color:var(--ink-faint); margin-top:3px; }
+  .freg-card{ margin-bottom:12px; }
+  .freg-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; }
+  .freg-name{ font-size:17px; font-weight:700; color:var(--heading); font-family:'Taviraj',serif; }
+  .freg-owner{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+  .freg-badges{ display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+  .freg-issue-badge{
+    font-size:10.5px; color:var(--ink-faint); background:var(--surface-soft); border:1px solid var(--line-soft);
+    padding:3px 10px; border-radius:var(--radius-pill); white-space:nowrap;
+  }
+  .freg-expiry{ font-size:10.5px; font-weight:700; padding:3px 10px; border-radius:var(--radius-pill); white-space:nowrap; border:1px solid; }
+  .freg-expiry.ok{ color:var(--teal-400); background:var(--teal-100); border-color:rgba(46,147,203,.3); }
+  .freg-expiry.soon{ color:var(--amber); background:var(--amber-soft); border-color:rgba(239,183,83,.35); }
+  .freg-expiry.due{ color:var(--coral); background:var(--coral-soft); border-color:rgba(232,129,95,.35); }
+  .freg-ids{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .freg-id-chip{ flex:1 1 170px; background:var(--surface-soft); border:1px solid var(--line-soft); border-radius:var(--radius-sm); padding:8px 12px; }
+  .freg-id-chip .lab{ font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.03em; }
+  .freg-id-chip .val{ font-family:'Taviraj',serif; font-weight:700; font-size:14px; color:var(--teal-400); margin-top:2px; word-break:break-all; }
+  .freg-addr{ font-size:12px; color:var(--ink-soft); margin-top:10px; }
+  .freg-area-row{ display:flex; align-items:center; gap:10px; margin-top:8px; font-size:12px; }
+  .freg-area-row .lab{ width:110px; flex:none; color:var(--ink-faint); }
+  .freg-area-row .val{ width:52px; flex:none; text-align:right; font-weight:700; color:var(--ink); font-family:'Taviraj',serif; }
+  .freg-bar-track{ flex:1; height:8px; background:var(--surface-soft); border-radius:var(--radius-pill); overflow:hidden; }
+  .freg-bar-fill{ height:100%; border-radius:var(--radius-pill); }
+
   table.overview-table th, table.overview-table td{ padding:6px 4px; white-space:nowrap; }
   table.overview-table th{ font-size:9px; line-height:1.3; white-space:normal; }
   .overview-table tbody tr:not(.ov-zone-row){ cursor:pointer; }
@@ -1329,10 +1365,13 @@ function renderFarmDashboard(){
     `<span class="farm-tabs-break"></span>` +
     `<button class="farm-tab ${currentFarmId==='marketprice'?'active':''}" data-farm="marketprice">ราคาตลาด</button>` +
     `<span class="farm-tabs-break"></span>` +
-    `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>`;
+    `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>` +
+    `<span class="farm-tabs-break"></span>` +
+    `<button class="farm-tab ${currentFarmId==='registry'?'active':''}" data-farm="registry">ทะเบียนฟาร์ม</button>`;
 
   if(currentFarmId === 'overview') return renderOverviewDashboard(tabs);
   if(currentFarmId === 'closures') return renderClosuresSummary(tabs);
+  if(currentFarmId === 'registry') return renderFarmRegistry(tabs);
   if(currentFarmId === 'marketprice') return renderMarketPriceTab(tabs);
 
   const farm = state.farms.find(f=>f.id===currentFarmId);
@@ -1766,6 +1805,111 @@ function renderMarketPriceTab(tabs){
         <p><b>ยังไม่มีข้อมูลราคากุ้ง</b></p>
         <p>กรอกราคาใหม่ด้านบน หรือวางข้อมูลย้อนหลังหลายรายการพร้อมกันได้</p>
       </div>` : ''}
+      </div>
+    </main>
+  `;
+}
+
+const FARM_REGISTRY = [
+  {name:"อนันต์ฟาร์ม 1", owner:"นายอนันต์ จิวุฒิพงค์", cert:"6381085300058", regno:"8101020983",
+   addr:"95/1 ม.9 ต.คลองขนาน อ.เหนือคลอง จ.กระบี่", issueDate:"25 ก.พ. 2563",
+   op:100.0, active:62.6, land:121.0, expiryLabel:"18 ธ.ค. 2569", expiryISO:"2026-12-18"},
+  {name:"สิริวันฟาร์ม 3", owner:"นางสิริวัน จิวุฒิพงค์", cert:"6381085300061", regno:"8101020695",
+   addr:"124 ม.9 ต.คลองขนาน อ.เหนือคลอง จ.กระบี่", issueDate:"25 ก.พ. 2563",
+   op:75.0, active:48.8, land:75.0, expiryLabel:"21 ม.ค. 2570", expiryISO:"2027-01-21"},
+  {name:"อนันต์ฟาร์ม 2", owner:"นายอนันต์ จิวุฒิพงค์", cert:"6381085300060", regno:"8101024180",
+   addr:"ม.9 ต.คลองขนาน อ.เหนือคลอง จ.กระบี่", issueDate:"25 ก.พ. 2563",
+   op:57.2, active:30.7, land:85.0, expiryLabel:"21 ม.ค. 2570", expiryISO:"2027-01-21"},
+  {name:"สิงหาฟาร์ม 5", owner:"นายสิงหา จิวุฒิพงค์", cert:"6381085300059", regno:"8101032899",
+   addr:"141 ม.9 ต.คลองขนาน อ.เหนือคลอง จ.กระบี่", issueDate:"20 ก.พ. 2567",
+   op:54.0, active:25.8, land:54.0, expiryLabel:"19 ก.พ. 2570", expiryISO:"2027-02-19"},
+  {name:"สิริวันฟาร์ม (ไสโป๊ะ)", owner:"นายอนันต์ จิวุฒิพงค์", cert:"6381085300057", regno:"8101024181",
+   addr:"ม.3 ต.เหนือคลอง อ.เหนือคลอง จ.กระบี่", issueDate:"25 ก.พ. 2563",
+   op:28.5, active:28.5, land:54.0, expiryLabel:"21 ม.ค. 2570", expiryISO:"2027-01-21"},
+];
+function renderFarmRegistry(tabs){
+  const farms = FARM_REGISTRY.map(f=>{
+    const daysLeft = daysBetween(todayISO(), f.expiryISO);
+    const expClass = daysLeft < 0 ? 'due' : daysLeft <= 90 ? 'soon' : 'ok';
+    return { ...f, daysLeft, expClass };
+  }).sort((a,b)=> b.land-a.land);
+  const maxLand = Math.max(...farms.map(f=>f.land));
+  const totalLand = farms.reduce((s,f)=>s+f.land,0);
+  const totalOp = farms.reduce((s,f)=>s+f.op,0);
+  const totalActive = farms.reduce((s,f)=>s+f.active,0);
+
+  return `
+    <div class="farm-tabs">${tabs}</div>
+    <main>
+      <div class="farm-title-row">
+        <h2>ทะเบียนฟาร์ม</h2>
+      </div>
+      <p class="hint" style="margin-top:-6px;">สรุปจากหนังสือรับรองการแจ้งประกอบกิจการเพาะเลี้ยงสัตว์น้ำควบคุม และบัตรประจำตัวเกษตรกร รวม ${farms.length} ฟาร์ม</p>
+
+      <div class="freg-header-stats">
+        <div class="freg-stat"><div class="n">${farms.length}</div><div class="l">ฟาร์มทั้งหมด</div></div>
+        <div class="freg-stat"><div class="n">${totalLand.toFixed(1)}</div><div class="l">ไร่ ที่ดินรวม</div></div>
+        <div class="freg-stat"><div class="n">${totalActive.toFixed(1)}</div><div class="l">ไร่ ประกอบกิจการ</div></div>
+      </div>
+
+      <div class="legend" style="margin:0 0 14px 0;">
+        <span><i class="dot" style="background:var(--teal-400)"></i>บัตรยังไม่ใกล้หมดอายุ</span>
+        <span><i class="dot" style="background:var(--amber)"></i>ใกล้หมดอายุ (≤90 วัน)</span>
+        <span><i class="dot" style="background:var(--coral)"></i>หมดอายุแล้ว</span>
+      </div>
+
+      ${farms.map(f=>`
+      <div class="card freg-card">
+        <div class="freg-top">
+          <div>
+            <div class="freg-name">${escapeHtml(f.name)}</div>
+            <div class="freg-owner">${escapeHtml(f.owner)}</div>
+          </div>
+          <div class="freg-badges">
+            <div class="freg-issue-badge">ออกเมื่อ ${escapeHtml(f.issueDate)}</div>
+            <div class="freg-expiry ${f.expClass}">บัตรเกษตรกรหมดอายุ ${escapeHtml(f.expiryLabel)}${f.daysLeft<0 ? ' · หมดอายุแล้ว '+Math.abs(f.daysLeft)+' วัน' : ' · เหลือ '+f.daysLeft+' วัน'}</div>
+          </div>
+        </div>
+        <div class="freg-ids">
+          <div class="freg-id-chip">
+            <div class="lab">เลขที่หนังสือรับรอง</div>
+            <div class="val">${escapeHtml(f.cert)}</div>
+          </div>
+          <div class="freg-id-chip">
+            <div class="lab">เลขทะเบียนฟาร์ม</div>
+            <div class="val">${escapeHtml(f.regno)}</div>
+          </div>
+        </div>
+        <div class="freg-addr">${escapeHtml(f.addr)}</div>
+        <div style="margin-top:12px;">
+          <div class="freg-area-row">
+            <div class="lab">ที่ดินทั้งหมด</div>
+            <div class="freg-bar-track"><div class="freg-bar-fill" style="width:${f.land/maxLand*100}%;background:var(--slate);"></div></div>
+            <div class="val">${f.land.toFixed(1)}</div>
+          </div>
+          <div class="freg-area-row">
+            <div class="lab">สถานประกอบกิจการ</div>
+            <div class="freg-bar-track"><div class="freg-bar-fill" style="width:${f.op/maxLand*100}%;background:var(--coral);"></div></div>
+            <div class="val">${f.op.toFixed(1)}</div>
+          </div>
+          <div class="freg-area-row">
+            <div class="lab">ประกอบกิจการ</div>
+            <div class="freg-bar-track"><div class="freg-bar-fill" style="width:${f.active/maxLand*100}%;background:var(--teal-400);"></div></div>
+            <div class="val">${f.active.toFixed(1)}</div>
+          </div>
+        </div>
+      </div>`).join('')}
+
+      <div class="card">
+        <h3>สรุปรวมทั้งหมด</h3>
+        <div class="calc-grid" style="grid-template-columns:repeat(3,1fr);">
+          <div class="calc-tile"><div class="n">${totalOp.toFixed(1)}</div><div class="l">ไร่ พื้นที่สถานประกอบกิจการ</div></div>
+          <div class="calc-tile"><div class="n">${totalActive.toFixed(1)}</div><div class="l">ไร่ พื้นที่ประกอบกิจการ</div></div>
+          <div class="calc-tile"><div class="n">${totalLand.toFixed(1)}</div><div class="l">ไร่ พื้นที่ที่ดินทั้งหมด</div></div>
+        </div>
+        <div class="note" style="margin-top:14px;">
+          <b>หมายเหตุ:</b> "สิริวันฟาร์ม 3" (หมู่ 9 ต.คลองขนาน เจ้าของ: นางสิริวัน) และ "สิริวันฟาร์ม (ไสโป๊ะ)" (หมู่ 3 ต.เหนือคลอง เจ้าของ: นายอนันต์) เป็นคนละแปลง คนละเจ้าของ จึงนับแยกเป็นคนละรายการ
+        </div>
       </div>
     </main>
   `;
