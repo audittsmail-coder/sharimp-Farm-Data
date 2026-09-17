@@ -326,14 +326,14 @@
   }
   .field input[type=range]:focus{ outline:none; box-shadow:none; }
   .field input[type=range]::-webkit-slider-runnable-track{
-    height:6px; background:var(--surface-hi); border:1px solid var(--line); border-radius:var(--radius-pill);
+    height:6px; background:var(--range-track-bg, var(--surface-hi)); border:1px solid var(--line); border-radius:var(--radius-pill);
   }
   .field input[type=range]::-webkit-slider-thumb{
     -webkit-appearance:none; appearance:none; width:18px; height:18px; border-radius:50%;
     background:var(--teal-400); border:none; cursor:pointer; margin-top:-7px;
   }
   .field input[type=range]::-moz-range-track{
-    height:6px; background:var(--surface-hi); border:1px solid var(--line); border-radius:var(--radius-pill);
+    height:6px; background:var(--range-track-bg, var(--surface-hi)); border:1px solid var(--line); border-radius:var(--radius-pill);
   }
   .field input[type=range]::-moz-range-thumb{
     width:18px; height:18px; background:var(--teal-400); border:none; cursor:pointer; border-radius:50%;
@@ -1211,13 +1211,21 @@ function estimatedSurvivingCount(releaseCount, survivalRate){
   if(!releaseCount || survivalRate==null) return null;
   return Math.round(releaseCount * (survivalRate/100));
 }
-function suggestedFeedPctRange(sizeCount){
-  if(sizeCount==null) return null;
-  if(sizeCount > 250) return { min:6, max:8 };
-  if(sizeCount > 130) return { min:5, max:6 };
-  if(sizeCount > 75) return { min:4, max:4.5 };
-  if(sizeCount > 45) return { min:3, max:3.5 };
-  return { min:2, max:2.5 };
+const BIOMASS_FEED_RATE_TABLE = [
+  { min:1000, max:10000, white:[7.0,10.0], black:[6.0,8.0] },
+  { min:330,  max:1000,  white:[5.0,7.0],  black:[4.0,6.0] },
+  { min:100,  max:330,   white:[3.5,5.0],  black:[3.0,4.0] },
+  { min:50,   max:100,   white:[2.5,3.5],  black:[2.0,3.0] },
+  { min:0,    max:50,    white:[2.0,2.5],  black:[1.5,2.0] },
+];
+function suggestedFeedPctRange(sizeCount, species){
+  if(sizeCount==null || isNaN(sizeCount) || sizeCount<=0) return null;
+  const bucket = BIOMASS_FEED_RATE_TABLE.find(b => sizeCount>b.min && sizeCount<=b.max)
+    || (sizeCount>10000 ? BIOMASS_FEED_RATE_TABLE[0] : null);
+  if(!bucket) return null;
+  const isBlack = (species||'').includes('ดำ');
+  const [min,max] = isBlack ? bucket.black : bucket.white;
+  return { min, max };
 }
 /* ---------------- Bootstrap ---------------- */
 function boot(){
@@ -2220,7 +2228,7 @@ function renderBiomassCalc(){
   const recs = recordsForPond(p.id);
   const last = recs[recs.length-1];
   const initialSizeCount = last && last.sizeCount!=null ? last.sizeCount : null;
-  const initialFeedRange = suggestedFeedPctRange(initialSizeCount);
+  const initialFeedRange = suggestedFeedPctRange(initialSizeCount, p.species);
   const initialFeedPct = initialFeedRange ? ((initialFeedRange.min+initialFeedRange.max)/2) : 3;
 
   return `
@@ -2252,6 +2260,7 @@ function renderBiomassCalc(){
           <div class="field">
             <label>อัตราให้อาหาร (% Biomass) <span class="feedpct-value" id="biomass-feedpct-value">${initialFeedPct.toFixed(1)}%</span></label>
             <input type="range" min="0.5" max="10" step="0.1" id="biomass-feedpct" value="${initialFeedPct}">
+            <div class="hint" id="biomass-feedpct-suggest" style="margin-top:6px;">${initialFeedRange ? `ช่วงแนะนำ: ${initialFeedRange.min.toFixed(1)}% - ${initialFeedRange.max.toFixed(1)}%` : 'ใส่ไซส์กุ้งเพื่อดูช่วงแนะนำ'}</div>
           </div>
         </div>
 
@@ -3310,6 +3319,8 @@ function bindDashboardEvents(){
     const biomassCalcBiomass = document.getElementById('biomass-calc-biomass');
     const biomassCalcFeed = document.getElementById('biomass-calc-feed');
     const biomassFeedPctValue = document.getElementById('biomass-feedpct-value');
+    const biomassFeedPctSuggest = document.getElementById('biomass-feedpct-suggest');
+    const biomassPond = state.ponds.find(x=>x.id===viewingBiomassPondId);
     const updateBiomassCalc = ()=>{
       const releaseCount = biomassRelease.value ? parseFloat(biomassRelease.value) : null;
       const survivalRate = biomassSurvival.value ? parseFloat(biomassSurvival.value) : null;
@@ -3317,6 +3328,22 @@ function bindDashboardEvents(){
       const feedPct = biomassFeedPct.value ? parseFloat(biomassFeedPct.value) : null;
 
       if(biomassFeedPctValue) biomassFeedPctValue.textContent = feedPct!=null ? feedPct.toFixed(1)+'%' : '-';
+
+      const feedRange = suggestedFeedPctRange(sizeCount, biomassPond ? biomassPond.species : null);
+      if(biomassFeedPctSuggest){
+        biomassFeedPctSuggest.textContent = feedRange ? `ช่วงแนะนำ: ${feedRange.min.toFixed(1)}% - ${feedRange.max.toFixed(1)}%` : 'ใส่ไซส์กุ้งเพื่อดูช่วงแนะนำ';
+      }
+      if(biomassFeedPct){
+        const sliderMin = parseFloat(biomassFeedPct.min), sliderMax = parseFloat(biomassFeedPct.max);
+        if(feedRange){
+          const leftPct = Math.max(0, Math.min(100, (feedRange.min-sliderMin)/(sliderMax-sliderMin)*100));
+          const rightPct = Math.max(0, Math.min(100, (feedRange.max-sliderMin)/(sliderMax-sliderMin)*100));
+          biomassFeedPct.style.setProperty('--range-track-bg',
+            `linear-gradient(to right, var(--surface-hi) 0%, var(--surface-hi) ${leftPct}%, var(--teal-400) ${leftPct}%, var(--teal-400) ${rightPct}%, var(--surface-hi) ${rightPct}%, var(--surface-hi) 100%)`);
+        } else {
+          biomassFeedPct.style.removeProperty('--range-track-bg');
+        }
+      }
 
       const survivingCount = (releaseCount && survivalRate!=null) ? Math.round(releaseCount*(survivalRate/100)) : null;
       biomassCalcSurviving.textContent = survivingCount!=null ? survivingCount.toLocaleString('th-TH')+' ตัว' : '-';
