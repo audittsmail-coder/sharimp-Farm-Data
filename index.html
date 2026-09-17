@@ -1876,7 +1876,6 @@ function renderPondDetail(){
         ])}
         <div class="action-row">
           <button class="action-btn" id="btn-edit-pond">${ICONS.edit} แก้ไขข้อมูลบ่อ</button>
-          <button class="action-btn" id="btn-open-biomass">คำนวณ Biomass</button>
           <button class="action-btn danger" id="btn-delete-pond">${ICONS.trash} ลบบ่อนี้</button>
         </div>
       </div>
@@ -1934,6 +1933,10 @@ function renderPondDetail(){
             <div class="field">
               <label>อาหารต่อวัน (กก.)</label>
               <input type="number" inputmode="decimal" step="0.1" name="feedPerDay" placeholder="เช่น 25" value="${editingRecordThisRender ? editingRecordThisRender.feedPerDay : ''}" required>
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <button type="button" class="btn btn-secondary" id="btn-open-biomass" style="width:100%">คำนวณ Biomass</button>
             </div>
           </div>
 
