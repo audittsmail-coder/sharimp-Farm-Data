@@ -560,6 +560,14 @@
   table.rec-table tr:hover td{ background:var(--surface-soft); }
   .row-del{ color:var(--danger); font-size:11px; background:none; border:none; cursor:pointer; text-decoration:underline;}
 
+  table.price-matrix{ border-collapse:collapse; font-size:12px; white-space:nowrap; }
+  table.price-matrix th, table.price-matrix td{ padding:7px 11px; border-bottom:1px solid var(--line-soft); text-align:right; }
+  table.price-matrix thead th{ color:var(--ink-faint); font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--line); }
+  table.price-matrix tbody tr:hover td{ background:var(--surface-soft); }
+  table.price-matrix th:first-child, table.price-matrix td:first-child{
+    text-align:left; position:sticky; left:0; background:var(--surface); font-weight:700; color:var(--ink);
+  }
+  table.price-matrix td.pm-empty{ color:var(--ink-faint); }
   .pm-cell-del{ color:var(--danger); font-size:9.5px; margin-left:5px; cursor:pointer; text-decoration:underline; }
 
   table.overview-table th, table.overview-table td{ padding:6px 4px; white-space:nowrap; }
@@ -848,6 +856,7 @@ let showDeleteAllConfirm = false;
 let editingWeatherNote = false;
 let editingWeatherNoteDate = null;
 let showBulkPriceImport = false;
+let showPriceHistoryEdit = false;
 let marketPriceChartMonth = null;
 let bulkPriceImportResultHtml = '';
 let showClosureStats = false;
@@ -1586,6 +1595,61 @@ function monthLabel(ym){
   const d = new Date(ym+'-01T00:00:00');
   return d.toLocaleDateString('th-TH',{month:'short',year:'2-digit'});
 }
+function marketPriceMatrix(){
+  const all = state.marketPrices.filter(m=>m.date && m.sizeCount!=null && m.pricePerKg!=null);
+  if(all.length===0) return null;
+  const sizes = [...new Set(all.map(m=>m.sizeCount))].sort((a,b)=>a-b);
+  const byMonth = {};
+  all.forEach(m=>{
+    const ym = m.date.slice(0,7);
+    (byMonth[ym] = byMonth[ym]||[]).push(m);
+  });
+  const months = Object.keys(byMonth).sort().reverse();
+  const columns = [];
+  months.forEach(ym=>{
+    const dates = [...new Set(byMonth[ym].map(m=>m.date))].sort().reverse();
+    dates.forEach(date=>{
+      columns.push({ label: fmtDate(date), entries: byMonth[ym].filter(m=>m.date===date) });
+    });
+  });
+
+  const rows = sizes.map(size=>({
+    size,
+    cells: columns.map(col=>{
+      const matching = col.entries.filter(m=>m.sizeCount===size);
+      if(matching.length===0) return null;
+      const avg = matching.reduce((s,m)=>s+m.pricePerKg,0)/matching.length;
+      return { value: avg, delId: matching.length===1 ? matching[0].id : null };
+    }),
+  }));
+
+  return { columns, rows };
+}
+function marketPriceMatrixHtml(matrix){
+  return `
+    <p class="hint" style="margin-top:0;">เรียงจากวันที่ล่าสุด</p>
+    <div style="overflow-x:auto">
+      <table class="price-matrix">
+        <thead>
+          <tr>
+            <th>ไซส์</th>
+            ${matrix.columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${matrix.rows.map(r=>`
+            <tr>
+              <td>${r.size} ตัว/กก.</td>
+              ${r.cells.map(cell=>{
+                if(!cell) return `<td class="pm-empty">-</td>`;
+                const val = cell.value.toLocaleString('th-TH',{maximumFractionDigits:0});
+                return `<td>${val}${cell.delId ? `<span class="pm-cell-del" data-del-market-price="${cell.delId}">ลบ</span>` : ''}</td>`;
+              }).join('')}
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
 function marketPriceQuickRowHtml(defaultSize){
   return `
     <div class="field-row">
@@ -1618,10 +1682,6 @@ function renderMarketPriceTab(tabs){
         const matching = monthEntries.filter(m=>m.date===d && m.sizeCount===size);
         if(matching.length===0) return null;
         return matching.reduce((s,m)=>s+m.pricePerKg,0)/matching.length;
-      }),
-      delIds: days.map(d=>{
-        const matching = monthEntries.filter(m=>m.date===d && m.sizeCount===size);
-        return matching.length===1 ? matching[0].id : null;
       }),
     }));
     chartHtml = days.length>0 ? svgMultiLineChart({ labels: days.map(d=>d.slice(8,10)), series, days }) : `<div class="empty-state" style="padding:24px 12px;">${ICONS.shrimp}<p>ยังไม่มีข้อมูลราคาในเดือนนี้</p></div>`;
@@ -1689,6 +1749,15 @@ function renderMarketPriceTab(tabs){
         </div>
         <div class="chart-wrap" style="height:140px;">${chartHtml}</div>
         ${chartLegendHtml}
+      </div>` : ''}
+
+      ${state.marketPrices.length>0 ? `
+      <div class="card mp-card mp-card-full">
+        <div class="farm-title-row" style="margin-bottom:${showPriceHistoryEdit?'14px':'0'};">
+          <h3 style="margin:0;">แก้ไขข้อมูลย้อนหลัง</h3>
+          <button type="button" id="btn-toggle-price-history" class="action-btn">${showPriceHistoryEdit ? 'ปิด' : 'เปิดดู/ลบข้อมูล'}</button>
+        </div>
+        ${showPriceHistoryEdit ? marketPriceMatrixHtml(marketPriceMatrix()) : ''}
       </div>` : ''}
 
       ${state.marketPrices.length===0 ? `
@@ -2651,7 +2720,7 @@ function svgMultiLineChart({labels, series, days}){
   for(let i=0; i<n; i++){
     const entries = series
       .filter(s=> s.values[i]!==null && s.values[i]!==undefined && !isNaN(s.values[i]))
-      .map(s=>({ label:s.label||'', color:s.color, value:s.values[i], delId: s.delIds ? s.delIds[i] : null }));
+      .map(s=>({ label:s.label||'', color:s.color, value:s.values[i] }));
     tooltipData.push({ day: days ? fmtDate(days[i]) : labels[i], entries });
     if(entries.length===0) continue;
     const cx = xFor(i);
@@ -3073,6 +3142,17 @@ function bindDashboardEvents(){
   const btnToggleBulkPrice = document.getElementById('btn-toggle-bulk-price');
   if(btnToggleBulkPrice) btnToggleBulkPrice.onclick = ()=>{ showBulkPriceImport = !showBulkPriceImport; render(); };
 
+  const btnTogglePriceHistory = document.getElementById('btn-toggle-price-history');
+  if(btnTogglePriceHistory) btnTogglePriceHistory.onclick = ()=>{ showPriceHistoryEdit = !showPriceHistoryEdit; render(); };
+
+  document.querySelectorAll('[data-del-market-price]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(!confirm('ลบราคานี้?')) return;
+      const id = btn.getAttribute('data-del-market-price');
+      await db.collection('marketPrices').doc(id).delete().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
+    };
+  });
+
   const btnImportBulkPrice = document.getElementById('btn-import-bulk-price');
   if(btnImportBulkPrice) btnImportBulkPrice.onclick = async ()=>{
     const textarea = document.getElementById('mp-bulk-text');
@@ -3137,7 +3217,7 @@ function bindDashboardEvents(){
       });
       tipEl.innerHTML = `
         <div class="tap-date">${escapeHtml(entry.day)}</div>
-        ${entry.entries.map(e=>`<div class="tap-row"><span class="tap-dot" style="background:${e.color}"></span>${escapeHtml(e.label)}: <b>${e.value.toLocaleString('th-TH',{maximumFractionDigits:0})}</b> บาท${e.delId ? ` <span class="pm-cell-del" data-del-market-price="${e.delId}">ลบ</span>` : ''}</div>`).join('')}`;
+        ${entry.entries.map(e=>`<div class="tap-row"><span class="tap-dot" style="background:${e.color}"></span>${escapeHtml(e.label)}: <b>${e.value.toLocaleString('th-TH',{maximumFractionDigits:0})}</b> บาท</div>`).join('')}`;
       tipEl.style.display = 'block';
       const wrapRect = wrap.getBoundingClientRect();
       const svgRect = svg.getBoundingClientRect();
@@ -3163,14 +3243,6 @@ function bindDashboardEvents(){
       rect.addEventListener('click', (e)=>{ e.stopPropagation(); showForIndex(i); });
     });
     wrap.addEventListener('mouseleave', hideTip);
-    wrap.addEventListener('click', async (e)=>{
-      const delBtn = e.target.closest('[data-del-market-price]');
-      if(!delBtn) return;
-      e.stopPropagation();
-      if(!confirm('ลบราคานี้?')) return;
-      const id = delBtn.getAttribute('data-del-market-price');
-      await db.collection('marketPrices').doc(id).delete().catch((err)=>alert('ลบไม่สำเร็จ: '+err.message));
-    });
   });
 
   const overviewSortSelect = document.getElementById('overview-sort-select');
