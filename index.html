@@ -3339,7 +3339,7 @@ function bindDashboardEvents(){
           const leftPct = Math.max(0, Math.min(100, (feedRange.min-sliderMin)/(sliderMax-sliderMin)*100));
           const rightPct = Math.max(0, Math.min(100, (feedRange.max-sliderMin)/(sliderMax-sliderMin)*100));
           biomassFeedPct.style.setProperty('--range-track-bg',
-            `linear-gradient(to right, var(--surface-hi) 0%, var(--surface-hi) ${leftPct}%, var(--teal-400) ${leftPct}%, var(--teal-400) ${rightPct}%, var(--surface-hi) ${rightPct}%, var(--surface-hi) 100%)`);
+            `linear-gradient(to right, var(--surface-hi) 0%, var(--surface-hi) ${leftPct}%, var(--orange) ${leftPct}%, var(--orange) ${rightPct}%, var(--surface-hi) ${rightPct}%, var(--surface-hi) 100%)`);
         } else {
           biomassFeedPct.style.removeProperty('--range-track-bg');
         }
