@@ -309,7 +309,7 @@
     }
     #record-form-card .form-section-label{ font-size:13px; margin:16px 0 10px 0; padding-bottom:6px; }
     #record-form-card .btn-sm{ padding:8px 16px; font-size:13.5px; }
-    #record-form-card .record-action-tab{ padding:10px 12px; font-size:13px; }
+    .record-action-tab{ padding:10px 12px; font-size:13px; }
   }
 
   .feedpct-value{ color:var(--teal-400); font-weight:700; font-family:'Taviraj',serif; margin-left:4px; }
@@ -1958,10 +1958,6 @@ function renderPondDetail(){
             <button class="btn btn-sm btn-primary" type="submit" style="flex:1">${editingRecordId ? 'บันทึกการแก้ไข' : 'บันทึก'}</button>
           </div>
         </form>
-        <div class="record-action-tabs">
-          <button type="button" class="record-action-tab tab-harvest" id="btn-open-harvest">แบ่งจับ</button>
-          <button type="button" class="record-action-tab tab-closepond" id="btn-close-pond">ปิดบ่อ</button>
-        </div>
       </div>
 
       ${pathogenLatestHtml}
@@ -2021,6 +2017,10 @@ function renderPondDetail(){
           }).join('')}
         </div>
       </div>` : ''}
+      <div class="record-action-tabs">
+        <button type="button" class="record-action-tab tab-harvest" id="btn-open-harvest">แบ่งจับ</button>
+        <button type="button" class="record-action-tab tab-closepond" id="btn-close-pond">ปิดบ่อ</button>
+      </div>
       <div class="backbar-bottom">
         <button class="back-btn" id="btn-back-bottom">${ICONS.back} กลับ</button>
       </div>
