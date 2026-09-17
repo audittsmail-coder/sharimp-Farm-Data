@@ -2821,12 +2821,7 @@ function svgMultiLineChart({labels, series, days}){
     return `<div style="display:flex;align-items:center;justify-content:center;height:${height}px;color:var(--ink-faint);font-size:12.5px">ยังไม่มีข้อมูลเพียงพอ</div>`;
   }
 
-  let min = Math.min(...allValid.map(d=>d.v));
-  let max = Math.max(...allValid.map(d=>d.v));
-  if(min === max){ const bump = Math.abs(min)*0.1 || 1; min -= bump; max += bump; }
-  const rangePad = (max-min)*0.15;
-  min -= rangePad; max += rangePad;
-  if(min < 0 && allValid.every(d=>d.v>=0)) min = 0;
+  const min = 80, max = 230;
 
   const xFor = i => n<=1 ? padL+innerW/2 : padL + (innerW * i/(n-1));
   const yFor = v => padT + innerH * (1 - (v-min)/(max-min));
