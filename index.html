@@ -1583,7 +1583,7 @@ function renderClosuresSummary(tabs){
       <h3>ประวัติการปิดบ่อทั้งหมด</h3>
       <div style="overflow-x:auto">
         <table class="rec-table">
-          <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>มูลค่า</th><th>หมายเหตุ</th><th></th></tr></thead>
+          <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>ราคาที่จับ</th><th>มูลค่า</th><th>หมายเหตุ</th><th></th></tr></thead>
           <tbody>
             ${closures.map(c=>`
               <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" style="cursor:pointer;">
@@ -1597,6 +1597,7 @@ function renderClosuresSummary(tabs){
                 <td>${c.weightKg!=null ? c.weightKg.toLocaleString('th-TH')+' กก.' : '-'}</td>
                 <td>${c.survivalRatePct!=null ? c.survivalRatePct.toFixed(1)+'%' : '-'}</td>
                 <td>${c.fcr!=null ? c.fcr.toFixed(2) : '-'}</td>
+                <td>${c.pricePerKg!=null ? c.pricePerKg.toLocaleString('th-TH')+' บ./กก.' : '-'}</td>
                 <td>${c.revenue!=null ? c.revenue.toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-'}</td>
                 <td>${c.note ? escapeHtml(c.note) : '-'}</td>
                 <td style="white-space:nowrap;">
