@@ -1692,7 +1692,14 @@ function marketPriceMatrixHtml(matrix){
       </table>
     </div>`;
 }
+function latestPriceForSize(size){
+  const matches = state.marketPrices.filter(m=>m.sizeCount===size && m.pricePerKg!=null);
+  if(matches.length===0) return null;
+  matches.sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.createdAt||0)-(a.createdAt||0));
+  return matches[0].pricePerKg;
+}
 function marketPriceQuickRowHtml(defaultSize){
+  const latestPrice = defaultSize!=null ? latestPriceForSize(defaultSize) : null;
   return `
     <div class="field-row">
       <div class="field">
@@ -1701,7 +1708,7 @@ function marketPriceQuickRowHtml(defaultSize){
       </div>
       <div class="field">
         <label>ราคา (บาท/กก.)</label>
-        <input type="number" inputmode="decimal" step="0.1" name="mp-price" placeholder="เช่น 140">
+        <input type="number" inputmode="decimal" step="0.1" name="mp-price" placeholder="เช่น 140" value="${latestPrice!=null ? latestPrice : ''}">
       </div>
     </div>`;
 }
