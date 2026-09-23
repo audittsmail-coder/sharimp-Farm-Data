@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="อนันต์ฟาร์ม">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Taviraj:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Taviraj:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#081824;
@@ -691,6 +691,112 @@
   }
   .login-card h1{ font-size:20px; margin:0 0 5px 0; color:var(--heading); }
   .login-card p{ font-size:12.5px; color:var(--ink-soft); margin:0 0 20px 0; }
+
+  /* ---------------- Break-even calculator (bkc) ---------------- */
+  .bkc{
+    --bkc-green:#00e5a0; --bkc-blue:#60a5fa; --bkc-pink:#f472b6; --bkc-yellow:#fbbf24;
+    --bkc-purple:#a78bfa; --bkc-teal:#34d399; --bkc-orange:#fb923c; --bkc-gray:#94a3b8;
+    --bkc-mono:'Space Mono', monospace;
+  }
+  .bkc-layout{ display:flex; gap:14px; flex-wrap:wrap; }
+  .bkc-panel{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg); padding:18px; flex:1 1 280px; box-shadow:var(--shadow-sm); }
+  .bkc-section-title{ font-size:11px; text-transform:uppercase; letter-spacing:.12em; font-weight:700; border-left:2px solid var(--bkc-green); padding-left:8px; margin-bottom:12px; color:var(--bkc-green); }
+  .bkc-section-title.purple{ border-color:var(--bkc-purple); color:var(--bkc-purple); }
+  .bkc-section-title.teal{ border-color:var(--bkc-teal); color:var(--bkc-teal); }
+  .bkc-section-title.blue{ border-color:var(--bkc-blue); color:var(--bkc-blue); }
+  .bkc-divider{ border:none; border-top:1px solid var(--line-soft); margin:14px 0; }
+  .bkc-field{ margin-bottom:14px; }
+  .bkc-field-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+  .bkc-field-label{ font-size:12px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em; }
+  .bkc-field-hint{ font-size:10px; color:var(--ink-faint); opacity:.6; }
+  .bkc-input-row{ display:flex; align-items:center; gap:6px; }
+  .bkc-input-unit{ font-size:12px; color:var(--ink-faint); min-width:48px; text-align:right; }
+  .bkc input[type=number]{
+    flex:1; width:100%; background:var(--surface-hi); border:1px solid var(--line);
+    border-radius:var(--radius-sm); padding:8px 12px; color:var(--bkc-green); font-size:15px; font-weight:700;
+    font-family:var(--bkc-mono); outline:none; transition:border-color .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  .bkc input[type=number]:focus{ border-color:rgba(0,229,160,.5); box-shadow:0 0 0 3px rgba(0,229,160,.15); }
+  .bkc input[type=number].blue{ color:var(--bkc-blue); }
+  .bkc input[type=number].blue:focus{ border-color:rgba(96,165,250,.5); box-shadow:0 0 0 3px rgba(96,165,250,.15); }
+  .bkc input[type=number].yellow{ color:var(--bkc-yellow); }
+  .bkc input[type=number].purple{ color:var(--bkc-purple); }
+  .bkc input[type=number].orange{ color:var(--bkc-orange); }
+  .bkc input[type=number].teal{ color:var(--bkc-teal); }
+  .bkc input[type=number].pink{ color:var(--bkc-pink); }
+  .bkc input[type=number].large{ font-size:18px; padding:10px 14px; }
+  .bkc-slider-val{ font-size:14px; font-weight:700; font-family:var(--bkc-mono); color:var(--ink); }
+  .bkc-slider-unit{ font-size:11px; color:var(--ink-faint); margin-left:3px; }
+  .bkc input[type=range]{ width:100%; height:4px; cursor:pointer; margin-top:2px; accent-color:var(--bkc-pink); }
+  .bkc-feed-box{ background:rgba(0,229,160,.06); border:1px solid rgba(0,229,160,.22); border-radius:var(--radius); padding:14px 14px 10px; margin-bottom:14px; }
+  .bkc-feed-box-title{ font-size:11px; color:var(--bkc-green); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+  .bkc-harvest-box{ margin-top:10px; background:rgba(0,229,160,.08); border:1px solid rgba(0,229,160,.2); border-radius:var(--radius-sm); padding:10px 14px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .bkc-harvest-box .lab{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; margin-bottom:2px; }
+  .bkc-harvest-box .big{ font-size:22px; font-weight:800; font-family:var(--bkc-mono); color:var(--bkc-green); }
+  .bkc-harvest-box .sub{ font-size:10px; color:var(--ink-faint); margin-top:2px; }
+  .bkc-harvest-box .r{ text-align:right; }
+  .bkc-harvest-box .r .mid{ font-size:15px; font-weight:700; font-family:var(--bkc-mono); color:var(--ink); }
+  .bkc-two-col{ display:flex; gap:10px; }
+  .bkc-two-col > div{ flex:1; }
+  .bkc-fcr-badge{ display:inline-flex; align-items:center; gap:6px; border-radius:var(--radius-pill); padding:3px 10px; margin-top:8px; font-size:11px; font-weight:700; }
+  .bkc-fcr-dot{ width:7px; height:7px; border-radius:50%; }
+  .bkc-elec-box{ border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:10px; }
+  .bkc-elec-box .lab{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; font-weight:700; }
+  .bkc-elec-box .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .bkc-elec-box .row > div{ flex:1; min-width:60px; }
+  .bkc-elec-box .row > div.wide{ flex:2; min-width:90px; }
+  .bkc-elec-box .row .sm-lab{ font-size:10px; color:var(--ink-faint); margin-bottom:4px; }
+  .bkc-elec-box input[type=number]{ width:100%; padding:7px 10px; font-size:14px; }
+  .bkc-elec-box .note{ font-size:10px; color:var(--ink-faint); opacity:.7; margin-top:6px; }
+  .bkc-elec-note{ background:rgba(52,211,153,.05); border:1px solid rgba(52,211,153,.15); border-radius:7px; padding:7px 10px; font-size:10px; color:var(--ink-faint); margin-top:4px; }
+  .bkc-hp-row{ display:flex; gap:8px; margin-top:7px; }
+  .bkc-hp-btn{
+    background:var(--surface-soft); border:1.5px solid var(--line); color:var(--ink-faint);
+    padding:7px 14px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-weight:600;
+    font-family:inherit; transition:all .15s var(--ease);
+  }
+  .bkc-hp-btn.active{ background:rgba(0,229,160,.14); border-color:rgba(0,229,160,.5); color:var(--bkc-green); }
+  .bkc-right-col{ flex:1 1 280px; display:flex; flex-direction:column; gap:12px; }
+  .bkc-result-panel{ background:rgba(0,229,160,.08); border:1px solid rgba(0,229,160,.28); border-radius:var(--radius-lg); padding:18px; text-align:center; transition:all .3s; }
+  .bkc-result-panel.loss{ background:rgba(232,129,95,.09); border-color:rgba(232,129,95,.3); }
+  .bkc-result-label{ font-size:12px; color:var(--ink-faint); margin-bottom:4px; }
+  .bkc-result-num{ font-size:30px; font-weight:800; font-family:var(--bkc-mono); color:var(--bkc-green); transition:color .3s; }
+  .bkc-result-num.loss{ color:var(--coral); }
+  .bkc-result-sub{ font-size:12px; color:var(--ink-faint); margin-bottom:8px; }
+  .bkc-result-badge{ display:inline-block; background:rgba(0,229,160,.16); padding:4px 14px; border-radius:var(--radius-pill); font-size:13px; font-weight:700; color:var(--bkc-green); transition:all .3s; }
+  .bkc-result-badge.loss{ background:rgba(232,129,95,.16); color:var(--coral); }
+  .bkc-stats-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .bkc-stat-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:11px 13px; flex:1 1 130px; }
+  .bkc-stat-card.hl{ background:rgba(0,229,160,.09); border-color:rgba(0,229,160,.3); }
+  .bkc-stat-card.warn{ background:rgba(239,183,83,.08); border-color:rgba(239,183,83,.32); }
+  .bkc-stat-label{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+  .bkc-stat-val{ font-size:17px; font-weight:800; font-family:var(--bkc-mono); color:var(--ink); line-height:1; }
+  .bkc-stat-val.hl{ color:var(--bkc-green); }
+  .bkc-stat-val.warn{ color:var(--amber); }
+  .bkc-stat-unit{ font-size:10px; font-weight:400; color:var(--ink-faint); margin-left:3px; }
+  .bkc-stat-sub{ font-size:10px; color:var(--ink-faint); opacity:.7; margin-top:3px; }
+  .bkc-breakdown{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:14px; }
+  .bkc-breakdown-title{ font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; }
+  .bkc-bar-row{ margin-bottom:7px; }
+  .bkc-bar-header{ display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px; }
+  .bkc-bar-track{ height:4px; background:var(--surface-soft); border-radius:4px; overflow:hidden; }
+  .bkc-bar-fill{ height:100%; border-radius:4px; transition:width .4s ease; }
+  .bkc-breakdown-total{ border-top:1px solid var(--line-soft); margin-top:10px; padding-top:8px; display:flex; justify-content:space-between; font-size:12px; color:var(--ink-soft); }
+  .bkc-breakdown-total span:last-child{ font-weight:700; font-family:var(--bkc-mono); color:var(--ink); }
+  .bkc-compare-btn{
+    background:var(--surface-soft); border:1.5px solid var(--line); color:var(--ink-faint);
+    padding:8px 18px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-weight:600;
+    font-family:inherit; transition:all .15s var(--ease); margin-top:16px;
+  }
+  .bkc-compare-btn.active{ background:rgba(0,229,160,.14); border-color:rgba(0,229,160,.5); color:var(--bkc-green); }
+  .bkc-compare-section{ margin-top:14px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg); padding:18px; display:none; }
+  .bkc-compare-section.show{ display:block; }
+  .bkc-compare-layout{ display:flex; gap:14px; flex-wrap:wrap; }
+  .bkc-compare-layout > div{ flex:1 1 200px; }
+  .bkc-diff-box{ padding:14px; border-radius:var(--radius-sm); text-align:center; margin-top:12px; }
+  .bkc-diff-label{ font-size:12px; color:var(--ink-faint); margin-bottom:4px; }
+  .bkc-diff-num{ font-size:22px; font-weight:800; font-family:var(--bkc-mono); }
+  .bkc-diff-verdict{ font-size:12px; margin-top:6px; color:var(--ink-faint); }
 </style>
 </head>
 <body>
@@ -1369,11 +1475,13 @@ function renderFarmDashboard(){
     `<span class="farm-tabs-break"></span>` +
     `<button class="farm-tab ${currentFarmId==='marketprice'?'active':''}" data-farm="marketprice">ราคาตลาด</button>` +
     `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>` +
-    `<button class="farm-tab ${currentFarmId==='registry'?'active':''}" data-farm="registry">ทะเบียนฟาร์ม</button>`;
+    `<button class="farm-tab ${currentFarmId==='registry'?'active':''}" data-farm="registry">ทะเบียนฟาร์ม</button>` +
+    `<button class="farm-tab ${currentFarmId==='breakeven'?'active':''}" data-farm="breakeven">คำนวณจุดคุ้มทุน</button>`;
 
   if(currentFarmId === 'overview') return renderOverviewDashboard(tabs);
   if(currentFarmId === 'closures') return renderClosuresSummary(tabs);
   if(currentFarmId === 'registry') return renderFarmRegistry(tabs);
+  if(currentFarmId === 'breakeven') return renderBreakevenCalc(tabs);
   if(currentFarmId === 'marketprice') return renderMarketPriceTab(tabs);
 
   const farm = state.farms.find(f=>f.id===currentFarmId);
@@ -1919,6 +2027,449 @@ function renderFarmRegistry(tabs){
       </div>
     </main>
   `;
+}
+
+function renderBreakevenCalc(tabs){
+  return `
+    <div class="farm-tabs">${tabs}</div>
+    <main>
+      <div class="farm-title-row">
+        <h2>คำนวณจุดคุ้มทุน</h2>
+      </div>
+      <p class="hint" style="margin-top:-6px;">ใส่ข้อมูลจริงจากฟาร์มเพื่อคำนวณ FCR ต้นทุน และกำไรต่อรอบ</p>
+
+      <div class="bkc">
+        <div class="bkc-layout">
+          <div class="bkc-panel">
+            <div class="bkc-section-title">ข้อมูลบ่อ</div>
+
+            <div class="bkc-field">
+              <div class="bkc-field-header"><span class="bkc-field-label">จำนวนลูกกุ้งปล่อย</span><span class="bkc-field-hint">กรอกได้เลย</span></div>
+              <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-count" value="600000" min="1000" max="10000000" step="10000"><span class="bkc-input-unit">ตัว</span></div>
+            </div>
+
+            <div class="bkc-field">
+              <div class="bkc-field-header"><span class="bkc-field-label">วันที่เลี้ยง</span><span class="bkc-field-hint">30–200 วัน</span></div>
+              <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-days" value="65" min="30" max="200" step="1" class="blue"><span class="bkc-input-unit">วัน</span></div>
+            </div>
+
+            <div class="bkc-field">
+              <div class="bkc-field-header">
+                <span class="bkc-field-label">ไซส์กุ้งที่จับ</span>
+                <span class="bkc-slider-val"><span id="bkc-shrimpSizeVal">60</span><span class="bkc-slider-unit">ตัว/กก.</span></span>
+              </div>
+              <input type="range" id="bkc-shrimpSize" min="20" max="120" step="5" value="60">
+            </div>
+
+            <div class="bkc-field">
+              <div class="bkc-field-header"><span class="bkc-field-label">ราคาขาย</span></div>
+              <div class="bkc-input-row"><input type="number" inputmode="decimal" id="bkc-pricePerKg" value="130" min="50" max="500" step="1" class="yellow"><span class="bkc-input-unit">บาท/กก.</span></div>
+            </div>
+
+            <hr class="bkc-divider">
+            <div class="bkc-section-title">อาหาร</div>
+
+            <div class="bkc-feed-box">
+              <div class="bkc-feed-box-title">คำนวณ FCR จริง</div>
+              <div class="bkc-two-col" style="margin-bottom:10px">
+                <div class="bkc-field" style="margin-bottom:0">
+                  <div class="bkc-field-header"><span class="bkc-field-label">อาหารรวมทั้งรอบ</span></div>
+                  <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-feedKgTotal" value="10000" min="0" max="500000" step="100" class="large"><span class="bkc-input-unit">กก.</span></div>
+                </div>
+                <div class="bkc-field" style="margin-bottom:0">
+                  <div class="bkc-field-header"><span class="bkc-field-label">อัตรารอด</span></div>
+                  <div class="bkc-input-row"><input type="number" inputmode="decimal" id="bkc-survivalPct" value="75" min="1" max="200" step="1" class="large pink"><span class="bkc-input-unit">%</span></div>
+                </div>
+              </div>
+              <div class="bkc-harvest-box">
+                <div>
+                  <div class="lab">น้ำหนักกุ้งที่จับได้</div>
+                  <div class="big" id="bkc-harvestWeightDisplay">0 <span style="font-size:13px;font-weight:400;color:var(--ink-faint)">กก.</span></div>
+                  <div class="sub" id="bkc-harvestWeightFormula">—</div>
+                </div>
+                <div class="r">
+                  <div class="lab">อาหารรวม</div>
+                  <div class="mid" id="bkc-feedTons">0 ตัน</div>
+                  <div class="sub" id="bkc-feedPerDay">เฉลี่ย 0 กก./วัน</div>
+                </div>
+              </div>
+              <div id="bkc-fcrBadge" style="margin-top:8px"></div>
+            </div>
+
+            <div class="bkc-field">
+              <div class="bkc-field-header"><span class="bkc-field-label">ราคาอาหารกุ้ง</span></div>
+              <div class="bkc-input-row"><input type="number" inputmode="decimal" id="bkc-feedPrice" value="41" min="20" max="150" step="0.5" class="purple"><span class="bkc-input-unit">บาท/กก.</span></div>
+            </div>
+
+            <hr class="bkc-divider">
+            <div class="bkc-section-title purple">ต้นทุนอื่น</div>
+
+            <div class="bkc-field">
+              <div class="bkc-field-header"><span class="bkc-field-label">ราคาลูกกุ้ง</span></div>
+              <div class="bkc-input-row"><input type="number" inputmode="decimal" id="bkc-seedPrice" value="0.08" min="0.01" max="1" step="0.01" class="orange"><span class="bkc-input-unit">บาท/ตัว</span></div>
+            </div>
+
+            <div class="bkc-field">
+              <div class="bkc-field-header"><span class="bkc-field-label">ต้นทุนอื่นๆ</span></div>
+              <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-otherCost" value="80000" min="0" max="2000000" step="1000"><span class="bkc-input-unit">บาท</span></div>
+            </div>
+
+            <hr class="bkc-divider">
+            <div class="bkc-section-title teal">ค่าไฟ</div>
+
+            <div class="bkc-elec-box" style="background:rgba(251,191,36,.05); border:1px solid rgba(251,191,36,.18);">
+              <div class="lab" style="color:var(--amber);">☀️ กลางวัน (Peak)</div>
+              <div class="row">
+                <div><div class="sm-lab">ตั้งแต่</div><input type="number" id="bkc-dayStart" value="9" min="0" max="23" step="1" class="yellow"></div>
+                <div style="color:var(--ink-faint);font-size:12px;margin-top:14px;flex:none;">—</div>
+                <div><div class="sm-lab">ถึง</div><input type="number" id="bkc-dayEnd" value="22" min="0" max="23" step="1" class="yellow"></div>
+                <div class="wide"><div class="sm-lab">ราคา/หน่วย</div><div class="bkc-input-row"><input type="number" inputmode="decimal" id="bkc-dayRate" value="4.0" min="0.5" max="15" step="0.1" class="yellow"><span class="bkc-input-unit">บ.</span></div></div>
+              </div>
+              <div class="note" id="bkc-dayHoursNote">= 13 ชั่วโมง/วัน (09:00–22:00)</div>
+            </div>
+
+            <div class="bkc-elec-box" style="background:rgba(52,211,153,.05); border:1px solid rgba(52,211,153,.18);">
+              <div class="lab" style="color:var(--bkc-teal);">🌙 กลางคืน (Off-Peak)</div>
+              <div class="row">
+                <div><div class="sm-lab">ตั้งแต่</div><input type="number" id="bkc-nightStart" value="22" min="0" max="23" step="1" class="teal"></div>
+                <div style="color:var(--ink-faint);font-size:12px;margin-top:14px;flex:none;">—</div>
+                <div><div class="sm-lab">ถึง</div><input type="number" id="bkc-nightEnd" value="9" min="0" max="23" step="1" class="teal"></div>
+                <div class="wide"><div class="sm-lab">ราคา/หน่วย</div><div class="bkc-input-row"><input type="number" inputmode="decimal" id="bkc-nightRate" value="2.0" min="0.5" max="15" step="0.1" class="teal"><span class="bkc-input-unit">บ.</span></div></div>
+              </div>
+              <div class="note" id="bkc-nightHoursNote">= 11 ชั่วโมง/วัน (22:00–09:00)</div>
+            </div>
+
+            <div class="bkc-field">
+              <div class="bkc-field-header">
+                <span class="bkc-field-label">จำนวนมอเตอร์</span>
+                <span class="bkc-slider-val"><span id="bkc-motorCountVal">8</span><span class="bkc-slider-unit">ตัว</span></span>
+              </div>
+              <input type="range" id="bkc-motorCount" min="1" max="30" step="1" value="8">
+            </div>
+
+            <div class="bkc-field">
+              <div class="bkc-field-label" style="margin-bottom:7px">ขนาดมอเตอร์</div>
+              <div class="bkc-hp-row">
+                <button type="button" class="bkc-hp-btn active" data-hp="3">3 HP (2.2 kW)</button>
+                <button type="button" class="bkc-hp-btn" data-hp="5">5 HP (3.7 kW)</button>
+              </div>
+            </div>
+
+            <div class="bkc-elec-note" id="bkc-elecSummaryNote">กลางวัน 13 ชม. × กลางคืน 11 ชม. = 24 ชม./วัน</div>
+          </div>
+
+          <div class="bkc-right-col">
+            <div class="bkc-result-panel" id="bkc-resultPanel">
+              <div class="bkc-result-label">ผลการวิเคราะห์</div>
+              <div class="bkc-result-num" id="bkc-resultNum">+0</div>
+              <div class="bkc-result-sub">บาท / รอบ</div>
+              <div class="bkc-result-badge" id="bkc-resultBadge">—</div>
+            </div>
+
+            <div class="bkc-stats-grid" id="bkc-statsGrid">
+              <div class="bkc-stat-card"><div class="bkc-stat-label">รายได้รวม</div><div class="bkc-stat-val" id="bkc-sRevenue">0<span class="bkc-stat-unit">บาท</span></div></div>
+              <div class="bkc-stat-card"><div class="bkc-stat-label">น้ำหนักกุ้ง</div><div class="bkc-stat-val" id="bkc-sWeight">0<span class="bkc-stat-unit">กก.</span></div></div>
+              <div class="bkc-stat-card hl"><div class="bkc-stat-label">FCR จริง</div><div class="bkc-stat-val hl" id="bkc-sFCR">—</div><div class="bkc-stat-sub">ยิ่งต่ำยิ่งดี</div></div>
+              <div class="bkc-stat-card"><div class="bkc-stat-label">อัตรารอด</div><div class="bkc-stat-val" id="bkc-sSurvival">—<span class="bkc-stat-unit">%</span></div></div>
+              <div class="bkc-stat-card hl"><div class="bkc-stat-label">อาหารรวม</div><div class="bkc-stat-val hl" id="bkc-sFeedTon">—<span class="bkc-stat-unit">ตัน</span></div><div class="bkc-stat-sub" id="bkc-sFeedDay">—</div></div>
+              <div class="bkc-stat-card"><div class="bkc-stat-label">ค่าอาหาร</div><div class="bkc-stat-val" id="bkc-sFeedCost">0<span class="bkc-stat-unit">บาท</span></div></div>
+              <div class="bkc-stat-card"><div class="bkc-stat-label">ค่าไฟ</div><div class="bkc-stat-val" id="bkc-sElec">0<span class="bkc-stat-unit">บาท</span></div><div class="bkc-stat-sub" id="bkc-sElecDay">—</div></div>
+              <div class="bkc-stat-card"><div class="bkc-stat-label">ค่าลูกกุ้ง</div><div class="bkc-stat-val" id="bkc-sSeedCost">0<span class="bkc-stat-unit">บาท</span></div></div>
+              <div class="bkc-stat-card warn"><div class="bkc-stat-label">ต้นทุน/กก.</div><div class="bkc-stat-val warn" id="bkc-sCostPerKg">—<span class="bkc-stat-unit">บาท</span></div><div class="bkc-stat-sub" id="bkc-sCostPerKgSub">—</div></div>
+            </div>
+
+            <div class="bkc-breakdown">
+              <div class="bkc-breakdown-title">สัดส่วนต้นทุน</div>
+              <div class="bkc-bar-row">
+                <div class="bkc-bar-header"><span style="color:var(--bkc-purple)">อาหาร</span><span style="font-family:var(--bkc-mono);font-size:11px;color:var(--ink-soft);" id="bkc-bFeed">—</span></div>
+                <div class="bkc-bar-track"><div class="bkc-bar-fill" id="bkc-bFeedBar" style="background:var(--bkc-purple);width:0%"></div></div>
+              </div>
+              <div class="bkc-bar-row">
+                <div class="bkc-bar-header"><span style="color:var(--bkc-teal)">ค่าไฟ</span><span style="font-family:var(--bkc-mono);font-size:11px;color:var(--ink-soft);" id="bkc-bElec">—</span></div>
+                <div class="bkc-bar-track"><div class="bkc-bar-fill" id="bkc-bElecBar" style="background:var(--bkc-teal);width:0%"></div></div>
+              </div>
+              <div class="bkc-bar-row">
+                <div class="bkc-bar-header"><span style="color:var(--bkc-orange)">ลูกกุ้ง</span><span style="font-family:var(--bkc-mono);font-size:11px;color:var(--ink-soft);" id="bkc-bSeed">—</span></div>
+                <div class="bkc-bar-track"><div class="bkc-bar-fill" id="bkc-bSeedBar" style="background:var(--bkc-orange);width:0%"></div></div>
+              </div>
+              <div class="bkc-bar-row">
+                <div class="bkc-bar-header"><span style="color:var(--bkc-gray)">อื่นๆ</span><span style="font-family:var(--bkc-mono);font-size:11px;color:var(--ink-soft);" id="bkc-bOther">—</span></div>
+                <div class="bkc-bar-track"><div class="bkc-bar-fill" id="bkc-bOtherBar" style="background:var(--bkc-gray);width:0%"></div></div>
+              </div>
+              <div class="bkc-breakdown-total">
+                <span>ต้นทุนรวม</span>
+                <span id="bkc-bTotal">0 บาท</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="bkc-compare-btn" id="bkc-compareBtn">⇄ เปรียบเทียบ จับเลย vs ลากต่อ</button>
+
+        <div class="bkc-compare-section" id="bkc-compareSection">
+          <div class="bkc-section-title blue">ตัวเลือกที่ 2 — ลากต่อ</div>
+          <div class="bkc-compare-layout">
+            <div>
+              <div class="bkc-field">
+                <div class="bkc-field-header"><span class="bkc-field-label">วันที่เลี้ยง</span><span class="bkc-field-hint">30–200 วัน</span></div>
+                <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-cDays" value="90" min="30" max="200" step="1" class="blue"><span class="bkc-input-unit">วัน</span></div>
+              </div>
+              <div class="bkc-field">
+                <div class="bkc-field-header">
+                  <span class="bkc-field-label">ไซส์กุ้งที่จับ</span>
+                  <span class="bkc-slider-val"><span id="bkc-cShrimpSizeVal">50</span><span class="bkc-slider-unit">ตัว/กก.</span></span>
+                </div>
+                <input type="range" id="bkc-cShrimpSize" min="20" max="120" step="5" value="50">
+              </div>
+              <div class="bkc-field">
+                <div class="bkc-field-header"><span class="bkc-field-label">ราคาขาย</span></div>
+                <div class="bkc-input-row"><input type="number" inputmode="decimal" id="bkc-cPricePerKg" value="140" min="50" max="500" step="1" class="yellow"><span class="bkc-input-unit">บาท/กก.</span></div>
+              </div>
+              <div class="bkc-feed-box">
+                <div class="bkc-feed-box-title">คำนวณ FCR จริง (ตัวเลือกที่ 2)</div>
+                <div class="bkc-two-col" style="margin-bottom:10px">
+                  <div class="bkc-field" style="margin-bottom:0">
+                    <div class="bkc-field-header"><span class="bkc-field-label">อาหารรวมทั้งรอบ</span></div>
+                    <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-cFeedKgTotal" value="14000" min="0" max="500000" step="100" class="large"><span class="bkc-input-unit">กก.</span></div>
+                  </div>
+                  <div class="bkc-field" style="margin-bottom:0">
+                    <div class="bkc-field-header"><span class="bkc-field-label">อัตรารอด</span></div>
+                    <div class="bkc-input-row"><input type="number" inputmode="decimal" id="bkc-cSurvivalPct" value="65" min="1" max="200" step="1" class="large pink"><span class="bkc-input-unit">%</span></div>
+                  </div>
+                </div>
+                <div class="bkc-harvest-box">
+                  <div>
+                    <div class="lab">น้ำหนักกุ้งที่จับได้</div>
+                    <div class="big" id="bkc-cHarvestWeightDisplay">0 <span style="font-size:13px;font-weight:400;color:var(--ink-faint)">กก.</span></div>
+                    <div class="sub" id="bkc-cHarvestWeightFormula">—</div>
+                  </div>
+                  <div class="r">
+                    <div class="lab">อาหารรวม</div>
+                    <div class="mid" id="bkc-cFeedTons">0 ตัน</div>
+                    <div class="sub" id="bkc-cFeedPerDay">เฉลี่ย 0 กก./วัน</div>
+                  </div>
+                </div>
+                <div id="bkc-cFcrBadge" style="margin-top:8px"></div>
+              </div>
+            </div>
+            <div>
+              <div class="bkc-stats-grid" style="margin-bottom:12px">
+                <div class="bkc-stat-card" id="bkc-cProfitCard"><div class="bkc-stat-label">กำไร</div><div class="bkc-stat-val" id="bkc-cProfit">0<span class="bkc-stat-unit">บาท</span></div></div>
+                <div class="bkc-stat-card"><div class="bkc-stat-label">FCR จริง</div><div class="bkc-stat-val" id="bkc-cFCR">—</div></div>
+                <div class="bkc-stat-card"><div class="bkc-stat-label">อาหารรวม</div><div class="bkc-stat-val" id="bkc-cFeedTon2">—<span class="bkc-stat-unit">ตัน</span></div><div class="bkc-stat-sub" id="bkc-cFeedDay2">—</div></div>
+                <div class="bkc-stat-card"><div class="bkc-stat-label">ค่าไฟ</div><div class="bkc-stat-val" id="bkc-cElec">0<span class="bkc-stat-unit">บาท</span></div></div>
+              </div>
+              <div class="bkc-diff-box" id="bkc-diffBox">
+                <div class="bkc-diff-label">ผลต่างกำไร</div>
+                <div class="bkc-diff-num" id="bkc-diffNum">—</div>
+                <div class="bkc-diff-verdict" id="bkc-diffVerdict">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint" style="margin-top:14px;">FCR และอัตรารอดคำนวณจากข้อมูลที่กรอกจริง เครื่องมือนี้เป็นการประมาณการเบื้องต้นเท่านั้น</p>
+      </div>
+    </main>
+  `;
+}
+
+let bkcMotorHP = 3;
+let bkcCompareOpen = false;
+const bkcSurvivalByDay = (d) => {
+  if (d <= 60) return 0.78;
+  if (d <= 70) return 0.75;
+  if (d <= 80) return 0.70;
+  if (d <= 90) return 0.65;
+  if (d <= 100) return 0.60;
+  if (d <= 120) return 0.55;
+  if (d <= 150) return 0.48;
+  return 0.42;
+};
+const bkcFmt = (n) => Math.round(n).toLocaleString('th-TH');
+function bkcGetVal(id){ const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; }
+function bkcGetDayHours(){
+  const s = bkcGetVal('bkc-dayStart'), e = bkcGetVal('bkc-dayEnd');
+  return e > s ? e - s : 24 - s + e;
+}
+function bkcGetNightHours(){ return 24 - bkcGetDayHours(); }
+function bkcFmtHour(h){ return String(Math.round(h)).padStart(2,'0') + ':00'; }
+
+function bkcCalcResult(count, days, shrimpSize, pricePerKg, feedKg, feedPrice, motorCount, otherCost, seedPrice, dayRate, nightRate, realHarvestKg, dayHours, nightHours, survivalPctOverride){
+  const safeSize = shrimpSize > 0 ? shrimpSize : 1;
+  const safeCount = count > 0 ? count : 1;
+  const hasRealHarvest = realHarvestKg !== undefined && realHarvestKg > 0 && !isNaN(realHarvestKg);
+  const actualWeight = hasRealHarvest ? realHarvestKg : (count * bkcSurvivalByDay(days)) / safeSize;
+  const realSurvivalPct = survivalPctOverride !== undefined ? survivalPctOverride : (actualWeight * safeSize / safeCount) * 100;
+  const revenue = actualWeight * pricePerKg;
+  const feedCost = feedKg * feedPrice;
+  const fcr = actualWeight > 0 ? feedKg / actualWeight : 0;
+  const kw = bkcMotorHP === 3 ? 2.2 : 3.7;
+  const dh = (dayHours > 0 && !isNaN(dayHours)) ? dayHours : 12;
+  const nh = (nightHours > 0 && !isNaN(nightHours)) ? nightHours : 12;
+  const dailyKwh = motorCount * kw * 24;
+  const dailyElec = (motorCount * kw * dh * dayRate) + (motorCount * kw * nh * nightRate);
+  const elecCost = dailyElec * (days > 0 ? days : 1);
+  const seedCost = count * seedPrice;
+  const totalCost = feedCost + elecCost + seedCost + otherCost;
+  const profit = revenue - totalCost;
+  const profitMargin = revenue > 0 ? (profit / revenue) * 100 : 0;
+  const safe = v => (isNaN(v) || !isFinite(v)) ? 0 : v;
+  return { actualWeight: safe(actualWeight), realSurvivalPct: safe(realSurvivalPct), revenue: safe(revenue), feedCost: safe(feedCost), fcr: safe(fcr), elecCost: safe(elecCost), seedCost: safe(seedCost), totalCost: safe(totalCost), profit: safe(profit), profitMargin: safe(profitMargin), dailyKwh: safe(dailyKwh) };
+}
+
+function bkcFcrColor(fcr){
+  if (fcr <= 1.3) return '#00e5a0';
+  if (fcr <= 1.6) return '#34d399';
+  if (fcr <= 2.0) return '#fbbf24';
+  return '#ff5c5c';
+}
+function bkcFcrLabel(fcr){
+  if (fcr <= 1.3) return 'ดีมาก';
+  if (fcr <= 1.6) return 'ดี';
+  if (fcr <= 2.0) return 'พอใช้';
+  return 'ต้องปรับปรุง';
+}
+function bkcRenderBadge(elId, fcr){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if (!fcr || fcr <= 0) { el.innerHTML = ''; return; }
+  const c = bkcFcrColor(fcr);
+  el.innerHTML = `<div class="bkc-fcr-badge" style="background:${c}18;border:1px solid ${c}44">
+    <div class="bkc-fcr-dot" style="background:${c}"></div>
+    <span style="color:${c}">FCR ${fcr.toFixed(2)} — ${bkcFcrLabel(fcr)}</span>
+  </div>`;
+}
+
+function bkcUpdate(){
+  const count = bkcGetVal('bkc-count');
+  const days = bkcGetVal('bkc-days');
+  const shrimpSize = bkcGetVal('bkc-shrimpSize');
+  const pricePerKg = bkcGetVal('bkc-pricePerKg');
+  const feedPrice = bkcGetVal('bkc-feedPrice');
+  const motorCount = bkcGetVal('bkc-motorCount');
+  const otherCost = bkcGetVal('bkc-otherCost');
+  const seedPrice = bkcGetVal('bkc-seedPrice');
+  const dayRate = bkcGetVal('bkc-dayRate');
+  const nightRate = bkcGetVal('bkc-nightRate');
+  const dayHours = bkcGetDayHours();
+  const nightHours = bkcGetNightHours();
+  const dayStart = bkcGetVal('bkc-dayStart'), dayEnd = bkcGetVal('bkc-dayEnd');
+  const nightStart = bkcGetVal('bkc-nightStart'), nightEnd = bkcGetVal('bkc-nightEnd');
+  document.getElementById('bkc-dayHoursNote').textContent = `= ${dayHours} ชั่วโมง/วัน (${bkcFmtHour(dayStart)}–${bkcFmtHour(dayEnd)})`;
+  document.getElementById('bkc-nightHoursNote').textContent = `= ${nightHours} ชั่วโมง/วัน (${bkcFmtHour(nightStart)}–${bkcFmtHour(nightEnd)})`;
+  document.getElementById('bkc-elecSummaryNote').textContent = `กลางวัน ${dayHours} ชม. + กลางคืน ${nightHours} ชม. = ${dayHours+nightHours} ชม./วัน`;
+
+  const feedKg = bkcGetVal('bkc-feedKgTotal');
+  const survivalPct = bkcGetVal('bkc-survivalPct');
+  const harvestKg = (count * (survivalPct / 100)) / (shrimpSize || 1);
+  const computedFCR = harvestKg > 0 ? feedKg / harvestKg : 0;
+
+  document.getElementById('bkc-feedTons').textContent = `${(feedKg/1000).toFixed(2)} ตัน`;
+  document.getElementById('bkc-feedPerDay').textContent = `เฉลี่ย ${days > 0 ? Math.round(feedKg/days) : 0} กก./วัน`;
+  document.getElementById('bkc-harvestWeightDisplay').innerHTML = `${Math.round(harvestKg).toLocaleString('th-TH')} <span style="font-size:13px;font-weight:400;color:var(--ink-faint)">กก.</span>`;
+  document.getElementById('bkc-harvestWeightFormula').textContent = `${count.toLocaleString('th-TH')} ตัว × ${survivalPct}% ÷ ${shrimpSize} ตัว/กก.`;
+
+  const r = bkcCalcResult(count, days, shrimpSize, pricePerKg, feedKg, feedPrice, motorCount, otherCost, seedPrice, dayRate, nightRate, harvestKg, dayHours, nightHours, survivalPct);
+
+  bkcRenderBadge('bkc-fcrBadge', computedFCR);
+
+  const isLoss = r.profit < 0;
+  const panel = document.getElementById('bkc-resultPanel');
+  panel.className = 'bkc-result-panel' + (isLoss ? ' loss' : '');
+  const numEl = document.getElementById('bkc-resultNum');
+  numEl.className = 'bkc-result-num' + (isLoss ? ' loss' : '');
+  numEl.textContent = (r.profit >= 0 ? '+' : '') + bkcFmt(r.profit);
+  const badge = document.getElementById('bkc-resultBadge');
+  badge.className = 'bkc-result-badge' + (isLoss ? ' loss' : '');
+  const verdict = r.profit > 100000 ? 'กำไรดี ✓' : r.profit > 0 ? 'กำไรเล็กน้อย' : r.profit > -50000 ? 'เกือบเจ๊า' : 'ขาดทุน ✗';
+  badge.textContent = `${verdict} • margin ${r.profitMargin.toFixed(1)}%`;
+
+  document.getElementById('bkc-sRevenue').innerHTML = bkcFmt(r.revenue) + '<span class="bkc-stat-unit">บาท</span>';
+  document.getElementById('bkc-sWeight').innerHTML = bkcFmt(r.actualWeight) + '<span class="bkc-stat-unit">กก.</span>';
+  const fcrCard = document.getElementById('bkc-sFCR').parentElement;
+  const fcrWarn = r.fcr > 2.0;
+  fcrCard.className = 'bkc-stat-card ' + (fcrWarn ? 'warn' : 'hl');
+  document.getElementById('bkc-sFCR').className = 'bkc-stat-val ' + (fcrWarn ? 'warn' : 'hl');
+  document.getElementById('bkc-sFCR').innerHTML = r.actualWeight > 0 ? r.fcr.toFixed(2) : '—';
+  fcrCard.querySelector('.bkc-stat-sub').textContent = fcrWarn ? '⚠ สูงเกินควร' : 'ยิ่งต่ำยิ่งดี';
+  document.getElementById('bkc-sSurvival').innerHTML = r.realSurvivalPct.toFixed(1) + '<span class="bkc-stat-unit">%</span>';
+  document.getElementById('bkc-sFeedTon').innerHTML = (feedKg/1000).toFixed(2) + '<span class="bkc-stat-unit">ตัน</span>';
+  document.getElementById('bkc-sFeedDay').textContent = `${days > 0 ? Math.round(feedKg/days) : 0} กก./วัน`;
+  document.getElementById('bkc-sFeedCost').innerHTML = bkcFmt(r.feedCost) + '<span class="bkc-stat-unit">บาท</span>';
+  document.getElementById('bkc-sElec').innerHTML = bkcFmt(r.elecCost) + '<span class="bkc-stat-unit">บาท</span>';
+  document.getElementById('bkc-sElecDay').textContent = `${r.dailyKwh.toFixed(1)} kWh/วัน`;
+  document.getElementById('bkc-sSeedCost').innerHTML = bkcFmt(r.seedCost) + '<span class="bkc-stat-unit">บาท</span>';
+
+  const actualHarvest = r.actualWeight;
+  const costPerKg = actualHarvest > 0 ? r.totalCost / actualHarvest : 0;
+  const margin = costPerKg > 0 ? pricePerKg - costPerKg : 0;
+  const cpkEl = document.getElementById('bkc-sCostPerKg');
+  const cpkWarn = costPerKg >= pricePerKg;
+  cpkEl.parentElement.className = 'bkc-stat-card ' + (cpkWarn ? 'warn' : 'hl');
+  cpkEl.className = 'bkc-stat-val ' + (cpkWarn ? 'warn' : 'hl');
+  cpkEl.innerHTML = costPerKg > 0 ? costPerKg.toFixed(2) + '<span class="bkc-stat-unit">บาท/กก.</span>' : '—';
+  document.getElementById('bkc-sCostPerKgSub').textContent = margin > 0 ? `กำไร ${margin.toFixed(2)} บ./กก.` : margin < 0 ? `ขาดทุน ${Math.abs(margin).toFixed(2)} บ./กก.` : '—';
+
+  const costs = [r.feedCost, r.elecCost, r.seedCost, otherCost];
+  const ids = ['Feed','Elec','Seed','Other'];
+  costs.forEach((val, i) => {
+    const pct = r.totalCost > 0 ? (val / r.totalCost * 100) : 0;
+    document.getElementById('bkc-b' + ids[i]).innerHTML = `${bkcFmt(val)} <span style="color:var(--ink-faint)">(${pct.toFixed(0)}%)</span>`;
+    document.getElementById('bkc-b' + ids[i] + 'Bar').style.width = pct + '%';
+  });
+  document.getElementById('bkc-bTotal').textContent = bkcFmt(r.totalCost) + ' บาท';
+
+  if (bkcCompareOpen) bkcUpdateCompare(r.profit);
+}
+
+function bkcUpdateCompare(mainProfit){
+  const count = bkcGetVal('bkc-count');
+  const feedPrice = bkcGetVal('bkc-feedPrice');
+  const motorCount = bkcGetVal('bkc-motorCount');
+  const otherCost = bkcGetVal('bkc-otherCost');
+  const seedPrice = bkcGetVal('bkc-seedPrice');
+  const dayRate = bkcGetVal('bkc-dayRate');
+  const nightRate = bkcGetVal('bkc-nightRate');
+  const dayHours = bkcGetDayHours();
+  const nightHours = bkcGetNightHours();
+  const cDays = bkcGetVal('bkc-cDays') || 90;
+  const cShrimpSize = bkcGetVal('bkc-cShrimpSize') || 50;
+  const cPricePerKg = bkcGetVal('bkc-cPricePerKg');
+  const cFeedKg = bkcGetVal('bkc-cFeedKgTotal');
+  const cSurvivalPct = bkcGetVal('bkc-cSurvivalPct');
+  const safeCSize = cShrimpSize > 0 ? cShrimpSize : 1;
+  const cHarvestKg = (count * (cSurvivalPct / 100)) / safeCSize;
+  const cComputedFCR = cHarvestKg > 0 ? cFeedKg / cHarvestKg : 0;
+
+  document.getElementById('bkc-cFeedTons').textContent = `${(cFeedKg/1000).toFixed(2)} ตัน`;
+  document.getElementById('bkc-cFeedPerDay').textContent = `เฉลี่ย ${cDays > 0 ? Math.round(cFeedKg/cDays) : 0} กก./วัน`;
+  document.getElementById('bkc-cHarvestWeightDisplay').innerHTML = `${Math.round(cHarvestKg).toLocaleString('th-TH')} <span style="font-size:13px;font-weight:400;color:var(--ink-faint)">กก.</span>`;
+  document.getElementById('bkc-cHarvestWeightFormula').textContent = `${count.toLocaleString('th-TH')} ตัว × ${cSurvivalPct}% ÷ ${cShrimpSize} ตัว/กก.`;
+
+  const r2 = bkcCalcResult(count, cDays, cShrimpSize, cPricePerKg, cFeedKg, feedPrice, motorCount, otherCost, seedPrice, dayRate, nightRate, cHarvestKg, dayHours, nightHours, cSurvivalPct);
+  bkcRenderBadge('bkc-cFcrBadge', cComputedFCR);
+
+  document.getElementById('bkc-cProfit').innerHTML = bkcFmt(r2.profit) + '<span class="bkc-stat-unit">บาท</span>';
+  const cProfitCard = document.getElementById('bkc-cProfitCard');
+  cProfitCard.className = 'bkc-stat-card ' + (r2.profit > mainProfit ? 'hl' : '');
+  document.getElementById('bkc-cFCR').innerHTML = r2.actualWeight > 0 ? r2.fcr.toFixed(2) : '—';
+  document.getElementById('bkc-cFeedTon2').innerHTML = (cFeedKg/1000).toFixed(2) + '<span class="bkc-stat-unit">ตัน</span>';
+  document.getElementById('bkc-cFeedDay2').textContent = `${cDays > 0 ? Math.round(cFeedKg/cDays) : 0} กก./วัน`;
+  document.getElementById('bkc-cElec').innerHTML = bkcFmt(r2.elecCost) + '<span class="bkc-stat-unit">บาท</span>';
+
+  const diff = r2.profit - mainProfit;
+  const diffBox = document.getElementById('bkc-diffBox');
+  const better = diff > 0 && !isNaN(diff);
+  const mainDays = bkcGetVal('bkc-days');
+  const dayDiff = Math.round(cDays - mainDays);
+  diffBox.style.background = better ? 'rgba(0,229,160,.08)' : 'rgba(232,129,95,.08)';
+  diffBox.style.border = `1px solid ${better ? 'rgba(0,229,160,.2)' : 'rgba(232,129,95,.2)'}`;
+  document.getElementById('bkc-diffNum').style.color = better ? 'var(--bkc-green)' : 'var(--coral)';
+  document.getElementById('bkc-diffNum').textContent = (!isNaN(diff) ? (diff >= 0 ? '+' : '') + bkcFmt(diff) : '—') + ' บาท';
+  document.getElementById('bkc-diffVerdict').textContent = better
+    ? `✓ ลากต่ออีก ${dayDiff} วัน คุ้มกว่า`
+    : `✗ จับเลยดีกว่า ประหยัดได้ ${bkcFmt(Math.abs(diff))} บาท`;
 }
 
 function renderPondCard(p){
@@ -3925,6 +4476,60 @@ function bindDashboardEvents(){
       await batch.commit().catch((e)=>alert('บันทึกไม่สำเร็จ: '+e.message));
       render();
     });
+  }
+
+  if(document.getElementById('bkc-count')){
+    const bkcShrimpSize = document.getElementById('bkc-shrimpSize');
+    if(bkcShrimpSize) bkcShrimpSize.addEventListener('input', function(){
+      document.getElementById('bkc-shrimpSizeVal').textContent = this.value;
+      bkcUpdate();
+    });
+    const bkcMotorCount = document.getElementById('bkc-motorCount');
+    if(bkcMotorCount) bkcMotorCount.addEventListener('input', function(){
+      document.getElementById('bkc-motorCountVal').textContent = this.value;
+      bkcUpdate();
+    });
+    const bkcCShrimpSize = document.getElementById('bkc-cShrimpSize');
+    if(bkcCShrimpSize) bkcCShrimpSize.addEventListener('input', function(){
+      document.getElementById('bkc-cShrimpSizeVal').textContent = this.value;
+      bkcUpdate();
+    });
+
+    ['bkc-count','bkc-days','bkc-pricePerKg','bkc-feedKgTotal','bkc-survivalPct','bkc-feedPrice','bkc-seedPrice','bkc-otherCost',
+     'bkc-dayRate','bkc-nightRate','bkc-dayStart','bkc-dayEnd','bkc-nightStart','bkc-nightEnd',
+     'bkc-cDays','bkc-cPricePerKg','bkc-cFeedKgTotal','bkc-cSurvivalPct'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('input', bkcUpdate);
+    });
+
+    document.querySelectorAll('.bkc-hp-btn').forEach(b=>{
+      b.classList.toggle('active', parseInt(b.getAttribute('data-hp'), 10) === bkcMotorHP);
+    });
+    document.querySelectorAll('.bkc-hp-btn').forEach(btn=>{
+      btn.onclick = ()=>{
+        bkcMotorHP = parseInt(btn.getAttribute('data-hp'), 10);
+        document.querySelectorAll('.bkc-hp-btn').forEach(b=>{
+          b.classList.toggle('active', parseInt(b.getAttribute('data-hp'), 10) === bkcMotorHP);
+        });
+        bkcUpdate();
+      };
+    });
+
+    const bkcCompareBtn = document.getElementById('bkc-compareBtn');
+    if(bkcCompareOpen && bkcCompareBtn){
+      document.getElementById('bkc-compareSection').classList.add('show');
+      bkcCompareBtn.className = 'bkc-compare-btn active';
+      bkcCompareBtn.textContent = '✕ ปิดโหมดเปรียบเทียบ';
+    }
+    if(bkcCompareBtn) bkcCompareBtn.onclick = ()=>{
+      bkcCompareOpen = !bkcCompareOpen;
+      document.getElementById('bkc-compareSection').classList.toggle('show', bkcCompareOpen);
+      bkcCompareBtn.className = 'bkc-compare-btn' + (bkcCompareOpen ? ' active' : '');
+      bkcCompareBtn.textContent = bkcCompareOpen ? '✕ ปิดโหมดเปรียบเทียบ' : '⇄ เปรียบเทียบ จับเลย vs ลากต่อ';
+      if(bkcCompareOpen) bkcUpdate();
+    };
+
+    bkcUpdate();
   }
 }
 
