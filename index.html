@@ -3425,10 +3425,18 @@ function svgMultiLineChart({labels, series, days}){
 
   let cursorHtml = '', hitHtml = '';
   const tooltipData = [];
+  const lastKnownBySeries = new Map();
   for(let i=0; i<n; i++){
     const entries = series
-      .filter(s=> s.values[i]!==null && s.values[i]!==undefined && !isNaN(s.values[i]))
-      .map(s=>({ label:s.label||'', color:s.color, value:s.values[i] }));
+      .map((s,si)=>({s,si}))
+      .filter(({s})=> s.values[i]!==null && s.values[i]!==undefined && !isNaN(s.values[i]))
+      .map(({s,si})=>{
+        const value = s.values[i];
+        const prev = lastKnownBySeries.has(si) ? lastKnownBySeries.get(si) : null;
+        const trend = prev!=null ? (value > prev ? 'up' : value < prev ? 'down' : null) : null;
+        lastKnownBySeries.set(si, value);
+        return { label:s.label||'', color:s.color, value, trend };
+      });
     tooltipData.push({ day: days ? fmtDate(days[i]) : labels[i], entries });
     if(entries.length===0) continue;
     const cx = xFor(i);
@@ -3925,7 +3933,10 @@ function bindDashboardEvents(){
       });
       tipEl.innerHTML = `
         <div class="tap-date">${escapeHtml(entry.day)}</div>
-        ${entry.entries.map(e=>`<div class="tap-row"><span class="tap-dot" style="background:${e.color}"></span>${escapeHtml(e.label)}: <b>${e.value.toLocaleString('th-TH',{maximumFractionDigits:0})}</b> บาท</div>`).join('')}`;
+        ${entry.entries.map(e=>{
+          const arrow = e.trend==='up' ? `<span class="pm-trend-up">▲</span>` : e.trend==='down' ? `<span class="pm-trend-down">▼</span>` : '';
+          return `<div class="tap-row"><span class="tap-dot" style="background:${e.color}"></span>${escapeHtml(e.label)}: <b>${e.value.toLocaleString('th-TH',{maximumFractionDigits:0})}</b> บาท${arrow}</div>`;
+        }).join('')}`;
       tipEl.style.display = 'block';
       const wrapRect = wrap.getBoundingClientRect();
       const svgRect = svg.getBoundingClientRect();
