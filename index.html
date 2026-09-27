@@ -2189,6 +2189,8 @@ function renderBreakevenCalc(tabs){
               <div class="bkc-stat-card"><div class="bkc-stat-label">ค่าไฟ</div><div class="bkc-stat-val" id="bkc-sElec">0<span class="bkc-stat-unit">บาท</span></div><div class="bkc-stat-sub" id="bkc-sElecDay">—</div></div>
               <div class="bkc-stat-card"><div class="bkc-stat-label">ค่าลูกกุ้ง</div><div class="bkc-stat-val" id="bkc-sSeedCost">0<span class="bkc-stat-unit">บาท</span></div></div>
               <div class="bkc-stat-card warn"><div class="bkc-stat-label">ต้นทุน/กก.</div><div class="bkc-stat-val warn" id="bkc-sCostPerKg">—<span class="bkc-stat-unit">บาท</span></div><div class="bkc-stat-sub" id="bkc-sCostPerKgSub">—</div></div>
+              <div class="bkc-stat-card hl"><div class="bkc-stat-label">กำไร/วัน</div><div class="bkc-stat-val hl" id="bkc-sProfitPerDay">—<span class="bkc-stat-unit">บาท</span></div></div>
+              <div class="bkc-stat-card"><div class="bkc-stat-label">ค่าใช้จ่าย/วัน</div><div class="bkc-stat-val" id="bkc-sCostPerDay">—<span class="bkc-stat-unit">บาท</span></div></div>
             </div>
 
             <div class="bkc-breakdown">
@@ -2271,6 +2273,8 @@ function renderBreakevenCalc(tabs){
                 <div class="bkc-stat-card"><div class="bkc-stat-label">FCR จริง</div><div class="bkc-stat-val" id="bkc-cFCR">—</div></div>
                 <div class="bkc-stat-card"><div class="bkc-stat-label">อาหารรวม</div><div class="bkc-stat-val" id="bkc-cFeedTon2">—<span class="bkc-stat-unit">ตัน</span></div><div class="bkc-stat-sub" id="bkc-cFeedDay2">—</div></div>
                 <div class="bkc-stat-card"><div class="bkc-stat-label">ค่าไฟ</div><div class="bkc-stat-val" id="bkc-cElec">0<span class="bkc-stat-unit">บาท</span></div></div>
+                <div class="bkc-stat-card hl"><div class="bkc-stat-label">กำไร/วัน</div><div class="bkc-stat-val hl" id="bkc-cProfitPerDay">—<span class="bkc-stat-unit">บาท</span></div></div>
+                <div class="bkc-stat-card"><div class="bkc-stat-label">ค่าใช้จ่าย/วัน</div><div class="bkc-stat-val" id="bkc-cCostPerDay">—<span class="bkc-stat-unit">บาท</span></div></div>
               </div>
               <div class="bkc-diff-box" id="bkc-diffBox">
                 <div class="bkc-diff-label">ผลต่างกำไร</div>
@@ -2424,6 +2428,16 @@ function bkcUpdate(){
   cpkEl.innerHTML = costPerKg > 0 ? costPerKg.toFixed(2) + '<span class="bkc-stat-unit">บาท/กก.</span>' : '—';
   document.getElementById('bkc-sCostPerKgSub').textContent = margin > 0 ? `กำไร ${margin.toFixed(2)} บ./กก.` : margin < 0 ? `ขาดทุน ${Math.abs(margin).toFixed(2)} บ./กก.` : '—';
 
+  const safeDays = days > 0 ? days : 1;
+  const profitPerDay = r.profit / safeDays;
+  const costPerDay = r.totalCost / safeDays;
+  const ppdEl = document.getElementById('bkc-sProfitPerDay');
+  const ppdLoss = profitPerDay < 0;
+  ppdEl.parentElement.className = 'bkc-stat-card ' + (ppdLoss ? 'warn' : 'hl');
+  ppdEl.className = 'bkc-stat-val ' + (ppdLoss ? 'warn' : 'hl');
+  ppdEl.innerHTML = (profitPerDay>=0?'+':'') + bkcFmt(profitPerDay) + '<span class="bkc-stat-unit">บาท</span>';
+  document.getElementById('bkc-sCostPerDay').innerHTML = bkcFmt(costPerDay) + '<span class="bkc-stat-unit">บาท</span>';
+
   const costs = [r.feedCost, r.elecCost, r.seedCost, otherCost];
   const ids = ['Feed','Elec','Seed','Other'];
   costs.forEach((val, i) => {
@@ -2470,6 +2484,10 @@ function bkcUpdateCompare(mainProfit){
   document.getElementById('bkc-cFeedTon2').innerHTML = (cFeedKg/1000).toFixed(2) + '<span class="bkc-stat-unit">ตัน</span>';
   document.getElementById('bkc-cFeedDay2').textContent = `${cDays > 0 ? Math.round(cFeedKg/cDays) : 0} กก./วัน`;
   document.getElementById('bkc-cElec').innerHTML = bkcFmt(r2.elecCost) + '<span class="bkc-stat-unit">บาท</span>';
+
+  const cSafeDays = cDays > 0 ? cDays : 1;
+  document.getElementById('bkc-cProfitPerDay').innerHTML = (r2.profit/cSafeDays>=0?'+':'') + bkcFmt(r2.profit/cSafeDays) + '<span class="bkc-stat-unit">บาท</span>';
+  document.getElementById('bkc-cCostPerDay').innerHTML = bkcFmt(r2.totalCost/cSafeDays) + '<span class="bkc-stat-unit">บาท</span>';
 
   const diff = r2.profit - mainProfit;
   const diffBox = document.getElementById('bkc-diffBox');
