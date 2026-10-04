@@ -2693,7 +2693,7 @@ function renderPondDetail(){
           <div class="field-row">
             <div class="field">
               <label>วันที่บันทึก</label>
-              <input type="date" name="weekDate" id="record-week-date" value="${editingRecordThisRender ? editingRecordThisRender.weekDate : todayISO()}" required>
+              <input type="date" name="weekDate" id="record-week-date" value="${editingRecordThisRender ? editingRecordThisRender.weekDate : todayISO()}" max="${todayISO()}" required>
               <div class="hint" id="record-doc-hint">${p.releaseDate ? 'อายุกุ้ง ณ วันที่บันทึก: '+daysBetween(p.releaseDate, editingRecordThisRender ? editingRecordThisRender.weekDate : todayISO())+' วัน' : 'ยังไม่ได้ระบุวันที่ปล่อยกุ้งของบ่อนี้'}</div>
             </div>
             <div class="field">
