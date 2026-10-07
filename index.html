@@ -1762,11 +1762,17 @@ function marketPriceMatrix(){
   });
   const months = Object.keys(byMonth).sort().reverse();
   const columns = [];
-  months.forEach(ym=>{
-    const dates = [...new Set(byMonth[ym].map(m=>m.date))].sort().reverse();
-    dates.forEach(date=>{
-      columns.push({ label: fmtDate(date), entries: byMonth[ym].filter(m=>m.date===date) });
-    });
+  months.forEach((ym,idx)=>{
+    if(idx===0){
+      // most recent month: show each date separately
+      const dates = [...new Set(byMonth[ym].map(m=>m.date))].sort().reverse();
+      dates.forEach(date=>{
+        columns.push({ label: fmtDate(date), entries: byMonth[ym].filter(m=>m.date===date) });
+      });
+    } else {
+      // older months: collapse into one column per month to cut down on horizontal scrolling
+      columns.push({ label: monthLabel(ym), entries: byMonth[ym] });
+    }
   });
 
   const rows = sizes.map(size=>{
