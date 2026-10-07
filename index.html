@@ -574,8 +574,8 @@
     text-align:left; position:sticky; left:0; background:var(--surface); font-weight:700; color:var(--ink);
   }
   table.price-matrix td.pm-empty{ color:var(--ink-faint); }
-  .pm-trend-up{ color:#22C55E; font-size:9px; margin-left:4px; }
-  .pm-trend-down{ color:var(--coral); font-size:9px; margin-left:4px; }
+  .pm-trend-up{ color:#22C55E; }
+  .pm-trend-down{ color:var(--coral); }
   .pm-cell-del{ color:var(--danger); font-size:9.5px; margin-left:5px; cursor:pointer; text-decoration:underline; }
   .pm-month-toggle{
     background:none; border:none; color:var(--teal-400); font-weight:700; font-size:10.5px;
@@ -1834,8 +1834,8 @@ function marketPriceMatrixHtml(matrix){
                 if(matrix.columns[i].toggleYm) return `<td class="pm-empty">⋯</td>`;
                 if(!cell) return `<td class="pm-empty">-</td>`;
                 const val = cell.value.toLocaleString('th-TH',{maximumFractionDigits:0});
-                const arrow = cell.trend==='up' ? `<span class="pm-trend-up">▲</span>` : cell.trend==='down' ? `<span class="pm-trend-down">▼</span>` : '';
-                return `<td>${val}${arrow}${cell.delId ? `<span class="pm-cell-del" data-del-market-price="${cell.delId}">ลบ</span>` : ''}</td>`;
+                const trendClass = cell.trend==='up' ? ' class="pm-trend-up"' : cell.trend==='down' ? ' class="pm-trend-down"' : '';
+                return `<td><span${trendClass}>${val}</span>${cell.delId ? `<span class="pm-cell-del" data-del-market-price="${cell.delId}">ลบ</span>` : ''}</td>`;
               }).join('')}
             </tr>`).join('')}
         </tbody>
@@ -3990,8 +3990,8 @@ function bindDashboardEvents(){
       tipEl.innerHTML = `
         <div class="tap-date">${escapeHtml(entry.day)}</div>
         ${entry.entries.map(e=>{
-          const arrow = e.trend==='up' ? `<span class="pm-trend-up">▲</span>` : e.trend==='down' ? `<span class="pm-trend-down">▼</span>` : '';
-          return `<div class="tap-row"><span class="tap-dot" style="background:${e.color}"></span>${escapeHtml(e.label)}: <b>${e.value.toLocaleString('th-TH',{maximumFractionDigits:0})}</b> บาท${arrow}</div>`;
+          const trendClass = e.trend==='up' ? ' class="pm-trend-up"' : e.trend==='down' ? ' class="pm-trend-down"' : '';
+          return `<div class="tap-row"><span class="tap-dot" style="background:${e.color}"></span>${escapeHtml(e.label)}: <b${trendClass}>${e.value.toLocaleString('th-TH',{maximumFractionDigits:0})}</b> บาท</div>`;
         }).join('')}`;
       tipEl.style.display = 'block';
       const wrapRect = wrap.getBoundingClientRect();
