@@ -577,6 +577,11 @@
   .pm-trend-up{ color:#22C55E; font-size:9px; margin-left:4px; }
   .pm-trend-down{ color:var(--coral); font-size:9px; margin-left:4px; }
   .pm-cell-del{ color:var(--danger); font-size:9.5px; margin-left:5px; cursor:pointer; text-decoration:underline; }
+  .pm-month-toggle{
+    background:none; border:none; color:var(--teal-400); font-weight:700; font-size:10.5px;
+    text-transform:uppercase; letter-spacing:.03em; cursor:pointer; padding:0; font-family:inherit; white-space:nowrap;
+  }
+  .pm-month-toggle:hover{ text-decoration:underline; }
 
   .legend{ display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--ink-faint); }
   .legend span{ display:inline-flex; align-items:center; gap:6px; }
@@ -1009,6 +1014,7 @@ let editingWeatherNote = false;
 let editingWeatherNoteDate = null;
 let showBulkPriceImport = false;
 let showPriceHistoryEdit = false;
+let expandedPriceMonths = new Set();
 let marketPriceChartMonth = null;
 let bulkPriceImportResultHtml = '';
 let showClosureStats = false;
@@ -1764,14 +1770,21 @@ function marketPriceMatrix(){
   const columns = [];
   months.forEach((ym,idx)=>{
     if(idx===0){
-      // most recent month: show each date separately
+      // most recent month is always shown expanded, one column per date
       const dates = [...new Set(byMonth[ym].map(m=>m.date))].sort().reverse();
       dates.forEach(date=>{
         columns.push({ label: fmtDate(date), entries: byMonth[ym].filter(m=>m.date===date) });
       });
     } else {
-      // older months: collapse into one column per month to cut down on horizontal scrolling
-      columns.push({ label: monthLabel(ym), entries: byMonth[ym] });
+      // older months: collapsed by default behind a toggle column, expand to see each date (no averaging)
+      const expanded = expandedPriceMonths.has(ym);
+      columns.push({ label: monthLabel(ym), entries: [], toggleYm: ym, expanded });
+      if(expanded){
+        const dates = [...new Set(byMonth[ym].map(m=>m.date))].sort().reverse();
+        dates.forEach(date=>{
+          columns.push({ label: fmtDate(date), entries: byMonth[ym].filter(m=>m.date===date) });
+        });
+      }
     }
   });
 
@@ -1805,14 +1818,20 @@ function marketPriceMatrixHtml(matrix){
         <thead>
           <tr>
             <th>ไซส์</th>
-            ${matrix.columns.map(c=>`<th>${escapeHtml(c.label)}</th>`).join('')}
+            ${matrix.columns.map(c=>{
+              if(c.toggleYm){
+                return `<th><button type="button" class="pm-month-toggle" data-toggle-month="${c.toggleYm}">${escapeHtml(c.label)} ${c.expanded?'▾':'▸'}</button></th>`;
+              }
+              return `<th>${escapeHtml(c.label)}</th>`;
+            }).join('')}
           </tr>
         </thead>
         <tbody>
           ${matrix.rows.map(r=>`
             <tr>
               <td>${r.size} ตัว/กก.</td>
-              ${r.cells.map(cell=>{
+              ${r.cells.map((cell,i)=>{
+                if(matrix.columns[i].toggleYm) return `<td class="pm-empty">⋯</td>`;
                 if(!cell) return `<td class="pm-empty">-</td>`;
                 const val = cell.value.toLocaleString('th-TH',{maximumFractionDigits:0});
                 const arrow = cell.trend==='up' ? `<span class="pm-trend-up">▲</span>` : cell.trend==='down' ? `<span class="pm-trend-down">▼</span>` : '';
@@ -3888,6 +3907,15 @@ function bindDashboardEvents(){
 
   const btnTogglePriceHistory = document.getElementById('btn-toggle-price-history');
   if(btnTogglePriceHistory) btnTogglePriceHistory.onclick = ()=>{ showPriceHistoryEdit = !showPriceHistoryEdit; render(); };
+
+  document.querySelectorAll('[data-toggle-month]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const ym = btn.getAttribute('data-toggle-month');
+      if(expandedPriceMonths.has(ym)) expandedPriceMonths.delete(ym);
+      else expandedPriceMonths.add(ym);
+      render();
+    };
+  });
 
   document.querySelectorAll('[data-del-market-price]').forEach(btn=>{
     btn.onclick = async ()=>{
