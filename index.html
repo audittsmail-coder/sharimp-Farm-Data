@@ -1626,10 +1626,10 @@ function renderOverviewDashboard(tabs){
                 ${speciesShort ? `<span class="ov-pond-species">${escapeHtml(speciesShort)}</span>` : ''}
               </div>
             </td>
+            <td>${sampleDays ? escapeHtml(sampleDays) : '-'}</td>
             <td>${last && last.sizeCount!=null ? last.sizeCount : '-'}</td>
             <td>${doc!==null ? doc+' วัน' : '-'}</td>
             <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
-            <td>${sampleDays ? escapeHtml(sampleDays) : '-'}</td>
             <td>${pond.pathogenSeverity ? pathogenChipHtml(pond.pathogenSeverity, pond.pathogenStatus, true) : '-'}</td>
           </tr>`;
       }).join('');
@@ -1639,7 +1639,7 @@ function renderOverviewDashboard(tabs){
       <div class="card">
         <div style="overflow-x:auto">
           <table class="rec-table overview-table">
-            <thead><tr><th>บ่อ</th><th>ไซส์<br><span style="white-space:nowrap">(ตัว/กก.)</span></th><th>DOC</th><th>ADG</th><th>วันที่สุ่ม</th><th>ผลเชื้อ</th></tr></thead>
+            <thead><tr><th>บ่อ</th><th>วันที่สุ่ม</th><th>ไซส์<br><span style="white-space:nowrap">(ตัว/กก.)</span></th><th>DOC</th><th>ADG</th><th>ผลเชื้อ</th></tr></thead>
             <tbody>${trs}</tbody>
           </table>
         </div>
