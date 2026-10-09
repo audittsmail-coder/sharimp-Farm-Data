@@ -1367,6 +1367,25 @@ function computeAdgForPond(p, recs){
   }
   return null;
 }
+const THAI_WEEKDAY_SHORT = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+function sampleDayPattern(recs){
+  if(!recs || recs.length===0) return null;
+  const counts = {};
+  recs.forEach(r=>{
+    if(!r.weekDate) return;
+    const dow = new Date(r.weekDate+'T00:00:00').getDay();
+    counts[dow] = (counts[dow]||0)+1;
+  });
+  const entries = Object.entries(counts);
+  if(entries.length===0) return null;
+  const maxCount = Math.max(...entries.map(([,c])=>c));
+  return entries
+    .filter(([,c])=>c===maxCount)
+    .map(([dow])=>parseInt(dow,10))
+    .sort((a,b)=>a-b)
+    .map(dow=>THAI_WEEKDAY_SHORT[dow])
+    .join(', ');
+}
 function estimatedBiomassKg(releaseCount, survivalRate, sizeCount){
   if(!releaseCount || survivalRate==null || !sizeCount) return null;
   const weightG = weightFromCount(sizeCount);
@@ -1551,7 +1570,8 @@ function renderOverviewDashboard(tabs){
         const recs = recordsForPond(pond.id);
         const last = recs[recs.length-1];
         const adg = computeAdgForPond(pond, recs);
-        return { pond, doc, last, adg };
+        const sampleDays = sampleDayPattern(recs);
+        return { pond, doc, last, adg, sampleDays };
       }),
     }))
     .filter(g => g.ponds.length > 0);
@@ -1593,8 +1613,8 @@ function renderOverviewDashboard(tabs){
   } else {
     const trs = groups.map(({farm, ponds})=>{
       const zoneRow = `
-        <tr class="ov-zone-row"><td colspan="5">${escapeHtml(farm.name)} · ${ponds.length} บ่อ</td></tr>`;
-      const pondRows = ponds.map(({pond, doc, last, adg})=>{
+        <tr class="ov-zone-row"><td colspan="6">${escapeHtml(farm.name)} · ${ponds.length} บ่อ</td></tr>`;
+      const pondRows = ponds.map(({pond, doc, last, adg, sampleDays})=>{
         const speciesShort = pond.species ? pond.species.split('(')[0].trim() : '';
         const isNew = isPondRecentlyUpdated(pond);
         const hasHarvest = harvestsForPond(pond.id).length > 0;
@@ -1609,6 +1629,7 @@ function renderOverviewDashboard(tabs){
             <td>${last && last.sizeCount!=null ? last.sizeCount : '-'}</td>
             <td>${doc!==null ? doc+' วัน' : '-'}</td>
             <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
+            <td>${sampleDays ? escapeHtml(sampleDays) : '-'}</td>
             <td>${pond.pathogenSeverity ? pathogenChipHtml(pond.pathogenSeverity, pond.pathogenStatus, true) : '-'}</td>
           </tr>`;
       }).join('');
@@ -1618,7 +1639,7 @@ function renderOverviewDashboard(tabs){
       <div class="card">
         <div style="overflow-x:auto">
           <table class="rec-table overview-table">
-            <thead><tr><th>บ่อ</th><th>ไซส์<br><span style="white-space:nowrap">(ตัว/กก.)</span></th><th>DOC</th><th>ADG</th><th>ผลเชื้อ</th></tr></thead>
+            <thead><tr><th>บ่อ</th><th>ไซส์<br><span style="white-space:nowrap">(ตัว/กก.)</span></th><th>DOC</th><th>ADG</th><th>วันที่สุ่ม</th><th>ผลเชื้อ</th></tr></thead>
             <tbody>${trs}</tbody>
           </table>
         </div>
