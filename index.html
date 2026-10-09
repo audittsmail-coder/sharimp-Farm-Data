@@ -640,6 +640,7 @@
     letter-spacing:.02em;
   }
   .ov-adg{ color:var(--coral); font-weight:700; }
+  .ov-sample-overdue{ color:var(--danger); font-weight:700; }
   table.overview-table tr.ov-zone-row td{
     background:var(--surface-hi); color:var(--teal-400); font-weight:700; font-size:12.5px;
     text-transform:uppercase; letter-spacing:.05em; padding:8px 7px;
@@ -1368,7 +1369,18 @@ function computeAdgForPond(p, recs){
   return null;
 }
 const THAI_WEEKDAY_SHORT = ['อา','จ','อ','พ','พฤ','ศ','ส'];
-function sampleDayPattern(recs){
+function dateToISO(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function startOfWeekMonday(d){
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const diff = (day===0 ? -6 : 1-day);
+  const monday = new Date(d);
+  monday.setDate(d.getDate()+diff);
+  monday.setHours(0,0,0,0);
+  return monday;
+}
+function sampleDayInfo(recs){
   if(!recs || recs.length===0) return null;
   const counts = {};
   recs.forEach(r=>{
@@ -1379,12 +1391,22 @@ function sampleDayPattern(recs){
   const entries = Object.entries(counts);
   if(entries.length===0) return null;
   const maxCount = Math.max(...entries.map(([,c])=>c));
-  return entries
-    .filter(([,c])=>c===maxCount)
-    .map(([dow])=>parseInt(dow,10))
-    .sort((a,b)=>a-b)
-    .map(dow=>THAI_WEEKDAY_SHORT[dow])
-    .join(', ');
+  const dows = entries.filter(([,c])=>c===maxCount).map(([dow])=>parseInt(dow,10)).sort((a,b)=>a-b);
+  const label = dows.map(dow=>THAI_WEEKDAY_SHORT[dow]).join(', ');
+
+  // overdue: this week's expected sample day (the earliest typical weekday) has
+  // already arrived, but nothing has been recorded for this pond this week yet
+  const today = new Date(todayISO()+'T00:00:00');
+  const monday = startOfWeekMonday(today);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+  const primaryDow = dows[0];
+  const offset = primaryDow===0 ? 6 : primaryDow-1;
+  const expectedDate = new Date(monday); expectedDate.setDate(monday.getDate()+offset);
+  const mondayISO = dateToISO(monday), sundayISO = dateToISO(sunday);
+  const hasThisWeek = recs.some(r=> r.weekDate>=mondayISO && r.weekDate<=sundayISO);
+  const overdue = today>=expectedDate && !hasThisWeek;
+
+  return { label, overdue };
 }
 function estimatedBiomassKg(releaseCount, survivalRate, sizeCount){
   if(!releaseCount || survivalRate==null || !sizeCount) return null;
@@ -1570,8 +1592,8 @@ function renderOverviewDashboard(tabs){
         const recs = recordsForPond(pond.id);
         const last = recs[recs.length-1];
         const adg = computeAdgForPond(pond, recs);
-        const sampleDays = sampleDayPattern(recs);
-        return { pond, doc, last, adg, sampleDays };
+        const sampleDayInfoResult = sampleDayInfo(recs);
+        return { pond, doc, last, adg, sampleDayInfoResult };
       }),
     }))
     .filter(g => g.ponds.length > 0);
@@ -1614,7 +1636,7 @@ function renderOverviewDashboard(tabs){
     const trs = groups.map(({farm, ponds})=>{
       const zoneRow = `
         <tr class="ov-zone-row"><td colspan="6">${escapeHtml(farm.name)} · ${ponds.length} บ่อ</td></tr>`;
-      const pondRows = ponds.map(({pond, doc, last, adg, sampleDays})=>{
+      const pondRows = ponds.map(({pond, doc, last, adg, sampleDayInfoResult})=>{
         const speciesShort = pond.species ? pond.species.split('(')[0].trim() : '';
         const isNew = isPondRecentlyUpdated(pond);
         const hasHarvest = harvestsForPond(pond.id).length > 0;
@@ -1626,7 +1648,7 @@ function renderOverviewDashboard(tabs){
                 ${speciesShort ? `<span class="ov-pond-species">${escapeHtml(speciesShort)}</span>` : ''}
               </div>
             </td>
-            <td>${sampleDays ? escapeHtml(sampleDays) : '-'}</td>
+            <td>${sampleDayInfoResult ? `<span class="${sampleDayInfoResult.overdue?'ov-sample-overdue':''}">${escapeHtml(sampleDayInfoResult.label)}</span>` : '-'}</td>
             <td>${last && last.sizeCount!=null ? last.sizeCount : '-'}</td>
             <td>${doc!==null ? doc+' วัน' : '-'}</td>
             <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
