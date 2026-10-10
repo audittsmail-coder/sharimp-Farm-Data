@@ -621,8 +621,8 @@
   table.price-matrix td.pm-empty{ color:var(--ink-faint); }
   .pm-trend-up{ color:#22C55E; }
   .pm-trend-down{ color:var(--coral); }
-  .pm-cell-del{ color:var(--danger); font-size:9.5px; margin-left:5px; cursor:pointer; text-decoration:underline; }
   .pm-dup-mark{ color:var(--amber); font-size:9.5px; margin-left:4px; cursor:help; }
+  .pm-col-del{ display:block; color:var(--danger); font-size:9.5px; font-weight:400; text-transform:none; letter-spacing:0; margin-top:3px; cursor:pointer; text-decoration:underline; }
   .pm-month-toggle{
     background:none; border:none; color:var(--teal-400); font-weight:700; font-size:10.5px;
     text-transform:uppercase; letter-spacing:.03em; cursor:pointer; padding:0; font-family:inherit; white-space:nowrap;
@@ -1941,7 +1941,8 @@ function marketPriceMatrix(){
       // most recent month is always shown expanded, one column per date
       const dates = [...new Set(byMonth[ym].map(m=>m.date))].sort().reverse();
       dates.forEach(date=>{
-        columns.push({ label: fmtDate(date), entries: byMonth[ym].filter(m=>m.date===date) });
+        const entries = byMonth[ym].filter(m=>m.date===date);
+        columns.push({ label: fmtDate(date), entries, date, delIds: entries.map(e=>e.id) });
       });
     } else {
       // older months: collapsed by default behind a toggle column, expand to see each date (no averaging)
@@ -1950,7 +1951,8 @@ function marketPriceMatrix(){
       if(expanded){
         const dates = [...new Set(byMonth[ym].map(m=>m.date))].sort().reverse();
         dates.forEach(date=>{
-          columns.push({ label: fmtDate(date), entries: byMonth[ym].filter(m=>m.date===date) });
+          const entries = byMonth[ym].filter(m=>m.date===date);
+          columns.push({ label: fmtDate(date), entries, date, delIds: entries.map(e=>e.id) });
         });
       }
     }
@@ -1990,7 +1992,7 @@ function marketPriceMatrixHtml(matrix){
               if(c.toggleYm){
                 return `<th><button type="button" class="pm-month-toggle" data-toggle-month="${c.toggleYm}">${escapeHtml(c.label)} ${c.expanded?'▾':'▸'}</button></th>`;
               }
-              return `<th>${escapeHtml(c.label)}</th>`;
+              return `<th>${escapeHtml(c.label)}${c.delIds.length>0 ? `<span class="pm-col-del" data-del-market-date="${c.delIds.join(',')}" title="ลบราคาทั้งหมดของวันนี้">ลบ</span>` : ''}</th>`;
             }).join('')}
           </tr>
         </thead>
@@ -2004,7 +2006,7 @@ function marketPriceMatrixHtml(matrix){
                 const val = cell.value.toLocaleString('th-TH',{maximumFractionDigits:0});
                 const trendClass = cell.trend==='up' ? ' class="pm-trend-up"' : cell.trend==='down' ? ' class="pm-trend-down"' : '';
                 const dupMark = cell.dupCount>1 ? `<span class="pm-dup-mark" title="มี ${cell.dupCount} รายการซ้ำในวันนี้ ค่าที่แสดงคือค่าเฉลี่ย">×${cell.dupCount}</span>` : '';
-                return `<td><span${trendClass}>${val}</span>${dupMark}<span class="pm-cell-del" data-del-market-price="${cell.delIds.join(',')}">ลบ</span></td>`;
+                return `<td><span${trendClass}>${val}</span>${dupMark}</td>`;
               }).join('')}
             </tr>`).join('')}
         </tbody>
@@ -4114,14 +4116,15 @@ function bindDashboardEvents(){
     };
   });
 
-  document.querySelectorAll('[data-del-market-price]').forEach(btn=>{
-    btn.onclick = async ()=>{
-      const ids = btn.getAttribute('data-del-market-price').split(',').filter(Boolean);
+  document.querySelectorAll('[data-del-market-date]').forEach(btn=>{
+    btn.onclick = async (e)=>{
+      e.stopPropagation();
+      const ids = btn.getAttribute('data-del-market-date').split(',').filter(Boolean);
       if(ids.length===0) return;
-      if(!confirm(ids.length>1 ? `ลบราคานี้ทั้ง ${ids.length} รายการซ้ำ?` : 'ลบราคานี้?')) return;
+      if(!confirm(`ลบราคาทั้งหมดของวันนี้ (${ids.length} รายการ)?`)) return;
       const delBatch = db.batch();
       ids.forEach(id=>delBatch.delete(db.collection('marketPrices').doc(id)));
-      await delBatch.commit().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
+      await delBatch.commit().catch((e2)=>alert('ลบไม่สำเร็จ: '+e2.message));
     };
   });
 
