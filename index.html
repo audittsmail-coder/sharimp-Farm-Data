@@ -440,7 +440,12 @@
   .btn-block{ width:100%; }
   .btn-row{ display:flex; gap:10px; margin-top:4px; }
   .record-action-row{ justify-content:center; flex-wrap:wrap; gap:6px; }
-  .record-action-row .record-save-btn{ flex:0 1 320px; min-width:0; }
+  .record-action-row .record-save-btn{ flex:1 1 auto; min-width:0; }
+  @media (min-width:700px){
+    .record-action-row{ display:grid; grid-template-columns:1fr 320px 1fr; align-items:center; gap:6px; flex-wrap:initial; }
+    .record-action-row .record-save-btn{ grid-column:2; width:100%; }
+    .record-action-row #btn-cancel-edit-record{ grid-column:1; justify-self:start; }
+  }
 
   .record-action-tabs{ display:flex; gap:10px; margin-top:14px; justify-content:flex-end; }
   .record-action-tab{
