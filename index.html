@@ -685,6 +685,7 @@
   }
   .ov-adg{ color:var(--coral); font-weight:700; }
   .ov-sample-overdue{ color:var(--danger); font-weight:700; }
+  .ov-sample-soon{ color:#22C55E; font-weight:700; }
   table.overview-table tr.ov-zone-row td{
     background:var(--surface-hi); color:var(--teal-400); font-weight:700; font-size:12.5px;
     text-transform:uppercase; letter-spacing:.05em; padding:8px 7px;
@@ -1520,9 +1521,14 @@ function sampleDayInfo(recs){
   const expectedDate = new Date(monday); expectedDate.setDate(monday.getDate()+offset);
   const mondayISO = dateToISO(monday), sundayISO = dateToISO(sunday);
   const hasThisWeek = recs.some(r=> r.weekDate>=mondayISO && r.weekDate<=sundayISO);
-  const overdue = today>=expectedDate && !hasThisWeek;
+  let status = null;
+  if(!hasThisWeek){
+    const daysUntil = Math.round((expectedDate - today) / 86400000);
+    if(today > expectedDate) status = 'overdue';
+    else if(daysUntil === 0 || daysUntil === 1) status = 'soon';
+  }
 
-  return { label, overdue };
+  return { label, status };
 }
 function estimatedBiomassKg(releaseCount, survivalRate, sizeCount){
   if(!releaseCount || survivalRate==null || !sizeCount) return null;
@@ -1764,7 +1770,7 @@ function renderOverviewDashboard(tabs){
                 ${speciesShort ? `<span class="ov-pond-species">${escapeHtml(speciesShort)}</span>` : ''}
               </div>
             </td>
-            <td>${sampleDayInfoResult ? `<span class="${sampleDayInfoResult.overdue?'ov-sample-overdue':''}">${escapeHtml(sampleDayInfoResult.label)}</span>` : '-'}</td>
+            <td>${sampleDayInfoResult ? `<span class="${sampleDayInfoResult.status==='overdue'?'ov-sample-overdue':sampleDayInfoResult.status==='soon'?'ov-sample-soon':''}">${escapeHtml(sampleDayInfoResult.label)}</span>` : '-'}</td>
             <td>${last && last.sizeCount!=null ? last.sizeCount : '-'}</td>
             <td>${doc!==null ? doc+' วัน' : '-'}</td>
             <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
