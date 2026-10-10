@@ -596,6 +596,7 @@
   .mp-card .field input[type=number], .mp-card .field input[type=date]{ max-width:150px; }
   .mp-card .field-row > .field:has(input[type=number]), .mp-card .field-row > .field:has(input[type=date]){ flex:0 1 150px; }
   .mp-card .field-row{ gap:8px; }
+  .mp-existing-badge{ color:#22C55E; font-weight:700; font-size:11px; text-transform:none; letter-spacing:0; }
   .mp-card .btn{ padding:9px 14px; font-size:12.5px; }
   .mp-card h3{ font-size:15.5px; }
   .chart-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:16px; }
@@ -1059,6 +1060,7 @@ let showBulkPriceImport = false;
 let showPriceHistoryEdit = false;
 let expandedPriceMonths = new Set();
 let marketPriceChartMonth = null;
+let marketPriceFormDate = null;
 let bulkPriceImportResultHtml = '';
 let showClosureStats = false;
 let overviewSortBy = '';
@@ -2013,8 +2015,13 @@ function latestPriceForSize(size){
   matches.sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.createdAt||0)-(a.createdAt||0));
   return matches[0].pricePerKg;
 }
-function marketPriceQuickRowHtml(defaultSize){
+function existingPriceEntry(date, size){
+  return state.marketPrices.find(m=>m.date===date && m.sizeCount===size && m.pricePerKg!=null) || null;
+}
+function marketPriceQuickRowHtml(defaultSize, dateForLookup){
+  const existing = (defaultSize!=null && dateForLookup) ? existingPriceEntry(dateForLookup, defaultSize) : null;
   const latestPrice = defaultSize!=null ? latestPriceForSize(defaultSize) : null;
+  const prefillPrice = existing ? existing.pricePerKg : latestPrice;
   return `
     <div class="field-row">
       <div class="field">
@@ -2022,8 +2029,8 @@ function marketPriceQuickRowHtml(defaultSize){
         <input type="number" inputmode="decimal" step="0.1" name="mp-size" placeholder="เช่น 60" value="${defaultSize!=null ? defaultSize : ''}">
       </div>
       <div class="field">
-        <label>ราคา (บาท/กก.)</label>
-        <input type="number" inputmode="decimal" step="0.1" name="mp-price" placeholder="เช่น 140" value="${latestPrice!=null ? latestPrice : ''}">
+        <label>ราคา (บาท/กก.)${existing ? ' <span class="mp-existing-badge">มีอยู่แล้ว</span>' : ''}</label>
+        <input type="number" inputmode="decimal" step="0.1" name="mp-price" placeholder="เช่น 140" value="${prefillPrice!=null ? prefillPrice : ''}">
       </div>
     </div>`;
 }
@@ -2067,14 +2074,14 @@ function renderMarketPriceTab(tabs){
       <div class="mp-grid">
       <div class="card mp-card">
         <h3>เพิ่มราคาใหม่</h3>
-        <p class="hint" style="margin-top:0;">ใส่ได้หลายไซส์พร้อมกันในวันเดียว เว้นแถวที่ไม่ใช้ว่างไว้ได้</p>
+        <p class="hint" style="margin-top:0;">ใส่ได้หลายไซส์พร้อมกันในวันเดียว เว้นแถวที่ไม่ใช้ว่างไว้ได้ ${(marketPriceFormDate && marketPriceFormDate!==todayISO()) ? '<br><b>เลือกวันที่ผ่านมาแล้ว</b> — ราคาที่มีอยู่จะถูกดึงมาให้แก้ไข กดบันทึกเพื่อทับของเดิม' : ''}</p>
         <form id="market-price-form">
           <div class="field">
             <label>วันที่</label>
-            <input type="date" name="date" id="mp-date" value="${todayISO()}" required>
+            <input type="date" name="date" id="mp-date" value="${marketPriceFormDate || todayISO()}" required>
           </div>
           <div id="mp-rows">
-            ${[40,50,60,70,80,90].map(s=>marketPriceQuickRowHtml(s)).join('')}
+            ${[40,50,60,70,80,90].map(s=>marketPriceQuickRowHtml(s, marketPriceFormDate || todayISO())).join('')}
           </div>
           <div class="btn-row" style="margin-bottom:13px;">
             <button class="btn btn-secondary" type="button" id="btn-add-mp-row" style="flex:1">+ เพิ่มไซส์อีกแถว</button>
@@ -4038,6 +4045,15 @@ function bindDashboardEvents(){
 
   const marketPriceForm = document.getElementById('market-price-form');
   if(marketPriceForm){
+    const mpDateInput = document.getElementById('mp-date');
+    if(mpDateInput){
+      mpDateInput.addEventListener('input', ()=>{
+        if(mpDateInput.value && mpDateInput.value !== marketPriceFormDate){
+          marketPriceFormDate = mpDateInput.value;
+          render();
+        }
+      });
+    }
     marketPriceForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const fd = new FormData(marketPriceForm);
@@ -4049,15 +4065,23 @@ function bindDashboardEvents(){
       for(let i=0;i<sizeVals.length;i++){
         const sizeCount = parseFloat(sizeVals[i]);
         const pricePerKg = parseFloat(priceVals[i]);
-        if(!isNaN(sizeCount) && !isNaN(pricePerKg)) rows.push({ date, sizeCount, pricePerKg, createdAt: Date.now() });
+        if(!isNaN(sizeCount) && !isNaN(pricePerKg)){
+          const existing = existingPriceEntry(date, sizeCount);
+          rows.push({ id: existing ? existing.id : null, date, sizeCount, pricePerKg, createdAt: existing ? existing.createdAt : Date.now() });
+        }
       }
       if(rows.length===0) return;
       const writeBatch = db.batch();
-      rows.forEach(row=>writeBatch.set(db.collection('marketPrices').doc(), row));
+      rows.forEach(row=>{
+        const { id, ...data } = row;
+        const ref = id ? db.collection('marketPrices').doc(id) : db.collection('marketPrices').doc();
+        writeBatch.set(ref, data);
+      });
       try{
         await writeBatch.commit();
       }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); return; }
       marketPriceChartMonth = null;
+      marketPriceFormDate = null;
       render();
     });
   }
