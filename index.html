@@ -622,6 +622,7 @@
   .pm-trend-up{ color:#22C55E; }
   .pm-trend-down{ color:var(--coral); }
   .pm-cell-del{ color:var(--danger); font-size:9.5px; margin-left:5px; cursor:pointer; text-decoration:underline; }
+  .pm-dup-mark{ color:var(--amber); font-size:9.5px; margin-left:4px; cursor:help; }
   .pm-month-toggle{
     background:none; border:none; color:var(--teal-400); font-weight:700; font-size:10.5px;
     text-transform:uppercase; letter-spacing:.03em; cursor:pointer; padding:0; font-family:inherit; white-space:nowrap;
@@ -1960,7 +1961,7 @@ function marketPriceMatrix(){
       const matching = col.entries.filter(m=>m.sizeCount===size);
       if(matching.length===0) return null;
       const avg = matching.reduce((s,m)=>s+m.pricePerKg,0)/matching.length;
-      return { value: avg, delId: matching.length===1 ? matching[0].id : null };
+      return { value: avg, delIds: matching.map(m=>m.id), dupCount: matching.length };
     });
     // columns run newest→oldest, so walk oldest→newest to compare each date against the one before it
     let prevValue = null;
@@ -2002,7 +2003,8 @@ function marketPriceMatrixHtml(matrix){
                 if(!cell) return `<td class="pm-empty">-</td>`;
                 const val = cell.value.toLocaleString('th-TH',{maximumFractionDigits:0});
                 const trendClass = cell.trend==='up' ? ' class="pm-trend-up"' : cell.trend==='down' ? ' class="pm-trend-down"' : '';
-                return `<td><span${trendClass}>${val}</span>${cell.delId ? `<span class="pm-cell-del" data-del-market-price="${cell.delId}">ลบ</span>` : ''}</td>`;
+                const dupMark = cell.dupCount>1 ? `<span class="pm-dup-mark" title="มี ${cell.dupCount} รายการซ้ำในวันนี้ ค่าที่แสดงคือค่าเฉลี่ย">×${cell.dupCount}</span>` : '';
+                return `<td><span${trendClass}>${val}</span>${dupMark}<span class="pm-cell-del" data-del-market-price="${cell.delIds.join(',')}">ลบ</span></td>`;
               }).join('')}
             </tr>`).join('')}
         </tbody>
@@ -2015,13 +2017,14 @@ function latestPriceForSize(size){
   matches.sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.createdAt||0)-(a.createdAt||0));
   return matches[0].pricePerKg;
 }
-function existingPriceEntry(date, size){
-  return state.marketPrices.find(m=>m.date===date && m.sizeCount===size && m.pricePerKg!=null) || null;
+function existingPriceEntries(date, size){
+  return state.marketPrices.filter(m=>m.date===date && m.sizeCount===size && m.pricePerKg!=null);
 }
 function marketPriceQuickRowHtml(defaultSize, dateForLookup){
-  const existing = (defaultSize!=null && dateForLookup) ? existingPriceEntry(dateForLookup, defaultSize) : null;
+  const entries = (defaultSize!=null && dateForLookup) ? existingPriceEntries(dateForLookup, defaultSize) : [];
   const latestPrice = defaultSize!=null ? latestPriceForSize(defaultSize) : null;
-  const prefillPrice = existing ? existing.pricePerKg : latestPrice;
+  const prefillPrice = entries.length>0 ? (entries.reduce((s,m)=>s+m.pricePerKg,0)/entries.length) : latestPrice;
+  const badge = entries.length>1 ? `มีอยู่แล้ว ×${entries.length} (จะรวมเป็น 1 รายการเมื่อบันทึก)` : (entries.length===1 ? 'มีอยู่แล้ว' : '');
   return `
     <div class="field-row">
       <div class="field">
@@ -2029,7 +2032,7 @@ function marketPriceQuickRowHtml(defaultSize, dateForLookup){
         <input type="number" inputmode="decimal" step="0.1" name="mp-size" placeholder="เช่น 60" value="${defaultSize!=null ? defaultSize : ''}">
       </div>
       <div class="field">
-        <label>ราคา (บาท/กก.)${existing ? ' <span class="mp-existing-badge">มีอยู่แล้ว</span>' : ''}</label>
+        <label>ราคา (บาท/กก.)${badge ? ` <span class="mp-existing-badge">${badge}</span>` : ''}</label>
         <input type="number" inputmode="decimal" step="0.1" name="mp-price" placeholder="เช่น 140" value="${prefillPrice!=null ? prefillPrice : ''}">
       </div>
     </div>`;
@@ -4062,12 +4065,15 @@ function bindDashboardEvents(){
       const sizeVals = fd.getAll('mp-size');
       const priceVals = fd.getAll('mp-price');
       const rows = [];
+      const idsToDelete = [];
       for(let i=0;i<sizeVals.length;i++){
         const sizeCount = parseFloat(sizeVals[i]);
         const pricePerKg = parseFloat(priceVals[i]);
         if(!isNaN(sizeCount) && !isNaN(pricePerKg)){
-          const existing = existingPriceEntry(date, sizeCount);
-          rows.push({ id: existing ? existing.id : null, date, sizeCount, pricePerKg, createdAt: existing ? existing.createdAt : Date.now() });
+          const entries = existingPriceEntries(date, sizeCount);
+          const primary = entries[0] || null;
+          entries.slice(1).forEach(dup=>idsToDelete.push(dup.id));
+          rows.push({ id: primary ? primary.id : null, date, sizeCount, pricePerKg, createdAt: primary ? primary.createdAt : Date.now() });
         }
       }
       if(rows.length===0) return;
@@ -4077,6 +4083,7 @@ function bindDashboardEvents(){
         const ref = id ? db.collection('marketPrices').doc(id) : db.collection('marketPrices').doc();
         writeBatch.set(ref, data);
       });
+      idsToDelete.forEach(id=>writeBatch.delete(db.collection('marketPrices').doc(id)));
       try{
         await writeBatch.commit();
       }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); return; }
@@ -4109,9 +4116,12 @@ function bindDashboardEvents(){
 
   document.querySelectorAll('[data-del-market-price]').forEach(btn=>{
     btn.onclick = async ()=>{
-      if(!confirm('ลบราคานี้?')) return;
-      const id = btn.getAttribute('data-del-market-price');
-      await db.collection('marketPrices').doc(id).delete().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
+      const ids = btn.getAttribute('data-del-market-price').split(',').filter(Boolean);
+      if(ids.length===0) return;
+      if(!confirm(ids.length>1 ? `ลบราคานี้ทั้ง ${ids.length} รายการซ้ำ?` : 'ลบราคานี้?')) return;
+      const delBatch = db.batch();
+      ids.forEach(id=>delBatch.delete(db.collection('marketPrices').doc(id)));
+      await delBatch.commit().catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
     };
   });
 
