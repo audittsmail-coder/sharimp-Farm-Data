@@ -4535,6 +4535,9 @@ function bindDashboardEvents(){
     const docHint = document.getElementById('record-doc-hint');
     if(dateInput && docHint){
       dateInput.addEventListener('input', ()=>{
+        if(dateInput.value && dateInput.value > todayISO()){
+          dateInput.value = todayISO();
+        }
         const pond = state.ponds.find(x=>x.id===currentPondId);
         if(pond && pond.releaseDate && dateInput.value){
           docHint.textContent = 'อายุกุ้ง ณ วันที่บันทึก: ' + daysBetween(pond.releaseDate, dateInput.value) + ' วัน';
@@ -4574,7 +4577,8 @@ function bindDashboardEvents(){
     recordForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const fd = new FormData(recordForm);
-      const weekDate = fd.get('weekDate');
+      let weekDate = fd.get('weekDate');
+      if(weekDate && weekDate > todayISO()) weekDate = todayISO();
       const data = {
         pondId: currentPondId,
         weekDate,
