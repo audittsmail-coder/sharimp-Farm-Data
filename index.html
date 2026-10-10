@@ -440,6 +440,7 @@
   .btn-block{ width:100%; }
   .btn-row{ display:flex; gap:10px; margin-top:4px; }
   .record-action-row{ justify-content:center; flex-wrap:wrap; gap:6px; }
+  .record-action-row .record-save-btn{ flex:0 1 320px; min-width:0; }
 
   .record-action-tabs{ display:flex; gap:10px; margin-top:14px; justify-content:flex-end; }
   .record-action-tab{
@@ -2907,7 +2908,7 @@ function renderPondDetail(){
           </div>
           <div class="btn-row record-action-row">
             ${editingRecordId ? `<button class="btn btn-sm btn-secondary" type="button" id="btn-cancel-edit-record">ยกเลิก</button>` : ''}
-            <button class="btn btn-sm btn-primary" type="submit" style="flex:1">${editingRecordId ? 'บันทึกการแก้ไข' : 'บันทึก'}</button>
+            <button class="btn btn-sm btn-primary record-save-btn" type="submit">${editingRecordId ? 'บันทึกการแก้ไข' : 'บันทึก'}</button>
           </div>
         </form>
       </div>
