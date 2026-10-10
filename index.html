@@ -623,6 +623,11 @@
   .pm-trend-down{ color:var(--coral); }
   .pm-dup-mark{ color:var(--amber); font-size:9.5px; margin-left:4px; cursor:help; }
   .pm-col-del{ display:block; color:var(--danger); font-size:9.5px; font-weight:400; text-transform:none; letter-spacing:0; margin-top:3px; cursor:pointer; text-decoration:underline; }
+  .mp-dup-notice{
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--amber-soft); border:1px solid var(--amber);
+    color:var(--ink); font-size:12.5px; padding:10px 14px; border-radius:var(--radius-sm); margin-bottom:14px;
+  }
+  .mp-dup-notice .btn{ white-space:nowrap; }
   .pm-month-toggle{
     background:none; border:none; color:var(--teal-400); font-weight:700; font-size:10.5px;
     text-transform:uppercase; letter-spacing:.03em; cursor:pointer; padding:0; font-family:inherit; white-space:nowrap;
@@ -2022,6 +2027,17 @@ function latestPriceForSize(size){
 function existingPriceEntries(date, size){
   return state.marketPrices.filter(m=>m.date===date && m.sizeCount===size && m.pricePerKg!=null);
 }
+function duplicatePriceGroups(){
+  const groups = {};
+  state.marketPrices.forEach(m=>{
+    if(!m.date || m.sizeCount==null || m.pricePerKg==null) return;
+    const key = m.date+'|'+m.sizeCount;
+    (groups[key] = groups[key]||[]).push(m);
+  });
+  return Object.values(groups)
+    .filter(g=>g.length>1)
+    .map(g=>g.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)));
+}
 function marketPriceQuickRowHtml(defaultSize, dateForLookup){
   const entries = (defaultSize!=null && dateForLookup) ? existingPriceEntries(dateForLookup, defaultSize) : [];
   const latestPrice = defaultSize!=null ? latestPriceForSize(defaultSize) : null;
@@ -2133,7 +2149,17 @@ function renderMarketPriceTab(tabs){
           <h3 style="margin:0;">แก้ไขข้อมูลย้อนหลัง</h3>
           <button type="button" id="btn-toggle-price-history" class="action-btn">${showPriceHistoryEdit ? 'ปิด' : 'เปิดดู/ลบข้อมูล'}</button>
         </div>
-        ${showPriceHistoryEdit ? marketPriceMatrixHtml(marketPriceMatrix()) : ''}
+        ${(()=>{
+          if(!showPriceHistoryEdit) return '';
+          const dupGroups = duplicatePriceGroups();
+          const dupExtraCount = dupGroups.reduce((s,g)=>s+(g.length-1),0);
+          const dupNotice = dupExtraCount>0 ? `
+            <div class="mp-dup-notice">
+              พบรายการราคาซ้ำ (วันที่+ไซส์เดียวกัน) ${dupExtraCount} รายการ (เห็นเป็นเครื่องหมาย ×N ในตาราง)
+              <button type="button" id="btn-cleanup-mp-dups" class="btn btn-sm btn-secondary">เก็บล่าสุดไว้ ลบรายการซ้ำที่เหลือทั้งหมด</button>
+            </div>` : '';
+          return dupNotice + marketPriceMatrixHtml(marketPriceMatrix());
+        })()}
       </div>` : ''}
 
       ${state.marketPrices.length===0 ? `
@@ -4106,6 +4132,26 @@ function bindDashboardEvents(){
 
   const btnTogglePriceHistory = document.getElementById('btn-toggle-price-history');
   if(btnTogglePriceHistory) btnTogglePriceHistory.onclick = ()=>{ showPriceHistoryEdit = !showPriceHistoryEdit; render(); };
+
+  const btnCleanupMpDups = document.getElementById('btn-cleanup-mp-dups');
+  if(btnCleanupMpDups) btnCleanupMpDups.onclick = async ()=>{
+    const dupGroups = duplicatePriceGroups();
+    const idsToDelete = [];
+    dupGroups.forEach(group=>{
+      group.slice(1).forEach(dup=>idsToDelete.push(dup.id));
+    });
+    if(idsToDelete.length===0) return;
+    if(!confirm(`เก็บรายการล่าสุดของแต่ละวันที่+ไซส์ไว้ แล้วลบรายการซ้ำที่เหลือ ${idsToDelete.length} รายการ?`)) return;
+    try{
+      for(let i=0;i<idsToDelete.length;i+=400){
+        const chunk = idsToDelete.slice(i, i+400);
+        const delBatch = db.batch();
+        chunk.forEach(id=>delBatch.delete(db.collection('marketPrices').doc(id)));
+        await delBatch.commit();
+      }
+    }catch(e){ alert('ลบไม่สำเร็จ: '+e.message); return; }
+    render();
+  };
 
   document.querySelectorAll('[data-toggle-month]').forEach(btn=>{
     btn.onclick = ()=>{
