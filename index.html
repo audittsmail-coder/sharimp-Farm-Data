@@ -2787,7 +2787,7 @@ function renderPondDetail(){
   const records = recordsForPond(p.id);
   const pathogenRec = latestPathogenInfo(p);
   const pondBatches = state.batches
-    .filter(b=>b.pondId===p.id)
+    .filter(b=>b.pondId===p.id || (b.farmId===p.farmId && b.pondName && p.name && b.pondName.trim().toLowerCase()===p.name.trim().toLowerCase()))
     .slice()
     .sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''));
   const editingRecordThisRender = editingRecordId ? records.find(r=>r.id===editingRecordId) : null;
