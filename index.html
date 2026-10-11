@@ -1623,6 +1623,8 @@ function render(){
       html += renderHarvestForm();
     } else if(viewingBatchId){
       html += renderBatchDetail();
+    } else if(comparingBatchId){
+      html += renderCompareView();
     } else if(currentPondId && currentFarmId === 'overview'){
       html += renderPondDetail();
     } else {
@@ -1637,6 +1639,7 @@ function render(){
     else if(viewingBiomassPondId){ /* no charts on the biomass calculator page */ }
     else if(viewingHarvestPondId){ /* no charts on the harvest page */ }
     else if(viewingBatchId) drawBatchCharts();
+    else if(comparingBatchId){ /* comparison charts render inline as SVG strings, no draw pass needed */ }
     else if(currentPondId) drawCharts();
   }catch(e){
     console.error('render() failed', e);
@@ -2988,36 +2991,6 @@ function renderPondDetail(){
         ${pathogenHistoryCount>=2 ? pathogenAmmoniaChartCardHtml(pathogenHistory) : ''}
         ${pathogenHistoryCount>=2 ? pathogenNitriteChartCardHtml(pathogenHistory) : ''}
       </div>
-      ${(()=>{
-        if(!comparingBatchId) return '';
-        const cb = state.batches.find(b=>b.id===comparingBatchId);
-        if(!cb) return '';
-        const current = growthSeriesFromRecords(records, p.releaseDate);
-        const past = growthSeriesFromRecords(cb.records||[], cb.releaseDate);
-        const colorA = '#2E93CB', colorB = '#EFB753';
-        return `
-      <div class="card">
-        <div class="farm-title-row" style="margin-bottom:12px;">
-          <h3 style="margin:0;">เปรียบเทียบกับรุ่นก่อนหน้า (${cb.releaseDate ? 'ปล่อย '+fmtDate(cb.releaseDate) : 'ไม่ระบุวันปล่อย'})</h3>
-          <button type="button" class="action-btn" id="btn-stop-compare">ปิดการเปรียบเทียบ</button>
-        </div>
-        <div class="chart-grid">
-          <div class="card chart-card">
-            <h3>ไซส์กุ้ง (กรัม)</h3>
-            ${svgCompareLineChart({seriesA:current.sizeSeries, seriesB:past.sizeSeries, labelA:'รุ่นปัจจุบัน', labelB:'รุ่นก่อนหน้า', colorA, colorB})}
-          </div>
-          <div class="card chart-card">
-            <h3>อาหาร/วัน (กก.)</h3>
-            ${svgCompareLineChart({seriesA:current.feedSeries, seriesB:past.feedSeries, labelA:'รุ่นปัจจุบัน', labelB:'รุ่นก่อนหน้า', colorA, colorB})}
-          </div>
-          ${(current.adgSeries.length>0 || past.adgSeries.length>0) ? `
-          <div class="card chart-card">
-            <h3>ADG (ก./วัน)</h3>
-            ${svgCompareLineChart({seriesA:current.adgSeries, seriesB:past.adgSeries, labelA:'รุ่นปัจจุบัน', labelB:'รุ่นก่อนหน้า', colorA, colorB})}
-          </div>` : ''}
-        </div>
-      </div>`;
-      })()}
       <div class="card">
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
@@ -3043,7 +3016,7 @@ function renderPondDetail(){
                 <div class="batch-row-meta">${bRecords.length} รายการ ${bLast ? '· ไซส์สุดท้าย '+bLast.sizeCount+' ตัว/กก.' : ''}</div>
               </div>
               <div class="batch-row-actions">
-                <button class="row-del" style="color:var(--amber)" data-compare-batch="${b.id}">${comparingBatchId===b.id ? 'กำลังเปรียบเทียบ ✓' : 'เปรียบเทียบ'}</button>
+                <button class="row-del" style="color:var(--amber)" data-compare-batch="${b.id}">เปรียบเทียบ</button>
                 <button class="row-del" style="color:var(--teal-500)" data-view-batch="${b.id}">ดู</button>
                 <button class="row-del" data-del-batch="${b.id}">ลบ</button>
               </div>
@@ -3589,6 +3562,49 @@ function renderBatchDetail(){
       ` : `<div class="empty-state">${ICONS.shrimp}<p>ไม่มีข้อมูลบันทึกในรุ่นนี้</p></div>`}
       <div class="backbar-bottom">
         <button class="back-btn" id="btn-back-batch-bottom" type="button">${ICONS.back} กลับ</button>
+      </div>
+    </main>
+  `;
+}
+
+function renderCompareView(){
+  const cb = state.batches.find(b=>b.id===comparingBatchId);
+  const p = state.ponds.find(x=>x.id===currentPondId);
+  if(!cb || !p){ comparingBatchId = null; return renderPondDetail(); }
+  const records = recordsForPond(p.id);
+  const current = growthSeriesFromRecords(records, p.releaseDate);
+  const past = growthSeriesFromRecords(cb.records||[], cb.releaseDate);
+  const colorA = '#2E93CB', colorB = '#EFB753';
+
+  return `
+    <div class="backbar">
+      <button class="back-btn" id="btn-back-compare">${ICONS.back} กลับ</button>
+    </div>
+    <main>
+      <div class="pond-head">
+        <h2>เปรียบเทียบรุ่น — ${escapeHtml(p.name)}</h2>
+      </div>
+      <p class="hint" style="text-align:center;margin-top:10px;">
+        รุ่นปัจจุบัน เทียบกับรุ่น ${cb.releaseDate ? 'ปล่อย '+fmtDate(cb.releaseDate) : 'ไม่ระบุวันปล่อย'} (บันทึกเมื่อ ${fmtDate(cb.savedAt)})<br>
+        แกนนอนคืออายุกุ้ง (DOC) เพื่อเทียบการเติบโตที่อายุเท่ากัน
+      </p>
+      <div class="chart-grid" style="margin-top:14px;">
+        <div class="card chart-card">
+          <h3>ไซส์กุ้ง (กรัม)</h3>
+          ${svgCompareLineChart({seriesA:current.sizeSeries, seriesB:past.sizeSeries, labelA:'รุ่นปัจจุบัน', labelB:'รุ่นก่อนหน้า', colorA, colorB})}
+        </div>
+        <div class="card chart-card">
+          <h3>อาหาร/วัน (กก.)</h3>
+          ${svgCompareLineChart({seriesA:current.feedSeries, seriesB:past.feedSeries, labelA:'รุ่นปัจจุบัน', labelB:'รุ่นก่อนหน้า', colorA, colorB})}
+        </div>
+        ${(current.adgSeries.length>0 || past.adgSeries.length>0) ? `
+        <div class="card chart-card">
+          <h3>ADG (ก./วัน)</h3>
+          ${svgCompareLineChart({seriesA:current.adgSeries, seriesB:past.adgSeries, labelA:'รุ่นปัจจุบัน', labelB:'รุ่นก่อนหน้า', colorA, colorB})}
+        </div>` : ''}
+      </div>
+      <div class="backbar-bottom">
+        <button class="back-btn" id="btn-back-compare-bottom" type="button">${ICONS.back} กลับ</button>
       </div>
     </main>
   `;
@@ -4821,14 +4837,12 @@ function bindDashboardEvents(){
 
   document.querySelectorAll('[data-compare-batch]').forEach(btn=>{
     btn.onclick = ()=>{
-      const id = btn.getAttribute('data-compare-batch');
-      comparingBatchId = (comparingBatchId===id) ? null : id;
+      comparingBatchId = btn.getAttribute('data-compare-batch');
       render();
     };
   });
 
-  const btnStopCompare = document.getElementById('btn-stop-compare');
-  if(btnStopCompare) btnStopCompare.onclick = ()=>{ comparingBatchId = null; render(); };
+  bindClickByIds(['btn-back-compare','btn-back-compare-bottom'], ()=>{ comparingBatchId = null; render(); });
 
   document.querySelectorAll('[data-del-batch]').forEach(btn=>{
     btn.onclick = async ()=>{
