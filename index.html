@@ -3002,6 +3002,25 @@ function renderPondDetail(){
       </div>
       ` : `<div class="empty-state">${ICONS.shrimp}<p>ยังไม่มีข้อมูลบันทึก เริ่มกรอกข้อมูลสัปดาห์แรกด้านบนได้เลย</p></div>`}
 
+      ${state.batches.length>0 ? `
+      <div class="card">
+        <h3>เปรียบเทียบกับรุ่นที่ปิดไปแล้ว</h3>
+        <p class="hint" style="margin-top:0;">เลือกรุ่นที่ปิดไปแล้ว (บ่อไหนก็ได้) เพื่อเทียบการเติบโตกับรุ่นปัจจุบัน</p>
+        <div class="field">
+          <label>เลือกรุ่น</label>
+          <select id="compare-batch-select">
+            ${state.batches.slice().sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||'')).map(b=>{
+              const farm = state.farms.find(f=>f.id===b.farmId);
+              const label = `${b.pondName||'บ่อ'}${farm ? ' ('+farm.name+')' : ''} — ${b.releaseDate ? 'ปล่อย '+fmtDate(b.releaseDate) : 'ไม่ระบุวันปล่อย'}`;
+              return `<option value="${b.id}">${escapeHtml(label)}</option>`;
+            }).join('')}
+          </select>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-sm btn-primary" id="btn-go-compare" style="flex:1">เปรียบเทียบ</button>
+        </div>
+      </div>` : ''}
+
       ${pondBatches.length>0 ? `
       <div class="card">
         <h3>ประวัติรุ่นก่อนหน้า</h3>
@@ -4841,6 +4860,17 @@ function bindDashboardEvents(){
       render();
     };
   });
+
+  const btnGoCompare = document.getElementById('btn-go-compare');
+  const compareBatchSelect = document.getElementById('compare-batch-select');
+  if(btnGoCompare && compareBatchSelect){
+    btnGoCompare.onclick = ()=>{
+      const id = compareBatchSelect.value;
+      if(!id) return;
+      comparingBatchId = id;
+      render();
+    };
+  }
 
   bindClickByIds(['btn-back-compare','btn-back-compare-bottom'], ()=>{ comparingBatchId = null; render(); });
 
