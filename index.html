@@ -1055,6 +1055,7 @@ let currentFarmId = 'overview';
 let currentPondId = null;
 let viewingBatchId = null;
 let comparingBatchId = null;
+let choosingCompareBatch = false;
 let viewingHarvestPondId = null;
 let viewingClosePondId = null;
 let viewingBiomassPondId = null;
@@ -1625,6 +1626,8 @@ function render(){
       html += renderBatchDetail();
     } else if(comparingBatchId){
       html += renderCompareView();
+    } else if(choosingCompareBatch){
+      html += renderComparePicker();
     } else if(currentPondId && currentFarmId === 'overview'){
       html += renderPondDetail();
     } else {
@@ -1640,6 +1643,7 @@ function render(){
     else if(viewingHarvestPondId){ /* no charts on the harvest page */ }
     else if(viewingBatchId) drawBatchCharts();
     else if(comparingBatchId){ /* comparison charts render inline as SVG strings, no draw pass needed */ }
+    else if(choosingCompareBatch){ /* no charts on the compare-picker page */ }
     else if(currentPondId) drawCharts();
   }catch(e){
     console.error('render() failed', e);
@@ -3005,19 +3009,9 @@ function renderPondDetail(){
       ${state.batches.length>0 ? `
       <div class="card">
         <h3>เปรียบเทียบกับรุ่นที่ปิดไปแล้ว</h3>
-        <p class="hint" style="margin-top:0;">เลือกรุ่นที่ปิดไปแล้ว (บ่อไหนก็ได้) เพื่อเทียบการเติบโตกับรุ่นปัจจุบัน</p>
-        <div class="field">
-          <label>เลือกรุ่น</label>
-          <select id="compare-batch-select">
-            ${state.batches.slice().sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||'')).map(b=>{
-              const farm = state.farms.find(f=>f.id===b.farmId);
-              const label = `${b.pondName||'บ่อ'}${farm ? ' ('+farm.name+')' : ''} — ${b.releaseDate ? 'ปล่อย '+fmtDate(b.releaseDate) : 'ไม่ระบุวันปล่อย'}`;
-              return `<option value="${b.id}">${escapeHtml(label)}</option>`;
-            }).join('')}
-          </select>
-        </div>
+        <p class="hint" style="margin-top:0;">เทียบการเติบโตของรุ่นปัจจุบันกับรุ่นที่ปิดไปแล้ว</p>
         <div class="btn-row">
-          <button type="button" class="btn btn-sm btn-primary" id="btn-go-compare" style="flex:1">เปรียบเทียบ</button>
+          <button type="button" class="btn btn-sm btn-primary" id="btn-open-compare-picker" style="flex:1">เปรียบเทียบ</button>
         </div>
       </div>` : ''}
 
@@ -3581,6 +3575,39 @@ function renderBatchDetail(){
       ` : `<div class="empty-state">${ICONS.shrimp}<p>ไม่มีข้อมูลบันทึกในรุ่นนี้</p></div>`}
       <div class="backbar-bottom">
         <button class="back-btn" id="btn-back-batch-bottom" type="button">${ICONS.back} กลับ</button>
+      </div>
+    </main>
+  `;
+}
+
+function renderComparePicker(){
+  const p = state.ponds.find(x=>x.id===currentPondId);
+  if(!p){ choosingCompareBatch = false; return renderFarmDashboard(); }
+  const sortedBatches = state.batches.slice().sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''));
+
+  return `
+    <div class="backbar">
+      <button class="back-btn" id="btn-back-compare-picker">${ICONS.back} กลับ</button>
+    </div>
+    <main>
+      <div class="pond-head">
+        <h2>เลือกรุ่นเปรียบเทียบ — ${escapeHtml(p.name)}</h2>
+      </div>
+      <div class="card">
+        <p class="hint" style="margin-top:0;">เลือกรุ่นที่ปิดไปแล้ว (บ่อไหนก็ได้) เพื่อเทียบการเติบโตกับรุ่นปัจจุบัน</p>
+        <div class="field">
+          <label>เลือกรุ่น</label>
+          <select id="compare-batch-select">
+            ${sortedBatches.map(b=>{
+              const farm = state.farms.find(f=>f.id===b.farmId);
+              const label = `${b.pondName||'บ่อ'}${farm ? ' ('+farm.name+')' : ''} — ${b.releaseDate ? 'ปล่อย '+fmtDate(b.releaseDate) : 'ไม่ระบุวันปล่อย'}`;
+              return `<option value="${b.id}">${escapeHtml(label)}</option>`;
+            }).join('')}
+          </select>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-sm btn-primary" id="btn-go-compare" style="flex:1">เปรียบเทียบ</button>
+        </div>
       </div>
     </main>
   `;
@@ -4172,6 +4199,7 @@ function bindDashboardEvents(){
       editingRecordId = null;
       viewingHarvestPondId = null;
       comparingBatchId = null;
+      choosingCompareBatch = false;
       markPondViewed(currentPondId);
       render();
     };
@@ -4867,11 +4895,14 @@ function bindDashboardEvents(){
     btnGoCompare.onclick = ()=>{
       const id = compareBatchSelect.value;
       if(!id) return;
+      choosingCompareBatch = false;
       comparingBatchId = id;
       render();
     };
   }
 
+  bindClickByIds(['btn-open-compare-picker'], ()=>{ choosingCompareBatch = true; render(); });
+  bindClickByIds(['btn-back-compare-picker'], ()=>{ choosingCompareBatch = false; render(); });
   bindClickByIds(['btn-back-compare','btn-back-compare-bottom'], ()=>{ comparingBatchId = null; render(); });
 
   document.querySelectorAll('[data-del-batch]').forEach(btn=>{
