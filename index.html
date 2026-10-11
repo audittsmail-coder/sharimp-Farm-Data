@@ -1054,6 +1054,7 @@ let state = { farms: [], ponds: [], records: [], batches: [], harvests: [], clos
 let currentFarmId = 'overview';
 let currentPondId = null;
 let viewingBatchId = null;
+let comparingBatchId = null;
 let viewingHarvestPondId = null;
 let viewingClosePondId = null;
 let viewingBiomassPondId = null;
@@ -2987,6 +2988,36 @@ function renderPondDetail(){
         ${pathogenHistoryCount>=2 ? pathogenAmmoniaChartCardHtml(pathogenHistory) : ''}
         ${pathogenHistoryCount>=2 ? pathogenNitriteChartCardHtml(pathogenHistory) : ''}
       </div>
+      ${(()=>{
+        if(!comparingBatchId) return '';
+        const cb = state.batches.find(b=>b.id===comparingBatchId);
+        if(!cb) return '';
+        const current = growthSeriesFromRecords(records, p.releaseDate);
+        const past = growthSeriesFromRecords(cb.records||[], cb.releaseDate);
+        const colorA = '#2E93CB', colorB = '#EFB753';
+        return `
+      <div class="card">
+        <div class="farm-title-row" style="margin-bottom:12px;">
+          <h3 style="margin:0;">เปรียบเทียบกับรุ่นก่อนหน้า (${cb.releaseDate ? 'ปล่อย '+fmtDate(cb.releaseDate) : 'ไม่ระบุวันปล่อย'})</h3>
+          <button type="button" class="action-btn" id="btn-stop-compare">ปิดการเปรียบเทียบ</button>
+        </div>
+        <div class="chart-grid">
+          <div class="card chart-card">
+            <h3>ไซส์กุ้ง (กรัม)</h3>
+            ${svgCompareLineChart({seriesA:current.sizeSeries, seriesB:past.sizeSeries, labelA:'รุ่นปัจจุบัน', labelB:'รุ่นก่อนหน้า', colorA, colorB})}
+          </div>
+          <div class="card chart-card">
+            <h3>อาหาร/วัน (กก.)</h3>
+            ${svgCompareLineChart({seriesA:current.feedSeries, seriesB:past.feedSeries, labelA:'รุ่นปัจจุบัน', labelB:'รุ่นก่อนหน้า', colorA, colorB})}
+          </div>
+          ${(current.adgSeries.length>0 || past.adgSeries.length>0) ? `
+          <div class="card chart-card">
+            <h3>ADG (ก./วัน)</h3>
+            ${svgCompareLineChart({seriesA:current.adgSeries, seriesB:past.adgSeries, labelA:'รุ่นปัจจุบัน', labelB:'รุ่นก่อนหน้า', colorA, colorB})}
+          </div>` : ''}
+        </div>
+      </div>`;
+      })()}
       <div class="card">
         <h3>ประวัติการบันทึก</h3>
         <div style="overflow-x:auto">
@@ -3012,6 +3043,7 @@ function renderPondDetail(){
                 <div class="batch-row-meta">${bRecords.length} รายการ ${bLast ? '· ไซส์สุดท้าย '+bLast.sizeCount+' ตัว/กก.' : ''}</div>
               </div>
               <div class="batch-row-actions">
+                <button class="row-del" style="color:var(--amber)" data-compare-batch="${b.id}">${comparingBatchId===b.id ? 'กำลังเปรียบเทียบ ✓' : 'เปรียบเทียบ'}</button>
                 <button class="row-del" style="color:var(--teal-500)" data-view-batch="${b.id}">ดู</button>
                 <button class="row-del" data-del-batch="${b.id}">ลบ</button>
               </div>
@@ -3637,6 +3669,90 @@ function svgLineChart({labels, values, color, fillColor}){
   </svg>`;
 }
 
+function growthSeriesFromRecords(records, releaseDate){
+  if(!releaseDate || !records || records.length===0) return { sizeSeries: [], feedSeries: [], adgSeries: [] };
+  const sorted = records.slice().sort((a,b)=>(a.weekDate||'').localeCompare(b.weekDate||''));
+  const sizeSeries = sorted.map(r=>{
+    const w = weightFromCount(r.sizeCount);
+    return { doc: daysBetween(releaseDate, r.weekDate), value: w!=null ? +w.toFixed(2) : null };
+  });
+  const feedSeries = sorted.map(r=>({ doc: daysBetween(releaseDate, r.weekDate), value: r.feedPerDay!=null ? r.feedPerDay : null }));
+  const adgSeries = [];
+  for(let i=1;i<sorted.length;i++){
+    const d = daysBetween(sorted[i-1].weekDate, sorted[i].weekDate);
+    const w0 = weightFromCount(sorted[i-1].sizeCount), w1 = weightFromCount(sorted[i].sizeCount);
+    adgSeries.push({
+      doc: daysBetween(releaseDate, sorted[i].weekDate),
+      value: (d>0 && w0!=null && w1!=null) ? +(((w1-w0)/d)).toFixed(3) : null,
+    });
+  }
+  return { sizeSeries, feedSeries, adgSeries };
+}
+
+function svgCompareLineChart({seriesA, seriesB, labelA, labelB, colorA, colorB}){
+  const width = 300, height = 140;
+  const padL = 34, padR = 8, padT = 10, padB = 22;
+  const innerW = width - padL - padR;
+  const innerH = height - padT - padB;
+
+  const validA = (seriesA||[]).filter(p=>p.value!=null && !isNaN(p.value) && p.doc!=null).sort((a,b)=>a.doc-b.doc);
+  const validB = (seriesB||[]).filter(p=>p.value!=null && !isNaN(p.value) && p.doc!=null).sort((a,b)=>a.doc-b.doc);
+  const allPoints = validA.concat(validB);
+  if(allPoints.length===0){
+    return `<div style="display:flex;align-items:center;justify-content:center;height:${height}px;color:var(--ink-faint);font-size:12.5px">ยังไม่มีข้อมูลเพียงพอ</div>`;
+  }
+
+  const maxDoc = Math.max(...allPoints.map(p=>p.doc), 1);
+  let minV = Math.min(...allPoints.map(p=>p.value));
+  let maxV = Math.max(...allPoints.map(p=>p.value));
+  if(minV === maxV){ const bump = Math.abs(minV)*0.1 || 1; minV -= bump; maxV += bump; }
+  const rangePad = (maxV-minV)*0.15;
+  minV -= rangePad; maxV += rangePad;
+  if(minV < 0 && allPoints.every(p=>p.value>=0)) minV = 0;
+
+  const xFor = doc => padL + innerW * (doc/maxDoc);
+  const yFor = v => padT + innerH * (1 - (v-minV)/(maxV-minV));
+
+  let gridLines = '';
+  const gridCount = 3;
+  for(let g=0; g<=gridCount; g++){
+    const gv = minV + (maxV-minV)*g/gridCount;
+    const gy = yFor(gv);
+    gridLines += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${width-padR}" y2="${gy.toFixed(1)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+    gridLines += `<text x="${padL-6}" y="${(gy+3).toFixed(1)}" text-anchor="end" font-size="8" font-family="'IBM Plex Sans Thai',sans-serif" fill="#fff">${gv.toFixed(Math.abs(gv)<10?1:0)}</text>`;
+  }
+
+  function seriesPath(valid, color){
+    if(valid.length===0) return '';
+    let html = '';
+    if(valid.length>=2){
+      const d = valid.map((p,idx)=> (idx===0?'M':'L')+xFor(p.doc).toFixed(1)+','+yFor(p.value).toFixed(1)).join(' ');
+      html += `<path d="${d}" fill="none" stroke="${color}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+    valid.forEach(p=>{
+      html += `<circle cx="${xFor(p.doc).toFixed(1)}" cy="${yFor(p.value).toFixed(1)}" r="3" fill="${color}" stroke="#081824" stroke-width="1"/>`;
+    });
+    return html;
+  }
+
+  let xLabelsHtml = '';
+  const ticks = 4;
+  for(let t=0;t<=ticks;t++){
+    const doc = Math.round(maxDoc*t/ticks);
+    xLabelsHtml += `<text x="${xFor(doc).toFixed(1)}" y="${height-6}" text-anchor="middle" font-size="8" font-family="'IBM Plex Sans Thai',sans-serif" fill="#fff">DOC ${doc}</text>`;
+  }
+
+  return `<div>
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:${height}px;display:block">
+      ${gridLines}${seriesPath(validB, colorB)}${seriesPath(validA, colorA)}${xLabelsHtml}
+    </svg>
+    <div class="chart-legend">
+      <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${colorA}"></span>${escapeHtml(labelA)}</span>
+      <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${colorB}"></span>${escapeHtml(labelB)}</span>
+    </div>
+  </div>`;
+}
+
 const MULTI_CHART_COLORS = ['#4FC3F7','#FFB74D','#F06292','#81C784','#BA68C8','#FFD54F','#4DB6AC','#E57373'];
 function svgMultiLineChart({labels, series, days}){
   const width = 300, height = 210;
@@ -4020,6 +4136,7 @@ function bindDashboardEvents(){
       currentPondId = card.getAttribute('data-open-pond');
       editingRecordId = null;
       viewingHarvestPondId = null;
+      comparingBatchId = null;
       markPondViewed(currentPondId);
       render();
     };
@@ -4701,6 +4818,17 @@ function bindDashboardEvents(){
   document.querySelectorAll('[data-view-batch]').forEach(btn=>{
     btn.onclick = ()=>{ viewingBatchId = btn.getAttribute('data-view-batch'); render(); };
   });
+
+  document.querySelectorAll('[data-compare-batch]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const id = btn.getAttribute('data-compare-batch');
+      comparingBatchId = (comparingBatchId===id) ? null : id;
+      render();
+    };
+  });
+
+  const btnStopCompare = document.getElementById('btn-stop-compare');
+  if(btnStopCompare) btnStopCompare.onclick = ()=>{ comparingBatchId = null; render(); };
 
   document.querySelectorAll('[data-del-batch]').forEach(btn=>{
     btn.onclick = async ()=>{
