@@ -2526,10 +2526,11 @@ function renderBreakevenCalc(tabs){
           <p class="hint" style="margin-top:0;">ใช้ข้อมูลที่กรอกไว้ในส่วนแรกทั้งหมด (จำนวนปล่อย/วันเลี้ยง/ไซส์/ราคา/ต้นทุน) ปรับสัดส่วนที่จะจับตอนนี้ด้านล่าง ส่วนที่เหลือยังอยู่ในบ่อ รอคิดต่อทีหลังว่าจะลากต่อหรือจับหมด</p>
           <div class="bkc-field">
             <div class="bkc-field-header">
-              <span class="bkc-field-label">สัดส่วนที่จับตอนนี้</span>
-              <span class="bkc-slider-val"><span id="bkc-pPartialPctVal">30</span><span class="bkc-slider-unit">%</span></span>
+              <span class="bkc-field-label">น้ำหนักที่จะจับตอนนี้</span>
+              <span class="bkc-slider-val">(<span id="bkc-pPartialPctVal">30</span><span class="bkc-slider-unit">%</span>)</span>
             </div>
-            <input type="range" id="bkc-pPartialPct" min="5" max="95" step="5" value="30">
+            <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-pNowWeightInput" min="0" step="10"><span class="bkc-input-unit">กก.</span></div>
+            <p class="hint" style="margin-top:4px;" id="bkc-pTotalWeightHint">จากน้ำหนักรวมทั้งหมด 0 กก.</p>
           </div>
           <div class="bkc-compare-layout" style="margin-top:12px">
             <div>
@@ -2792,19 +2793,36 @@ function bkcUpdatePartial(){
   const harvestKg = (count * (survivalPct / 100)) / (shrimpSize || 1);
   const r1 = bkcCalcResult(count, days, shrimpSize, pricePerKg, feedKg, feedPrice, motorCount, otherCost, seedPrice, dayRate, nightRate, harvestKg, dayHours, nightHours, survivalPct);
 
-  const partialPct = (bkcGetVal('bkc-pPartialPct') || 30) / 100;
+  const totalWeight = r1.actualWeight;
   const survivingCount = count * (survivalPct / 100);
 
-  const nowWeight = r1.actualWeight * partialPct;
+  const nowInput = document.getElementById('bkc-pNowWeightInput');
+  let nowWeight;
+  if(nowInput){
+    if(nowInput.value === ''){
+      nowWeight = totalWeight > 0 ? Math.round(totalWeight * 0.3) : 0;
+      nowInput.value = nowWeight;
+    } else {
+      nowWeight = parseFloat(nowInput.value) || 0;
+    }
+  } else {
+    nowWeight = 0;
+  }
+  nowWeight = Math.max(0, Math.min(totalWeight, nowWeight));
+  const partialPct = totalWeight > 0 ? nowWeight / totalWeight : 0;
+
   const nowCount = survivingCount * partialPct;
   const nowRevenue = nowWeight * pricePerKg;
   const nowCostShare = r1.totalCost * partialPct;
   const nowProfit = nowRevenue - nowCostShare;
 
-  const leftWeight = r1.actualWeight * (1 - partialPct);
-  const leftCount = survivingCount * (1 - partialPct);
+  const leftWeight = totalWeight - nowWeight;
+  const leftCount = survivingCount - nowCount;
   const leftValue = leftWeight * pricePerKg;
-  const leftCostShare = r1.totalCost * (1 - partialPct);
+  const leftCostShare = r1.totalCost - nowCostShare;
+
+  document.getElementById('bkc-pPartialPctVal').textContent = Math.round(partialPct * 100);
+  document.getElementById('bkc-pTotalWeightHint').textContent = `จากน้ำหนักรวมทั้งหมด ${bkcFmt(totalWeight)} กก.`;
 
   document.getElementById('bkc-pNowWeight').innerHTML = bkcFmt(nowWeight) + '<span class="bkc-stat-unit">กก.</span>';
   document.getElementById('bkc-pNowCount').innerHTML = bkcFmt(nowCount) + '<span class="bkc-stat-unit">ตัว</span>';
@@ -5108,11 +5126,8 @@ function bindDashboardEvents(){
       document.getElementById('bkc-cShrimpSizeVal').textContent = this.value;
       bkcUpdate();
     });
-    const bkcPPartialPct = document.getElementById('bkc-pPartialPct');
-    if(bkcPPartialPct) bkcPPartialPct.addEventListener('input', function(){
-      document.getElementById('bkc-pPartialPctVal').textContent = this.value;
-      bkcUpdate();
-    });
+    const bkcPNowWeightInput = document.getElementById('bkc-pNowWeightInput');
+    if(bkcPNowWeightInput) bkcPNowWeightInput.addEventListener('input', bkcUpdate);
 
     ['bkc-count','bkc-days','bkc-pricePerKg','bkc-feedKgTotal','bkc-survivalPct','bkc-feedPrice','bkc-seedPrice','bkc-otherCost',
      'bkc-dayRate','bkc-nightRate','bkc-dayStart','bkc-dayEnd','bkc-nightStart','bkc-nightEnd',
