@@ -2832,7 +2832,7 @@ function bkcUpdatePartial(){
   const nowInput = document.getElementById('bkc-pNowWeightInput');
   let nowWeight;
   if(nowInput){
-    if(nowInput.value === ''){
+    if(nowInput.value === '' && nowInput.dataset.edited !== '1'){
       nowWeight = totalWeight > 0 ? Math.round(totalWeight * 0.3) : 0;
       nowInput.value = nowWeight;
     } else {
@@ -5183,7 +5183,10 @@ function bindDashboardEvents(){
       bkcUpdate();
     });
     const bkcPNowWeightInput = document.getElementById('bkc-pNowWeightInput');
-    if(bkcPNowWeightInput) bkcPNowWeightInput.addEventListener('input', bkcUpdate);
+    if(bkcPNowWeightInput) bkcPNowWeightInput.addEventListener('input', function(){
+      this.dataset.edited = '1';
+      bkcUpdate();
+    });
     const bkcPESize = document.getElementById('bkc-peSize');
     if(bkcPESize) bkcPESize.addEventListener('input', function(){
       document.getElementById('bkc-peSizeVal').textContent = this.value;
