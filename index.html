@@ -1496,17 +1496,6 @@ function computeAdgForPond(p, recs){
   return null;
 }
 const THAI_WEEKDAY_SHORT = ['อา','จ','อ','พ','พฤ','ศ','ส'];
-function dateToISO(d){
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function startOfWeekMonday(d){
-  const day = d.getDay(); // 0=Sun..6=Sat
-  const diff = (day===0 ? -6 : 1-day);
-  const monday = new Date(d);
-  monday.setDate(d.getDate()+diff);
-  monday.setHours(0,0,0,0);
-  return monday;
-}
 function sampleDayInfo(recs){
   if(!recs || recs.length===0) return null;
   const counts = {};
@@ -1521,22 +1510,24 @@ function sampleDayInfo(recs){
   const dows = entries.filter(([,c])=>c===maxCount).map(([dow])=>parseInt(dow,10)).sort((a,b)=>a-b);
   const label = dows.map(dow=>THAI_WEEKDAY_SHORT[dow]).join(', ');
 
-  // overdue: this week's expected sample day (the earliest typical weekday) has
-  // already arrived, but nothing has been recorded for this pond this week yet
-  const today = new Date(todayISO()+'T00:00:00');
-  const monday = startOfWeekMonday(today);
-  const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+  // overdue: the next expected sample date after the LAST actual record has
+  // already arrived. This stays red across week boundaries until a new record
+  // is actually added — it does not reset just because a new week started.
   const primaryDow = dows[0];
-  const offset = primaryDow===0 ? 6 : primaryDow-1;
-  const expectedDate = new Date(monday); expectedDate.setDate(monday.getDate()+offset);
-  const mondayISO = dateToISO(monday), sundayISO = dateToISO(sunday);
-  const hasThisWeek = recs.some(r=> r.weekDate>=mondayISO && r.weekDate<=sundayISO);
-  let status = null;
-  if(!hasThisWeek){
-    const daysUntil = Math.round((expectedDate - today) / 86400000);
-    if(today > expectedDate) status = 'overdue';
-    else if(daysUntil === 0 || daysUntil === 1) status = 'soon';
+  const sortedDates = recs.map(r=>r.weekDate).filter(Boolean).sort();
+  const lastRecordDate = sortedDates[sortedDates.length-1];
+  const lastRecord = new Date(lastRecordDate+'T00:00:00');
+  const expectedDate = new Date(lastRecord);
+  expectedDate.setDate(expectedDate.getDate()+1);
+  while(expectedDate.getDay() !== primaryDow){
+    expectedDate.setDate(expectedDate.getDate()+1);
   }
+
+  const today = new Date(todayISO()+'T00:00:00');
+  const daysUntil = Math.round((expectedDate - today) / 86400000);
+  let status = null;
+  if(today > expectedDate) status = 'overdue';
+  else if(daysUntil === 0 || daysUntil === 1) status = 'soon';
 
   return { label, status };
 }
