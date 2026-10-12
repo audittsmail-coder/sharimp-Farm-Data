@@ -2522,8 +2522,8 @@ function renderBreakevenCalc(tabs){
         </div>
 
         <div class="bkc-compare-section" id="bkc-partialSection">
-          <div class="bkc-section-title purple">พาร์เชียล — จับบางส่วนจากข้อมูลส่วนแรก</div>
-          <p class="hint" style="margin-top:0;">ใช้ข้อมูลที่กรอกไว้ในส่วนแรกทั้งหมด (จำนวนปล่อย/วันเลี้ยง/ไซส์/ราคา/ต้นทุน) ปรับสัดส่วนที่จะจับตอนนี้ด้านล่าง ส่วนที่เหลือยังอยู่ในบ่อ รอคิดต่อทีหลังว่าจะลากต่อหรือจับหมด</p>
+          <div class="bkc-section-title purple">พาร์เชียล — จับบางส่วนแล้วเลี้ยงส่วนที่เหลือต่อ</div>
+          <p class="hint" style="margin-top:0;">ใช้ข้อมูลที่กรอกไว้ในส่วนแรกทั้งหมด (จำนวนปล่อย/วันเลี้ยง/ไซส์/ราคา/ต้นทุน) ใส่น้ำหนักที่จะจับตอนนี้ด้านล่าง ส่วนที่เหลือใส่วันเลี้ยงเพิ่ม/ไซส์/ราคาใหม่/อาหารที่จะใช้ เพื่อคำนวณว่าคุ้มกว่าจับหมดตอนนี้มั้ย</p>
           <div class="bkc-field">
             <div class="bkc-field-header">
               <span class="bkc-field-label">น้ำหนักที่จะจับตอนนี้</span>
@@ -2532,6 +2532,32 @@ function renderBreakevenCalc(tabs){
             <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-pNowWeightInput" min="0" step="10"><span class="bkc-input-unit">กก.</span></div>
             <p class="hint" style="margin-top:4px;" id="bkc-pTotalWeightHint">จากน้ำหนักรวมทั้งหมด 0 กก.</p>
           </div>
+
+          <div class="bkc-section-title blue" style="font-size:11px; margin-top:16px;">กุ้งที่เหลือ — ถ้าเลี้ยงต่อ</div>
+          <div class="bkc-two-col" style="margin-bottom:10px">
+            <div class="bkc-field" style="margin-bottom:0">
+              <div class="bkc-field-header"><span class="bkc-field-label">วันที่เลี้ยงเพิ่ม</span></div>
+              <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-peDays" value="25" min="1" max="150" step="1" class="blue"><span class="bkc-input-unit">วัน</span></div>
+            </div>
+            <div class="bkc-field" style="margin-bottom:0">
+              <div class="bkc-field-header">
+                <span class="bkc-field-label">ไซส์กุ้งใหม่ที่จะจับ</span>
+                <span class="bkc-slider-val"><span id="bkc-peSizeVal">50</span><span class="bkc-slider-unit">ตัว/กก.</span></span>
+              </div>
+              <input type="range" id="bkc-peSize" min="20" max="120" step="5" value="50">
+            </div>
+          </div>
+          <div class="bkc-two-col" style="margin-bottom:10px">
+            <div class="bkc-field" style="margin-bottom:0">
+              <div class="bkc-field-header"><span class="bkc-field-label">ราคาขายใหม่</span></div>
+              <div class="bkc-input-row"><input type="number" inputmode="decimal" id="bkc-pePrice" value="140" min="50" max="500" step="1" class="yellow"><span class="bkc-input-unit">บาท/กก.</span></div>
+            </div>
+            <div class="bkc-field" style="margin-bottom:0">
+              <div class="bkc-field-header"><span class="bkc-field-label">อาหารรวม (ช่วงเลี้ยงเพิ่ม)</span></div>
+              <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-peFeedKg" value="3000" min="0" max="500000" step="100" class="large"><span class="bkc-input-unit">กก.</span></div>
+            </div>
+          </div>
+
           <div class="bkc-compare-layout" style="margin-top:12px">
             <div>
               <div class="bkc-section-title purple" style="font-size:10px;">จับตอนนี้</div>
@@ -2543,16 +2569,23 @@ function renderBreakevenCalc(tabs){
               </div>
             </div>
             <div>
-              <div class="bkc-section-title blue" style="font-size:10px;">เหลือในบ่อ (ยังไม่ขาย)</div>
+              <div class="bkc-section-title blue" style="font-size:10px;">เหลือในบ่อ — ลากต่อ</div>
               <div class="bkc-stats-grid">
-                <div class="bkc-stat-card"><div class="bkc-stat-label">น้ำหนักที่เหลือ</div><div class="bkc-stat-val" id="bkc-pLeftWeight">0<span class="bkc-stat-unit">กก.</span></div></div>
-                <div class="bkc-stat-card"><div class="bkc-stat-label">จำนวนตัวที่เหลือ</div><div class="bkc-stat-val" id="bkc-pLeftCount">0<span class="bkc-stat-unit">ตัว</span></div></div>
-                <div class="bkc-stat-card"><div class="bkc-stat-label">มูลค่าประเมิน (ราคาวันนี้)</div><div class="bkc-stat-val" id="bkc-pLeftValue">0<span class="bkc-stat-unit">บาท</span></div></div>
-                <div class="bkc-stat-card"><div class="bkc-stat-label">ต้นทุนตามสัดส่วนที่เหลือ</div><div class="bkc-stat-val" id="bkc-pLeftCost">0<span class="bkc-stat-unit">บาท</span></div></div>
+                <div class="bkc-stat-card"><div class="bkc-stat-label">น้ำหนักตอนจับ (หลังเลี้ยงต่อ)</div><div class="bkc-stat-val" id="bkc-pLeftWeight">0<span class="bkc-stat-unit">กก.</span></div></div>
+                <div class="bkc-stat-card"><div class="bkc-stat-label">จำนวนตัว</div><div class="bkc-stat-val" id="bkc-pLeftCount">0<span class="bkc-stat-unit">ตัว</span></div></div>
+                <div class="bkc-stat-card"><div class="bkc-stat-label">รายได้ที่คาดว่าจะได้</div><div class="bkc-stat-val" id="bkc-pLeftRevenue">0<span class="bkc-stat-unit">บาท</span></div></div>
+                <div class="bkc-stat-card hl"><div class="bkc-stat-label">กำไร (ลากต่อ)</div><div class="bkc-stat-val hl" id="bkc-pLeftProfit">0<span class="bkc-stat-unit">บาท</span></div></div>
               </div>
             </div>
           </div>
-          <p class="hint" style="margin-top:12px;">ประมาณการ: แบ่งต้นทุนที่กรอกในส่วนแรก (อาหาร+ค่าไฟ+ลูกกุ้ง+อื่นๆ) ตามสัดส่วนน้ำหนักที่จับตอนนี้เทียบกับที่เหลือ ส่วนที่เหลือในบ่อยังไม่ได้ขาย มูลค่าที่แสดงเป็นแค่การประเมินด้วยราคาวันนี้ ถ้าอยากดูว่าลากต่อให้โตกว่านี้จะคุ้มไหม เปิด "เปรียบเทียบ จับเลย vs ลากต่อ" เพิ่มได้</p>
+
+          <div class="bkc-diff-box" id="bkc-pDiffBox">
+            <div class="bkc-diff-label">กำไรรวม (พาร์เชียล+ลากต่อ) เทียบกับจับหมดตอนนี้ทั้งบ่อ</div>
+            <div class="bkc-diff-num" id="bkc-pDiffNum">—</div>
+            <div class="bkc-diff-verdict" id="bkc-pDiffVerdict">—</div>
+          </div>
+
+          <p class="hint" style="margin-top:12px;">ประมาณการ: ต้นทุนช่วงที่เลี้ยงร่วมกัน (อาหาร+ค่าไฟ+ลูกกุ้ง+อื่นๆ ตามข้อมูลส่วนแรก) แบ่งตามสัดส่วนน้ำหนักที่จับตอนนี้เทียบกับที่เหลือ ส่วนที่เหลือบวกต้นทุนช่วงเลี้ยงต่อเพิ่ม (อาหารที่กรอก + ค่าไฟตามจำนวนวันที่เลี้ยงเพิ่ม มอเตอร์ตีน้ำทั้งบ่อไม่ขึ้นกับจำนวนกุ้งที่เหลือ)</p>
         </div>
 
         <p class="hint" style="margin-top:14px;">FCR และอัตรารอดคำนวณจากข้อมูลที่กรอกจริง เครื่องมือนี้เป็นการประมาณการเบื้องต้นเท่านั้น</p>
@@ -2816,10 +2849,24 @@ function bkcUpdatePartial(){
   const nowCostShare = r1.totalCost * partialPct;
   const nowProfit = nowRevenue - nowCostShare;
 
-  const leftWeight = totalWeight - nowWeight;
   const leftCount = survivingCount - nowCount;
-  const leftValue = leftWeight * pricePerKg;
   const leftCostShare = r1.totalCost - nowCostShare;
+
+  const peDays = bkcGetVal('bkc-peDays');
+  const peSize = bkcGetVal('bkc-peSize');
+  const pePrice = bkcGetVal('bkc-pePrice');
+  const peFeedKg = bkcGetVal('bkc-peFeedKg');
+
+  const dailyElecRate = days > 0 ? r1.elecCost / days : 0;
+  const leftExtraCost = (peFeedKg * feedPrice) + (dailyElecRate * peDays);
+  const leftTotalCost = leftCostShare + leftExtraCost;
+  const leftWeight = peSize > 0 ? leftCount / peSize : 0;
+  const leftRevenue = leftWeight * pePrice;
+  const leftProfit = leftRevenue - leftTotalCost;
+
+  const combinedProfit = nowProfit + leftProfit;
+  const diff = combinedProfit - r1.profit;
+  const better = diff > 0 && !isNaN(diff);
 
   document.getElementById('bkc-pPartialPctVal').textContent = Math.round(partialPct * 100);
   document.getElementById('bkc-pTotalWeightHint').textContent = `จากน้ำหนักรวมทั้งหมด ${bkcFmt(totalWeight)} กก.`;
@@ -2831,8 +2878,17 @@ function bkcUpdatePartial(){
 
   document.getElementById('bkc-pLeftWeight').innerHTML = bkcFmt(leftWeight) + '<span class="bkc-stat-unit">กก.</span>';
   document.getElementById('bkc-pLeftCount').innerHTML = bkcFmt(leftCount) + '<span class="bkc-stat-unit">ตัว</span>';
-  document.getElementById('bkc-pLeftValue').innerHTML = bkcFmt(leftValue) + '<span class="bkc-stat-unit">บาท</span>';
-  document.getElementById('bkc-pLeftCost').innerHTML = bkcFmt(leftCostShare) + '<span class="bkc-stat-unit">บาท</span>';
+  document.getElementById('bkc-pLeftRevenue').innerHTML = bkcFmt(leftRevenue) + '<span class="bkc-stat-unit">บาท</span>';
+  document.getElementById('bkc-pLeftProfit').innerHTML = (leftProfit>=0?'+':'') + bkcFmt(leftProfit) + '<span class="bkc-stat-unit">บาท</span>';
+
+  const pDiffBox = document.getElementById('bkc-pDiffBox');
+  pDiffBox.style.background = better ? 'rgba(0,229,160,.08)' : 'rgba(232,129,95,.08)';
+  pDiffBox.style.border = `1px solid ${better ? 'rgba(0,229,160,.2)' : 'rgba(232,129,95,.2)'}`;
+  document.getElementById('bkc-pDiffNum').style.color = better ? 'var(--bkc-green)' : 'var(--coral)';
+  document.getElementById('bkc-pDiffNum').textContent = (!isNaN(diff) ? (diff >= 0 ? '+' : '') + bkcFmt(diff) : '—') + ' บาท';
+  document.getElementById('bkc-pDiffVerdict').textContent = better
+    ? `✓ พาร์เชียลแล้วลากต่อ คุ้มกว่าจับหมดตอนนี้`
+    : `✗ จับหมดตอนนี้ดีกว่า ประหยัดได้ ${bkcFmt(Math.abs(diff))} บาท`;
 }
 
 function renderPondCard(p){
@@ -5128,10 +5184,16 @@ function bindDashboardEvents(){
     });
     const bkcPNowWeightInput = document.getElementById('bkc-pNowWeightInput');
     if(bkcPNowWeightInput) bkcPNowWeightInput.addEventListener('input', bkcUpdate);
+    const bkcPESize = document.getElementById('bkc-peSize');
+    if(bkcPESize) bkcPESize.addEventListener('input', function(){
+      document.getElementById('bkc-peSizeVal').textContent = this.value;
+      bkcUpdate();
+    });
 
     ['bkc-count','bkc-days','bkc-pricePerKg','bkc-feedKgTotal','bkc-survivalPct','bkc-feedPrice','bkc-seedPrice','bkc-otherCost',
      'bkc-dayRate','bkc-nightRate','bkc-dayStart','bkc-dayEnd','bkc-nightStart','bkc-nightEnd',
-     'bkc-cDays','bkc-cPricePerKg','bkc-cFeedKgTotal','bkc-cSurvivalPct'].forEach(id=>{
+     'bkc-cDays','bkc-cPricePerKg','bkc-cFeedKgTotal','bkc-cSurvivalPct',
+     'bkc-peDays','bkc-pePrice','bkc-peFeedKg'].forEach(id=>{
       const el = document.getElementById(id);
       if(el) el.addEventListener('input', bkcUpdate);
     });
