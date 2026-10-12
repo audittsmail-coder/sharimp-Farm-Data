@@ -2553,8 +2553,9 @@ function renderBreakevenCalc(tabs){
               <div class="bkc-input-row"><input type="number" inputmode="decimal" id="bkc-pePrice" value="140" min="50" max="500" step="1" class="yellow"><span class="bkc-input-unit">บาท/กก.</span></div>
             </div>
             <div class="bkc-field" style="margin-bottom:0">
-              <div class="bkc-field-header"><span class="bkc-field-label">อาหารรวม (ช่วงเลี้ยงเพิ่ม)</span></div>
-              <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-peFeedKg" value="3000" min="0" max="500000" step="100" class="large"><span class="bkc-input-unit">กก.</span></div>
+              <div class="bkc-field-header"><span class="bkc-field-label">อาหารรวมสะสม (รวมส่วนแรก)</span></div>
+              <div class="bkc-input-row"><input type="number" inputmode="numeric" id="bkc-peFeedKg" min="0" max="500000" step="100" class="large"><span class="bkc-input-unit">กก.</span></div>
+              <p class="hint" style="margin-top:4px;" id="bkc-peFeedHint">—</p>
             </div>
           </div>
 
@@ -2855,10 +2856,24 @@ function bkcUpdatePartial(){
   const peDays = bkcGetVal('bkc-peDays');
   const peSize = bkcGetVal('bkc-peSize');
   const pePrice = bkcGetVal('bkc-pePrice');
-  const peFeedKg = bkcGetVal('bkc-peFeedKg');
+
+  const peFeedInput = document.getElementById('bkc-peFeedKg');
+  let peFeedKgTotal;
+  if(peFeedInput){
+    if(peFeedInput.value === '' && peFeedInput.dataset.edited !== '1'){
+      peFeedKgTotal = feedKg + 3000;
+      peFeedInput.value = peFeedKgTotal;
+    } else {
+      peFeedKgTotal = parseFloat(peFeedInput.value) || 0;
+    }
+  } else {
+    peFeedKgTotal = 0;
+  }
+  const peExtraFeedKg = Math.max(0, peFeedKgTotal - feedKg);
+  document.getElementById('bkc-peFeedHint').textContent = `เพิ่มจากส่วนแรก (${bkcFmt(feedKg)} กก.) อีก ${bkcFmt(peExtraFeedKg)} กก.`;
 
   const dailyElecRate = days > 0 ? r1.elecCost / days : 0;
-  const leftExtraCost = (peFeedKg * feedPrice) + (dailyElecRate * peDays);
+  const leftExtraCost = (peExtraFeedKg * feedPrice) + (dailyElecRate * peDays);
   const leftTotalCost = leftCostShare + leftExtraCost;
   const leftWeight = peSize > 0 ? leftCount / peSize : 0;
   const leftRevenue = leftWeight * pePrice;
@@ -5192,11 +5207,16 @@ function bindDashboardEvents(){
       document.getElementById('bkc-peSizeVal').textContent = this.value;
       bkcUpdate();
     });
+    const bkcPEFeedKg = document.getElementById('bkc-peFeedKg');
+    if(bkcPEFeedKg) bkcPEFeedKg.addEventListener('input', function(){
+      this.dataset.edited = '1';
+      bkcUpdate();
+    });
 
     ['bkc-count','bkc-days','bkc-pricePerKg','bkc-feedKgTotal','bkc-survivalPct','bkc-feedPrice','bkc-seedPrice','bkc-otherCost',
      'bkc-dayRate','bkc-nightRate','bkc-dayStart','bkc-dayEnd','bkc-nightStart','bkc-nightEnd',
      'bkc-cDays','bkc-cPricePerKg','bkc-cFeedKgTotal','bkc-cSurvivalPct',
-     'bkc-peDays','bkc-pePrice','bkc-peFeedKg'].forEach(id=>{
+     'bkc-peDays','bkc-pePrice'].forEach(id=>{
       const el = document.getElementById(id);
       if(el) el.addEventListener('input', bkcUpdate);
     });
