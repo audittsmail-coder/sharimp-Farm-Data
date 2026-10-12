@@ -2452,7 +2452,10 @@ function renderBreakevenCalc(tabs){
           </div>
         </div>
 
-        <button type="button" class="bkc-compare-btn" id="bkc-compareBtn">⇄ เปรียบเทียบ จับเลย vs ลากต่อ</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+          <button type="button" class="bkc-compare-btn" id="bkc-compareBtn" style="margin-top:0;">⇄ เปรียบเทียบ จับเลย vs ลากต่อ</button>
+          <button type="button" class="bkc-compare-btn" id="bkc-partialBtn" style="margin-top:0;">+ พาร์เชียล (จับบางส่วน + ลากต่อ)</button>
+        </div>
 
         <div class="bkc-compare-section" id="bkc-compareSection">
           <div class="bkc-section-title blue">ตัวเลือกที่ 2 — ลากต่อ</div>
@@ -2518,6 +2521,33 @@ function renderBreakevenCalc(tabs){
           </div>
         </div>
 
+        <div class="bkc-compare-section" id="bkc-partialSection">
+          <div class="bkc-section-title purple">ตัวเลือกที่ 3 — พาร์เชียล (จับบางส่วนตอนนี้ + ลากต่อที่เหลือ)</div>
+          <p class="hint" style="margin-top:0;">จับบางส่วนตอนนี้ตามตัวเลือกที่ 1 (วันนี้/ไซส์นี้/ราคานี้) ส่วนที่เหลือโตต่อจนถึงวัน/ไซส์/ราคาของตัวเลือกที่ 2 — ปรับสัดส่วนที่จับตอนนี้ได้ด้านล่าง</p>
+          <div class="bkc-field">
+            <div class="bkc-field-header">
+              <span class="bkc-field-label">สัดส่วนที่จับตอนนี้</span>
+              <span class="bkc-slider-val"><span id="bkc-pPartialPctVal">30</span><span class="bkc-slider-unit">%</span></span>
+            </div>
+            <input type="range" id="bkc-pPartialPct" min="5" max="95" step="5" value="30">
+          </div>
+          <div class="bkc-stats-grid" style="margin-top:12px">
+            <div class="bkc-stat-card"><div class="bkc-stat-label">จับตอนนี้ (น้ำหนัก)</div><div class="bkc-stat-val" id="bkc-pNowWeight">0<span class="bkc-stat-unit">กก.</span></div></div>
+            <div class="bkc-stat-card"><div class="bkc-stat-label">รายได้ส่วนที่จับตอนนี้</div><div class="bkc-stat-val" id="bkc-pNowRevenue">0<span class="bkc-stat-unit">บาท</span></div></div>
+            <div class="bkc-stat-card"><div class="bkc-stat-label">ที่เหลือ ลากต่อ (น้ำหนัก)</div><div class="bkc-stat-val" id="bkc-pLaterWeight">0<span class="bkc-stat-unit">กก.</span></div></div>
+            <div class="bkc-stat-card"><div class="bkc-stat-label">รายได้ส่วนลากต่อ</div><div class="bkc-stat-val" id="bkc-pLaterRevenue">0<span class="bkc-stat-unit">บาท</span></div></div>
+            <div class="bkc-stat-card"><div class="bkc-stat-label">ต้นทุนรวม (พาร์เชียล)</div><div class="bkc-stat-val" id="bkc-pTotalCost">0<span class="bkc-stat-unit">บาท</span></div></div>
+            <div class="bkc-stat-card hl"><div class="bkc-stat-label">กำไรรวม (พาร์เชียล)</div><div class="bkc-stat-val hl" id="bkc-pProfit">0<span class="bkc-stat-unit">บาท</span></div></div>
+          </div>
+          <div class="bkc-diff-box" id="bkc-pDiffBox">
+            <div class="bkc-diff-label">กำไรเพิ่มขึ้นจาก "จับเลยทั้งหมด" (ตัวเลือกที่ 1)</div>
+            <div class="bkc-diff-num" id="bkc-pDiffNum">—</div>
+            <div class="bkc-diff-verdict" id="bkc-pDiffVerdict">—</div>
+          </div>
+          <p class="hint" style="margin-top:10px;" id="bkc-pVsOption2">—</p>
+          <p class="hint" style="margin-top:6px;">ประมาณการ: ค่าไฟคิดเต็มจนถึงวันลากต่อ (มอเตอร์ตีน้ำทั้งบ่อไม่ได้ขึ้นกับจำนวนกุ้งที่เหลือ) ค่าอาหารช่วงลากต่อคิดเฉพาะสัดส่วนกุ้งที่เหลืออยู่</p>
+        </div>
+
         <p class="hint" style="margin-top:14px;">FCR และอัตรารอดคำนวณจากข้อมูลที่กรอกจริง เครื่องมือนี้เป็นการประมาณการเบื้องต้นเท่านั้น</p>
       </div>
     </main>
@@ -2526,6 +2556,7 @@ function renderBreakevenCalc(tabs){
 
 let bkcMotorHP = 3;
 let bkcCompareOpen = false;
+let bkcPartialOpen = false;
 const bkcSurvivalByDay = (d) => {
   if (d <= 60) return 0.78;
   if (d <= 70) return 0.75;
@@ -2681,6 +2712,7 @@ function bkcUpdate(){
   document.getElementById('bkc-bTotal').textContent = bkcFmt(r.totalCost) + ' บาท';
 
   if (bkcCompareOpen) bkcUpdateCompare(r.profit);
+  if (bkcPartialOpen) bkcUpdatePartial();
 }
 
 function bkcUpdateCompare(mainProfit){
@@ -2734,6 +2766,74 @@ function bkcUpdateCompare(mainProfit){
   document.getElementById('bkc-diffVerdict').textContent = better
     ? `✓ ลากต่ออีก ${dayDiff} วัน คุ้มกว่า`
     : `✗ จับเลยดีกว่า ประหยัดได้ ${bkcFmt(Math.abs(diff))} บาท`;
+}
+
+function bkcUpdatePartial(){
+  const count = bkcGetVal('bkc-count');
+  const days = bkcGetVal('bkc-days');
+  const shrimpSize = bkcGetVal('bkc-shrimpSize');
+  const pricePerKg = bkcGetVal('bkc-pricePerKg');
+  const feedKg = bkcGetVal('bkc-feedKgTotal');
+  const survivalPct = bkcGetVal('bkc-survivalPct');
+  const feedPrice = bkcGetVal('bkc-feedPrice');
+  const motorCount = bkcGetVal('bkc-motorCount');
+  const otherCost = bkcGetVal('bkc-otherCost');
+  const seedPrice = bkcGetVal('bkc-seedPrice');
+  const dayRate = bkcGetVal('bkc-dayRate');
+  const nightRate = bkcGetVal('bkc-nightRate');
+  const dayHours = bkcGetDayHours();
+  const nightHours = bkcGetNightHours();
+  const harvestKg = (count * (survivalPct / 100)) / (shrimpSize || 1);
+  const r1 = bkcCalcResult(count, days, shrimpSize, pricePerKg, feedKg, feedPrice, motorCount, otherCost, seedPrice, dayRate, nightRate, harvestKg, dayHours, nightHours, survivalPct);
+
+  const cDays = bkcGetVal('bkc-cDays') || 90;
+  const cShrimpSize = bkcGetVal('bkc-cShrimpSize') || 50;
+  const cPricePerKg = bkcGetVal('bkc-cPricePerKg');
+  const cFeedKg = bkcGetVal('bkc-cFeedKgTotal');
+  const cSurvivalPct = bkcGetVal('bkc-cSurvivalPct');
+  const cHarvestKg = (count * (cSurvivalPct / 100)) / (cShrimpSize || 1);
+  const r2 = bkcCalcResult(count, cDays, cShrimpSize, cPricePerKg, cFeedKg, feedPrice, motorCount, otherCost, seedPrice, dayRate, nightRate, cHarvestKg, dayHours, nightHours, cSurvivalPct);
+
+  const partialPct = (bkcGetVal('bkc-pPartialPct') || 30) / 100;
+
+  const nowWeight = r1.actualWeight * partialPct;
+  const nowRevenue = nowWeight * pricePerKg;
+  const laterWeight = r2.actualWeight * (1 - partialPct);
+  const laterRevenue = laterWeight * cPricePerKg;
+  const totalRevenue = nowRevenue + laterRevenue;
+
+  // feed up to the partial-harvest day (full population) + extra feed for the
+  // extension period, scaled to only the fraction of shrimp left growing
+  const extraFeedCost = Math.max(0, r2.feedCost - r1.feedCost) * (1 - partialPct);
+  const feedCostPartial = r1.feedCost + extraFeedCost;
+  // motors aerate the whole pond regardless of how many shrimp remain, so
+  // electricity runs for the full extended duration (option 2's days)
+  const elecCostPartial = r2.elecCost;
+  // seed is a one-time cost paid at stocking for the whole population
+  const seedCostPartial = r1.seedCost;
+  const totalCost = feedCostPartial + elecCostPartial + seedCostPartial + otherCost;
+  const totalProfit = totalRevenue - totalCost;
+
+  document.getElementById('bkc-pNowWeight').innerHTML = bkcFmt(nowWeight) + '<span class="bkc-stat-unit">กก.</span>';
+  document.getElementById('bkc-pNowRevenue').innerHTML = bkcFmt(nowRevenue) + '<span class="bkc-stat-unit">บาท</span>';
+  document.getElementById('bkc-pLaterWeight').innerHTML = bkcFmt(laterWeight) + '<span class="bkc-stat-unit">กก.</span>';
+  document.getElementById('bkc-pLaterRevenue').innerHTML = bkcFmt(laterRevenue) + '<span class="bkc-stat-unit">บาท</span>';
+  document.getElementById('bkc-pTotalCost').innerHTML = bkcFmt(totalCost) + '<span class="bkc-stat-unit">บาท</span>';
+  document.getElementById('bkc-pProfit').innerHTML = bkcFmt(totalProfit) + '<span class="bkc-stat-unit">บาท</span>';
+
+  const diff = totalProfit - r1.profit;
+  const better = diff > 0 && !isNaN(diff);
+  const pDiffBox = document.getElementById('bkc-pDiffBox');
+  pDiffBox.style.background = better ? 'rgba(0,229,160,.08)' : 'rgba(232,129,95,.08)';
+  pDiffBox.style.border = `1px solid ${better ? 'rgba(0,229,160,.2)' : 'rgba(232,129,95,.2)'}`;
+  document.getElementById('bkc-pDiffNum').style.color = better ? 'var(--bkc-green)' : 'var(--coral)';
+  document.getElementById('bkc-pDiffNum').textContent = (!isNaN(diff) ? (diff >= 0 ? '+' : '') + bkcFmt(diff) : '—') + ' บาท';
+  document.getElementById('bkc-pDiffVerdict').textContent = better
+    ? `✓ พาร์เชียล ${Math.round(partialPct*100)}% คุ้มกว่าจับเลยทั้งหมด`
+    : `✗ จับเลยทั้งหมดดีกว่า ประหยัดได้ ${bkcFmt(Math.abs(diff))} บาท`;
+
+  const diff2 = totalProfit - r2.profit;
+  document.getElementById('bkc-pVsOption2').textContent = `เทียบกับ "ลากต่อทั้งหมด" (ตัวเลือกที่ 2): พาร์เชียล${diff2>=0?'กำไรมากกว่า':'กำไรน้อยกว่า'} ${bkcFmt(Math.abs(diff2))} บาท`;
 }
 
 function renderPondCard(p){
@@ -5027,6 +5127,11 @@ function bindDashboardEvents(){
       document.getElementById('bkc-cShrimpSizeVal').textContent = this.value;
       bkcUpdate();
     });
+    const bkcPPartialPct = document.getElementById('bkc-pPartialPct');
+    if(bkcPPartialPct) bkcPPartialPct.addEventListener('input', function(){
+      document.getElementById('bkc-pPartialPctVal').textContent = this.value;
+      bkcUpdate();
+    });
 
     ['bkc-count','bkc-days','bkc-pricePerKg','bkc-feedKgTotal','bkc-survivalPct','bkc-feedPrice','bkc-seedPrice','bkc-otherCost',
      'bkc-dayRate','bkc-nightRate','bkc-dayStart','bkc-dayEnd','bkc-nightStart','bkc-nightEnd',
@@ -5060,6 +5165,27 @@ function bindDashboardEvents(){
       bkcCompareBtn.className = 'bkc-compare-btn' + (bkcCompareOpen ? ' active' : '');
       bkcCompareBtn.textContent = bkcCompareOpen ? '✕ ปิดโหมดเปรียบเทียบ' : '⇄ เปรียบเทียบ จับเลย vs ลากต่อ';
       if(bkcCompareOpen) bkcUpdate();
+    };
+
+    const bkcPartialBtn = document.getElementById('bkc-partialBtn');
+    if(bkcPartialOpen && bkcPartialBtn){
+      document.getElementById('bkc-partialSection').classList.add('show');
+      bkcPartialBtn.className = 'bkc-compare-btn active';
+      bkcPartialBtn.textContent = '✕ ปิดโหมดพาร์เชียล';
+    }
+    if(bkcPartialBtn) bkcPartialBtn.onclick = ()=>{
+      bkcPartialOpen = !bkcPartialOpen;
+      // partial relies on the "ลากต่อ" inputs, so make sure that section is open too
+      if(bkcPartialOpen && !bkcCompareOpen){
+        bkcCompareOpen = true;
+        document.getElementById('bkc-compareSection').classList.add('show');
+        bkcCompareBtn.className = 'bkc-compare-btn active';
+        bkcCompareBtn.textContent = '✕ ปิดโหมดเปรียบเทียบ';
+      }
+      document.getElementById('bkc-partialSection').classList.toggle('show', bkcPartialOpen);
+      bkcPartialBtn.className = 'bkc-compare-btn' + (bkcPartialOpen ? ' active' : '');
+      bkcPartialBtn.textContent = bkcPartialOpen ? '✕ ปิดโหมดพาร์เชียล' : '+ พาร์เชียล (จับบางส่วน + ลากต่อ)';
+      if(bkcPartialOpen) bkcUpdate();
     };
 
     bkcUpdate();
