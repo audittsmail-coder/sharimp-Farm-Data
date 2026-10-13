@@ -3572,6 +3572,11 @@ function renderClosureEditForm(){
             </div>
           </div>
           <div class="field">
+            <label>FCR กรอกเอง (ถ้าไม่มีข้อมูลอาหารรวม)</label>
+            <input type="number" inputmode="decimal" step="0.01" name="fcrManual" id="close-edit-fcr-manual" placeholder="เช่น 1.40" value="${(c.totalFeedKg==null && c.fcr!=null)?c.fcr:''}">
+            <p class="hint" style="margin-top:4px;">ถ้ามีข้อมูลอาหารรวมด้านบน ระบบจะคำนวณ FCR จากอาหารรวมให้อัตโนมัติ (ช่องนี้จะไม่ถูกใช้)</p>
+          </div>
+          <div class="field">
             <label>หมายเหตุ (ถ้ามี)</label>
             <input type="text" name="note" id="close-edit-note" placeholder="เช่น น้ำเสีย, ลูกค้าพิเศษ" value="${escapeHtml(c.note||'')}">
           </div>
@@ -4906,6 +4911,7 @@ function bindDashboardEvents(){
     const ePrice = closeEditForm.querySelector('#close-edit-price');
     const eWeight = closeEditForm.querySelector('#close-edit-weight');
     const eFeed = closeEditForm.querySelector('#close-edit-feed');
+    const eFcrManual = closeEditForm.querySelector('#close-edit-fcr-manual');
     const eReleaseCount = closeEditForm.querySelector('#close-edit-releasecount');
     const eCalcCount = document.getElementById('close-edit-calc-count');
     const eCalcSurvival = document.getElementById('close-edit-calc-survival');
@@ -4918,14 +4924,16 @@ function bindDashboardEvents(){
       const pricePerKg = ePrice.value ? parseFloat(ePrice.value) : null;
       const weightKg = eWeight.value ? parseFloat(eWeight.value) : null;
       const totalFeedKg = eFeed.value ? parseFloat(eFeed.value) : null;
+      const fcrManual = eFcrManual.value ? parseFloat(eFcrManual.value) : null;
 
       const caughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
       eCalcCount.textContent = caughtCount!==null ? Math.round(caughtCount).toLocaleString('th-TH')+' ตัว' : '-';
       eCalcSurvival.textContent = (caughtCount!==null && releaseCount) ? (caughtCount / releaseCount * 100).toFixed(1) + '%' : '-';
-      eCalcFcr.textContent = (totalFeedKg && weightKg) ? (totalFeedKg / weightKg).toFixed(2) : '-';
+      const fcr = (totalFeedKg && weightKg) ? (totalFeedKg / weightKg) : fcrManual;
+      eCalcFcr.textContent = fcr!=null ? fcr.toFixed(2) : '-';
       eCalcValue.textContent = (weightKg && pricePerKg) ? (weightKg*pricePerKg).toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-';
     };
-    [eReleaseCount, eSize, ePrice, eWeight, eFeed].forEach(el=>{ if(el) el.addEventListener('input', updateEditCalc); });
+    [eReleaseCount, eSize, ePrice, eWeight, eFeed, eFcrManual].forEach(el=>{ if(el) el.addEventListener('input', updateEditCalc); });
     updateEditCalc();
 
     closeEditForm.addEventListener('submit', async (e)=>{
@@ -4944,11 +4952,12 @@ function bindDashboardEvents(){
       const pricePerKg = fd.get('pricePerKg') ? parseFloat(fd.get('pricePerKg')) : null;
       const weightKg = fd.get('weightKg') ? parseFloat(fd.get('weightKg')) : null;
       const totalFeedKg = fd.get('totalFeedKg') ? parseFloat(fd.get('totalFeedKg')) : null;
+      const fcrManual = fd.get('fcrManual') ? parseFloat(fd.get('fcrManual')) : null;
       const note = (fd.get('note')||'').trim();
 
       const caughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
       const survivalRatePct = (caughtCount!==null && releaseCount) ? (caughtCount / releaseCount * 100) : null;
-      const fcr = (totalFeedKg && weightKg) ? (totalFeedKg / weightKg) : null;
+      const fcr = (totalFeedKg && weightKg) ? (totalFeedKg / weightKg) : fcrManual;
       const revenue = (weightKg && pricePerKg) ? weightKg * pricePerKg : null;
 
       const data = {
