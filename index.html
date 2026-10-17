@@ -694,7 +694,8 @@
   }
   .ov-adg{ color:var(--coral); font-weight:700; }
   .ov-sample-overdue{ color:var(--danger); font-weight:700; }
-  .ov-sample-soon{ color:#22C55E; font-weight:700; }
+  .ov-sample-today{ color:#22C55E; font-weight:700; }
+  .ov-sample-tomorrow{ color:var(--teal-400); font-weight:700; }
   table.overview-table tr.ov-zone-row td{
     background:var(--surface-hi); color:var(--teal-400); font-weight:700; font-size:12.5px;
     text-transform:uppercase; letter-spacing:.05em; padding:8px 7px;
@@ -1498,6 +1499,7 @@ function computeAdgForPond(p, recs){
   return null;
 }
 const THAI_WEEKDAY_SHORT = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+const SAMPLE_DAY_STATUS_CLASS = { overdue:'ov-sample-overdue', today:'ov-sample-today', tomorrow:'ov-sample-tomorrow' };
 function sampleDayInfo(recs){
   if(!recs || recs.length===0) return null;
   const counts = {};
@@ -1529,7 +1531,8 @@ function sampleDayInfo(recs){
   const daysUntil = Math.round((expectedDate - today) / 86400000);
   let status = null;
   if(today > expectedDate) status = 'overdue';
-  else if(daysUntil === 0 || daysUntil === 1) status = 'soon';
+  else if(daysUntil === 0) status = 'today';
+  else if(daysUntil === 1) status = 'tomorrow';
 
   return { label, status };
 }
@@ -1779,7 +1782,7 @@ function renderOverviewDashboard(tabs){
                 ${speciesShort ? `<span class="ov-pond-species">${escapeHtml(speciesShort)}</span>` : ''}
               </div>
             </td>
-            <td>${sampleDayInfoResult ? `<span class="${sampleDayInfoResult.status==='overdue'?'ov-sample-overdue':sampleDayInfoResult.status==='soon'?'ov-sample-soon':''}">${escapeHtml(sampleDayInfoResult.label)}</span>` : '-'}</td>
+            <td>${sampleDayInfoResult ? `<span class="${SAMPLE_DAY_STATUS_CLASS[sampleDayInfoResult.status]||''}">${escapeHtml(sampleDayInfoResult.label)}</span>` : '-'}</td>
             <td>${last && last.sizeCount!=null ? last.sizeCount : '-'}</td>
             <td>${doc!==null ? doc+' วัน' : '-'}</td>
             <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
