@@ -1820,6 +1820,7 @@ function renderOverviewDashboard(tabs){
         <h2>ภาพรวมทุกฟาร์ม</h2>
         ${sortSelectHtml}
       </div>
+      <button class="fab add-pond-trigger" id="btn-add-pond-overview" type="button">${ICONS.plus} เพิ่มบ่อใหม่</button>
       ${bodyHtml}
     </main>
   `;
@@ -4266,11 +4267,20 @@ function renderDeleteAllConfirmPanel(){
 function renderPondFormPanel(){
   const p = editingPond || {};
   const speciesOpts = SPECIES_OPTIONS.map(s=>`<option value="${s}" ${p.species===s?'selected':''}>${s}</option>`).join('');
+  const defaultFarmId = editingPond ? editingPond.farmId : (state.farms.some(f=>f.id===currentFarmId) ? currentFarmId : '');
+  const farmOpts = state.farms.map(f=>`<option value="${f.id}" ${defaultFarmId===f.id?'selected':''}>${escapeHtml(f.name)}</option>`).join('');
   return `
     <div class="card panel-card">
       <h3>${editingPond? 'แก้ไขข้อมูลบ่อ' : 'เพิ่มบ่อใหม่'}</h3>
       <form id="pond-form">
         <div class="field"><label>ชื่อบ่อ</label><input required name="name" value="${escapeHtml(p.name||'')}" placeholder="เช่น บ่อ 1"></div>
+        <div class="field">
+          <label>ฟาร์ม</label>
+          <select name="farmId" required ${editingPond?'disabled':''}>
+            <option value="">เลือกฟาร์ม</option>${farmOpts}
+          </select>
+          ${editingPond ? `<input type="hidden" name="farmId" value="${editingPond.farmId}">` : ''}
+        </div>
         <div class="field-row">
           <div class="field"><label>วันที่ปล่อยกุ้ง</label><input type="date" name="releaseDate" value="${p.releaseDate || (editingPond ? '' : todayISO())}"></div>
           <div class="field"><label>ชนิดกุ้ง</label>
@@ -4365,13 +4375,15 @@ function bindDashboardEvents(){
     pondFormEl.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const fd = new FormData(pondFormEl);
+      const farmId = editingPond ? editingPond.farmId : fd.get('farmId');
+      if(!farmId){ alert('กรุณาเลือกฟาร์ม'); return; }
       const data = {
         name: fd.get('name').trim(),
         releaseDate: fd.get('releaseDate') || '',
         species: fd.get('species') || '',
         releaseCount: fd.get('releaseCount') ? parseFloat(fd.get('releaseCount')) : null,
         brand: fd.get('brand').trim(),
-        farmId: editingPond ? editingPond.farmId : currentFarmId,
+        farmId,
         updatedAt: Date.now(),
       };
       const write = editingPond
