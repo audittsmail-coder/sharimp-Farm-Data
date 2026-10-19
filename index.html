@@ -1818,9 +1818,11 @@ function renderOverviewDashboard(tabs){
     <main>
       <div class="farm-title-row">
         <h2>ภาพรวมทุกฟาร์ม</h2>
-        ${sortSelectHtml}
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <button class="action-btn add-pond-trigger" id="btn-add-pond-overview" type="button">${ICONS.plus} เพิ่มบ่อใหม่</button>
+          ${sortSelectHtml}
+        </div>
       </div>
-      <button class="fab add-pond-trigger" id="btn-add-pond-overview" type="button">${ICONS.plus} เพิ่มบ่อใหม่</button>
       ${bodyHtml}
     </main>
   `;
