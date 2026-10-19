@@ -197,6 +197,8 @@
   .action-btn:hover{ color:var(--heading); border-color:var(--teal-500); }
   .action-btn.danger{ color:var(--danger); border-color:var(--danger); }
   .action-btn.danger:hover{ color:var(--danger); background:rgba(232,129,95,.12); }
+  .action-btn.accent{ background:var(--orange-soft); color:var(--orange-hi); border-color:var(--orange); }
+  .action-btn.accent:hover{ color:var(--orange-hi); background:rgba(234,140,59,.24); }
   .action-btn svg{ flex-shrink:0; opacity:.9; }
 
 
@@ -1819,7 +1821,7 @@ function renderOverviewDashboard(tabs){
       <div class="farm-title-row">
         <h2>ภาพรวมทุกฟาร์ม</h2>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <button class="action-btn add-pond-trigger" id="btn-add-pond-overview" type="button">${ICONS.plus} เพิ่มบ่อใหม่</button>
+          <button class="action-btn accent add-pond-trigger" id="btn-add-pond-overview" type="button">${ICONS.plus} เพิ่มบ่อใหม่</button>
           ${sortSelectHtml}
         </div>
       </div>
