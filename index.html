@@ -1669,10 +1669,6 @@ function render(){
 
 function renderFarmDashboard(){
   const tabs = `<button class="farm-tab ${currentFarmId==='overview'?'active':''}" data-farm="overview">ภาพรวม</button>` +
-    state.farms.map(f => `
-    <button class="farm-tab ${f.id===currentFarmId?'active':''}" data-farm="${f.id}">${escapeHtml(f.name)}</button>
-  `).join('') +
-    `<span class="farm-tabs-break"></span>` +
     `<button class="farm-tab ${currentFarmId==='marketprice'?'active':''}" data-farm="marketprice">ราคาตลาด</button>` +
     `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>` +
     `<button class="farm-tab ${currentFarmId==='registry'?'active':''}" data-farm="registry">ทะเบียนฟาร์ม</button>` +
