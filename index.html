@@ -611,6 +611,16 @@
   table.rec-table tr:hover td{ background:var(--surface-soft); }
   table.closures-table tbody tr:nth-child(even) td{ background:rgba(255,255,255,.03); }
   table.closures-table tbody tr:hover td{ background:var(--surface-hi); }
+  table.closures-table tbody tr.has-disease td:first-child{ border-left:4px solid var(--danger); }
+  .disease-badge{ display:inline-block; margin-top:3px; padding:2px 8px; border-radius:var(--radius-pill); background:rgba(226,105,90,.16); color:var(--danger); font-size:10.5px; font-weight:700; }
+  .disease-options{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+  .disease-btn{
+    background:var(--surface-soft); border:1.5px solid var(--line); color:var(--ink-soft); font-size:13px;
+    cursor:pointer; padding:9px 14px; border-radius:var(--radius-pill); font-weight:600; transition:all .15s var(--ease);
+  }
+  .disease-btn:hover{ border-color:var(--teal-500); }
+  .disease-btn.active{ background:rgba(226,105,90,.14); border-color:var(--danger); color:var(--danger); }
+  .disease-btn.none.active{ background:var(--teal-100); border-color:var(--teal-500); color:var(--heading); }
   .row-del{ color:var(--danger); font-size:11px; background:none; border:none; cursor:pointer; text-decoration:underline;}
 
   table.price-matrix{ border-collapse:collapse; font-size:12px; white-space:nowrap; }
@@ -1883,10 +1893,11 @@ function renderClosuresSummary(tabs){
           <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>ราคาที่จับ</th><th>มูลค่า</th><th>หมายเหตุ</th><th></th></tr></thead>
           <tbody>
             ${closures.map(c=>`
-              <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" style="cursor:pointer;">
+              <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" class="${c.diseaseType ? 'has-disease' : ''}" style="cursor:pointer;">
                 <td>
                   <div style="font-weight:700;color:var(--heading);font-family:'Taviraj',serif;">${escapeHtml(c.pondName||'-')}</div>
                   ${c.farmName ? `<div style="font-size:11px;color:var(--ink-faint);margin-top:1px;">${escapeHtml(c.farmName)}</div>` : ''}
+                  ${c.diseaseType ? `<div class="disease-badge">🦠 ${escapeHtml(c.diseaseType)}</div>` : ''}
                 </td>
                 <td>${fmtDate(c.closeDate)}</td>
                 <td>${c.doc!=null ? c.doc+' วัน' : '-'}</td>
@@ -3411,6 +3422,17 @@ function renderCloseForm(){
             <label>หมายเหตุ (ถ้ามี)</label>
             <input type="text" name="note" id="close-note" placeholder="เช่น น้ำเสีย, ลูกค้าพิเศษ">
           </div>
+          <div class="field">
+            <label>กุ้งเป็นโรคหรือไม่ (ถ้ามี)</label>
+            <div class="disease-options" id="close-disease-options">
+              <button type="button" class="disease-btn none active" data-disease-val="">ไม่มีโรค</button>
+              <button type="button" class="disease-btn" data-disease-val="ตัวแดง">ตัวแดง</button>
+              <button type="button" class="disease-btn" data-disease-val="ขี้ขาว">ขี้ขาว</button>
+              <button type="button" class="disease-btn" data-disease-val="อื่นๆ">อื่นๆ</button>
+            </div>
+            <input type="hidden" name="diseaseType" id="close-disease-type" value="">
+            <input type="text" name="diseaseNote" id="close-disease-other" placeholder="ระบุชื่อโรค" style="display:none; margin-top:8px;">
+          </div>
 
           ${pondHarvests.length>0 ? `
           <div class="info-note">
@@ -4864,6 +4886,19 @@ function bindDashboardEvents(){
     [cReleaseCount, cSize, cPrice, cWeight, cFeed].forEach(el=>{ if(el) el.addEventListener('input', updateCalc); });
     updateCalc();
 
+    const cDiseaseType = closeForm.querySelector('#close-disease-type');
+    const cDiseaseOther = closeForm.querySelector('#close-disease-other');
+    closeForm.querySelectorAll('.disease-btn').forEach(btn=>{
+      btn.onclick = ()=>{
+        closeForm.querySelectorAll('.disease-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const val = btn.getAttribute('data-disease-val');
+        cDiseaseType.value = val;
+        cDiseaseOther.style.display = val==='อื่นๆ' ? '' : 'none';
+        if(val!=='อื่นๆ') cDiseaseOther.value = '';
+      };
+    });
+
     closeForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
       if(!pond) return;
@@ -4880,6 +4915,9 @@ function bindDashboardEvents(){
       const weightKg = fd.get('weightKg') ? parseFloat(fd.get('weightKg')) : null;
       const totalFeedKg = fd.get('totalFeedKg') ? parseFloat(fd.get('totalFeedKg')) : null;
       const note = (fd.get('note')||'').trim();
+      const diseaseTypeRaw = (fd.get('diseaseType')||'').trim();
+      const diseaseNote = (fd.get('diseaseNote')||'').trim();
+      const diseaseType = diseaseTypeRaw==='อื่นๆ' && diseaseNote ? diseaseNote : (diseaseTypeRaw || null);
 
       const thisCaughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
       const totalCaughtCount = (thisCaughtCount!==null || priorCaughtCount) ? priorCaughtCount + (thisCaughtCount||0) : null;
@@ -4892,7 +4930,7 @@ function bindDashboardEvents(){
       const data = {
         pondId: pond.id, farmId: pond.farmId,
         closeDate, doc, farmName, pondName, releaseCount, species, hatchery,
-        sizeCount, pricePerKg, weightKg: totalWeightKg, totalFeedKg, note,
+        sizeCount, pricePerKg, weightKg: totalWeightKg, totalFeedKg, note, diseaseType,
         caughtCount: totalCaughtCount, survivalRatePct, fcr, revenue: totalRevenue,
         createdAt: Date.now(),
       };
