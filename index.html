@@ -3525,6 +3525,10 @@ function renderClosureEditForm(){
   const c = state.closures.find(x=>x.id===editingClosureId);
   if(!c){ editingClosureId = null; currentFarmId = 'closures'; return renderFarmDashboard(); }
 
+  const diseaseKnownVals = ['ตัวแดง','ขี้ขาว'];
+  const diseaseActiveVal = c.diseaseType==null ? '' : (diseaseKnownVals.includes(c.diseaseType) ? c.diseaseType : 'อื่นๆ');
+  const diseaseOtherText = (c.diseaseType!=null && !diseaseKnownVals.includes(c.diseaseType)) ? c.diseaseType : '';
+
   return `
     <div class="backbar">
       <button class="back-btn" id="btn-back-close-edit">${ICONS.back} กลับ</button>
@@ -3604,6 +3608,17 @@ function renderClosureEditForm(){
           <div class="field">
             <label>หมายเหตุ (ถ้ามี)</label>
             <input type="text" name="note" id="close-edit-note" placeholder="เช่น น้ำเสีย, ลูกค้าพิเศษ" value="${escapeHtml(c.note||'')}">
+          </div>
+          <div class="field">
+            <label>กุ้งเป็นโรคหรือไม่ (ถ้ามี)</label>
+            <div class="disease-options" id="close-edit-disease-options">
+              <button type="button" class="disease-btn none ${diseaseActiveVal===''?'active':''}" data-disease-val="">ไม่มีโรค</button>
+              <button type="button" class="disease-btn ${diseaseActiveVal==='ตัวแดง'?'active':''}" data-disease-val="ตัวแดง">ตัวแดง</button>
+              <button type="button" class="disease-btn ${diseaseActiveVal==='ขี้ขาว'?'active':''}" data-disease-val="ขี้ขาว">ขี้ขาว</button>
+              <button type="button" class="disease-btn ${diseaseActiveVal==='อื่นๆ'?'active':''}" data-disease-val="อื่นๆ">อื่นๆ</button>
+            </div>
+            <input type="hidden" name="diseaseType" id="close-edit-disease-type" value="${escapeHtml(diseaseActiveVal)}">
+            <input type="text" name="diseaseNote" id="close-edit-disease-other" placeholder="ระบุชื่อโรค" value="${escapeHtml(diseaseOtherText)}" style="${diseaseActiveVal==='อื่นๆ'?'':'display:none;'} margin-top:8px;">
           </div>
 
           <div class="calc-box">
@@ -4977,6 +4992,19 @@ function bindDashboardEvents(){
     [eReleaseCount, eSize, ePrice, eWeight, eFeed, eFcrManual].forEach(el=>{ if(el) el.addEventListener('input', updateEditCalc); });
     updateEditCalc();
 
+    const eDiseaseType = closeEditForm.querySelector('#close-edit-disease-type');
+    const eDiseaseOther = closeEditForm.querySelector('#close-edit-disease-other');
+    closeEditForm.querySelectorAll('.disease-btn').forEach(btn=>{
+      btn.onclick = ()=>{
+        closeEditForm.querySelectorAll('.disease-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const val = btn.getAttribute('data-disease-val');
+        eDiseaseType.value = val;
+        eDiseaseOther.style.display = val==='อื่นๆ' ? '' : 'none';
+        if(val!=='อื่นๆ') eDiseaseOther.value = '';
+      };
+    });
+
     closeEditForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const id = editingClosureId;
@@ -4995,6 +5023,9 @@ function bindDashboardEvents(){
       const totalFeedKg = fd.get('totalFeedKg') ? parseFloat(fd.get('totalFeedKg')) : null;
       const fcrManual = fd.get('fcrManual') ? parseFloat(fd.get('fcrManual')) : null;
       const note = (fd.get('note')||'').trim();
+      const diseaseTypeRaw = (fd.get('diseaseType')||'').trim();
+      const diseaseNote = (fd.get('diseaseNote')||'').trim();
+      const diseaseType = diseaseTypeRaw==='อื่นๆ' && diseaseNote ? diseaseNote : (diseaseTypeRaw || null);
 
       const caughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
       const survivalRatePct = (caughtCount!==null && releaseCount) ? (caughtCount / releaseCount * 100) : null;
@@ -5003,7 +5034,7 @@ function bindDashboardEvents(){
 
       const data = {
         closeDate, doc, farmName, pondName, releaseCount, species, hatchery,
-        sizeCount, pricePerKg, weightKg, totalFeedKg, note,
+        sizeCount, pricePerKg, weightKg, totalFeedKg, note, diseaseType,
         caughtCount, survivalRatePct, fcr, revenue,
       };
       try{
