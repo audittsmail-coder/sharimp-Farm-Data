@@ -4282,6 +4282,10 @@ function renderPondFormPanel(){
             <option value="">เลือกฟาร์ม</option>${farmOpts}
           </select>
           ${editingPond ? `<input type="hidden" name="farmId" value="${editingPond.farmId}">` : ''}
+          <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+            <button type="button" class="action-btn" id="btn-add-farm">${ICONS.plus} เพิ่มฟาร์มใหม่</button>
+            <button type="button" class="action-btn" id="btn-rename-farm-in-form">${ICONS.edit} แก้ไขชื่อฟาร์ม</button>
+          </div>
         </div>
         <div class="field-row">
           <div class="field"><label>วันที่ปล่อยกุ้ง</label><input type="date" name="releaseDate" value="${p.releaseDate || (editingPond ? '' : todayISO())}"></div>
@@ -4374,6 +4378,29 @@ function bindDashboardEvents(){
   if(pondFormEl){
     const cancelPondBtn = document.getElementById('btn-cancel-pond');
     if(cancelPondBtn) cancelPondBtn.onclick = closePondSheet;
+
+    const btnAddFarm = document.getElementById('btn-add-farm');
+    if(btnAddFarm) btnAddFarm.onclick = async ()=>{
+      const name = prompt('ชื่อฟาร์มใหม่:');
+      if(!name || !name.trim()) return;
+      try{
+        await db.collection('farms').add({ name: name.trim() });
+      }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
+    };
+
+    const btnRenameFarmInForm = document.getElementById('btn-rename-farm-in-form');
+    if(btnRenameFarmInForm) btnRenameFarmInForm.onclick = async ()=>{
+      const select = pondFormEl.querySelector('select[name=farmId]');
+      const id = editingPond ? editingPond.farmId : (select ? select.value : '');
+      if(!id){ alert('กรุณาเลือกฟาร์มก่อน'); return; }
+      const farm = state.farms.find(f=>f.id===id);
+      const name = prompt('ชื่อฟาร์มใหม่:', farm ? farm.name : '');
+      if(!name || !name.trim()) return;
+      try{
+        await db.collection('farms').doc(id).update({ name: name.trim() });
+      }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
+    };
+
     pondFormEl.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const fd = new FormData(pondFormEl);
