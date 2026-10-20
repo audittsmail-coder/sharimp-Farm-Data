@@ -3430,6 +3430,7 @@ function renderCloseForm(){
               <button type="button" class="disease-btn none active" data-disease-val="">ไม่มีโรค</button>
               <button type="button" class="disease-btn" data-disease-val="ตัวแดง">ตัวแดง</button>
               <button type="button" class="disease-btn" data-disease-val="ขี้ขาว">ขี้ขาว</button>
+              <button type="button" class="disease-btn" data-disease-val="EMS">EMS</button>
               <button type="button" class="disease-btn" data-disease-val="อื่นๆ">อื่นๆ</button>
             </div>
             <input type="hidden" name="diseaseType" id="close-disease-type" value="">
@@ -3527,7 +3528,7 @@ function renderClosureEditForm(){
   const c = state.closures.find(x=>x.id===editingClosureId);
   if(!c){ editingClosureId = null; currentFarmId = 'closures'; return renderFarmDashboard(); }
 
-  const diseaseKnownVals = ['ตัวแดง','ขี้ขาว'];
+  const diseaseKnownVals = ['ตัวแดง','ขี้ขาว','EMS'];
   const diseaseActiveVal = c.diseaseType==null ? '' : (diseaseKnownVals.includes(c.diseaseType) ? c.diseaseType : 'อื่นๆ');
   const diseaseOtherText = (c.diseaseType!=null && !diseaseKnownVals.includes(c.diseaseType)) ? c.diseaseType : '';
 
@@ -3617,6 +3618,7 @@ function renderClosureEditForm(){
               <button type="button" class="disease-btn none ${diseaseActiveVal===''?'active':''}" data-disease-val="">ไม่มีโรค</button>
               <button type="button" class="disease-btn ${diseaseActiveVal==='ตัวแดง'?'active':''}" data-disease-val="ตัวแดง">ตัวแดง</button>
               <button type="button" class="disease-btn ${diseaseActiveVal==='ขี้ขาว'?'active':''}" data-disease-val="ขี้ขาว">ขี้ขาว</button>
+              <button type="button" class="disease-btn ${diseaseActiveVal==='EMS'?'active':''}" data-disease-val="EMS">EMS</button>
               <button type="button" class="disease-btn ${diseaseActiveVal==='อื่นๆ'?'active':''}" data-disease-val="อื่นๆ">อื่นๆ</button>
             </div>
             <input type="hidden" name="diseaseType" id="close-edit-disease-type" value="${escapeHtml(diseaseActiveVal)}">
