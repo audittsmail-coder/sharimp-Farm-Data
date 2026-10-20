@@ -5135,7 +5135,7 @@ function bindDashboardEvents(){
     });
   }
 
-  bindClickByIds(['btn-back-batch','btn-back-batch-bottom'], ()=>{ viewingBatchId=null; render(); });
+  bindClickByIds(['btn-back-batch','btn-back-batch-bottom'], ()=>{ viewingBatchId=null; currentFarmId='overview'; currentPondId=null; render(); });
 
   document.querySelectorAll('[data-view-batch]').forEach(btn=>{
     btn.onclick = ()=>{ viewingBatchId = btn.getAttribute('data-view-batch'); render(); };
