@@ -1598,6 +1598,12 @@ function estimatedSurvivingCount(releaseCount, survivalRate){
   if(!releaseCount || survivalRate==null) return null;
   return Math.round(releaseCount * (survivalRate/100));
 }
+// Shrimp moved into a pond at stocking (transferInCount) are treated just like
+// a release for survival-rate/remaining-count purposes, without merging the
+// two numbers in the UI — this is the combined population basis for that math.
+function effectiveReleaseCount(pond){
+  return (pond && pond.releaseCount ? pond.releaseCount : 0) + (pond && pond.transferInCount ? pond.transferInCount : 0);
+}
 const BIOMASS_FEED_RATE_TABLE = [
   { min:1000, max:10000, white:[7.0,10.0], black:[6.0,8.0] },
   { min:330,  max:1000,  white:[5.0,7.0],  black:[4.0,6.0] },
@@ -3035,7 +3041,7 @@ function renderPondDetail(){
   const pondTransfers = transfersForPond(p.id);
   const totalTransferredCount = pondTransfers.reduce((sum,t)=> sum + (t.count||0), 0);
   const totalTransferredKg = pondTransfers.reduce((sum,t)=> sum + (t.weightKg||0), 0);
-  const rawSurvivingCount = last ? estimatedSurvivingCount(p.releaseCount, last.survivalRate) : null;
+  const rawSurvivingCount = last ? estimatedSurvivingCount(effectiveReleaseCount(p), last.survivalRate) : null;
   const estimatedSurviving = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount - totalTransferredCount) : null;
   const estimatedYieldKg = (()=>{
     if(estimatedSurviving===null || !last || !last.sizeCount) return null;
@@ -3285,11 +3291,11 @@ function renderHarvestForm(){
   const pondHarvests = harvestsForPond(p.id);
   const totalHarvestedKg = pondHarvests.reduce((sum,h)=> sum + (h.weightKg||0), 0);
   const totalHarvestedRevenue = pondHarvests.reduce((sum,h)=> sum + (h.revenue||0), 0);
-  const rawSurvivingCount = last ? estimatedSurvivingCount(p.releaseCount, last.survivalRate) : null;
+  const rawSurvivingCount = last ? estimatedSurvivingCount(effectiveReleaseCount(p), last.survivalRate) : null;
   const totalHarvestedCount = pondHarvests.reduce((sum,h)=> sum + (h.caughtCount||0), 0);
   const totalTransferredCount = transfersForPond(p.id).reduce((sum,t)=> sum + (t.count||0), 0);
   const currentRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount - totalTransferredCount) : null;
-  const currentSurvivalRatePct = (currentRemaining!==null && p.releaseCount) ? (currentRemaining / p.releaseCount * 100) : null;
+  const currentSurvivalRatePct = (currentRemaining!==null && effectiveReleaseCount(p)) ? (currentRemaining / effectiveReleaseCount(p) * 100) : null;
 
   const rows = pondHarvests.slice().reverse().map(h=>`
     <tr>
@@ -3394,9 +3400,9 @@ function renderTransferForm(){
   const pondTransfers = transfersForPond(p.id);
   const totalTransferredCount = pondTransfers.reduce((sum,t)=> sum + (t.count||0), 0);
   const totalTransferredKg = pondTransfers.reduce((sum,t)=> sum + (t.weightKg||0), 0);
-  const rawSurvivingCount = last ? estimatedSurvivingCount(p.releaseCount, last.survivalRate) : null;
+  const rawSurvivingCount = last ? estimatedSurvivingCount(effectiveReleaseCount(p), last.survivalRate) : null;
   const currentRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount - totalTransferredCount) : null;
-  const currentSurvivalRatePct = (currentRemaining!==null && p.releaseCount) ? (currentRemaining / p.releaseCount * 100) : null;
+  const currentSurvivalRatePct = (currentRemaining!==null && effectiveReleaseCount(p)) ? (currentRemaining / effectiveReleaseCount(p) * 100) : null;
 
   const rows = pondTransfers.slice().reverse().map(t=>`
     <tr>
@@ -3494,7 +3500,7 @@ function renderCloseForm(){
   const priorKg = pondHarvests.reduce((sum,h)=> sum + (h.weightKg||0), 0);
   const lastHarvestWithPrice = pondHarvests.slice().reverse().find(h=>h.pricePerKg!=null);
   const priorTransferredCount = transfersForPond(p.id).reduce((sum,t)=> sum + (t.count||0), 0);
-  const rawSurvivingCount = last ? estimatedSurvivingCount(p.releaseCount, last.survivalRate) : null;
+  const rawSurvivingCount = last ? estimatedSurvivingCount(effectiveReleaseCount(p), last.survivalRate) : null;
   const estimatedRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - priorCaughtCount - priorTransferredCount) : null;
   const suggestedWeightKg = (estimatedRemaining!==null && last && last.sizeCount) ? (estimatedRemaining / last.sizeCount) : null;
   const initialDoc = p.releaseDate ? daysBetween(p.releaseDate, todayISO()) : '';
@@ -3818,7 +3824,7 @@ function renderBatchDetail(){
     const wPrev = weightFromCount(prev.sizeCount), wLast = weightFromCount(last.sizeCount);
     if(dDays>0 && wPrev!==null && wLast!==null) weeklyAdg = (wLast-wPrev)/dDays;
   }
-  const estimatedYieldKg = last ? estimatedBiomassKg(batch.releaseCount, last.survivalRate, last.sizeCount) : null;
+  const estimatedYieldKg = last ? estimatedBiomassKg(effectiveReleaseCount(batch), last.survivalRate, last.sizeCount) : null;
   const batchTotalHarvestedKg = (batch.harvests || []).reduce((sum,h)=> sum + (h.weightKg||0), 0);
   const latestTotalFeedRecord = records.slice().reverse().find(r=>r.totalFeedKg!=null);
   const batchCumulativeBiomassKg = (estimatedYieldKg||0) + batchTotalHarvestedKg;
@@ -4448,7 +4454,10 @@ function renderPondFormPanel(){
             <select name="species"><option value="">เลือกชนิด</option>${speciesOpts}</select>
           </div>
         </div>
-        <div class="field"><label>จำนวนที่ปล่อย (ตัว)</label><input type="number" inputmode="numeric" step="1" min="0" name="releaseCount" value="${p.releaseCount||''}" placeholder="เช่น 500000"></div>
+        <div class="field-row">
+          <div class="field"><label>จำนวนที่ปล่อย (ตัว)</label><input type="number" inputmode="numeric" step="1" min="0" name="releaseCount" value="${p.releaseCount||''}" placeholder="เช่น 500000"></div>
+          <div class="field"><label>จำนวนที่ย้าย (ตัว)</label><input type="number" inputmode="numeric" step="1" min="0" name="transferInCount" value="${p.transferInCount||''}" placeholder="ถ้ามีย้ายมาจากบ่ออื่น"></div>
+        </div>
         <div class="field"><label>แบรนด์/บริษัทลูกกุ้ง</label><input name="brand" value="${escapeHtml(p.brand||'')}" placeholder="เช่น CP, ITF"></div>
         <div class="btn-row">
           <button class="btn btn-secondary" type="button" id="btn-cancel-pond" style="flex:1">ยกเลิก</button>
@@ -4483,7 +4492,7 @@ async function archivePondCycle(pond){
     await db.collection('batches').add({
       pondId: pond.id, pondName: pond.name, farmId: pond.farmId,
       species: pond.species||'', brand: pond.brand||'',
-      releaseCount: pond.releaseCount||null, releaseDate: pond.releaseDate||'',
+      releaseCount: pond.releaseCount||null, transferInCount: pond.transferInCount||null, releaseDate: pond.releaseDate||'',
       savedAt: todayISO(),
       records: archivedRecords,
       pathogenHistory: pond.pathogenHistory || [],
@@ -4574,6 +4583,7 @@ function bindDashboardEvents(){
         releaseDate: fd.get('releaseDate') || '',
         species: fd.get('species') || '',
         releaseCount: fd.get('releaseCount') ? parseFloat(fd.get('releaseCount')) : null,
+        transferInCount: fd.get('transferInCount') ? parseFloat(fd.get('transferInCount')) : null,
         brand: fd.get('brand').trim(),
         farmId,
         updatedAt: Date.now(),
@@ -4934,12 +4944,12 @@ function bindDashboardEvents(){
       const pondData = batch ? {
         name: batch.pondName||closure.pondName||'', farmId: batch.farmId||closure.farmId||'',
         species: batch.species||'', brand: batch.brand||'',
-        releaseCount: batch.releaseCount||null, releaseDate: batch.releaseDate||'',
+        releaseCount: batch.releaseCount||null, transferInCount: batch.transferInCount||null, releaseDate: batch.releaseDate||'',
         pathogenHistory: batch.pathogenHistory||[],
       } : {
         name: closure.pondName||'', farmId: closure.farmId||'',
         species: closure.species||'', brand: '',
-        releaseCount: closure.releaseCount||null, releaseDate: '',
+        releaseCount: closure.releaseCount||null, transferInCount: closure.transferInCount||null, releaseDate: '',
         pathogenHistory: [],
       };
 
@@ -5101,8 +5111,9 @@ function bindDashboardEvents(){
       const totalCaughtCount = (thisCaughtCount!==null || priorCaughtCount) ? priorCaughtCount + (thisCaughtCount||0) : null;
       calcCount.textContent = totalCaughtCount!==null ? Math.round(totalCaughtCount).toLocaleString('th-TH')+' ตัว' : '-';
 
-      if(totalCaughtCount!==null && releaseCount){
-        calcSurvival.textContent = (totalCaughtCount / releaseCount * 100).toFixed(1) + '%';
+      const effectiveReleaseForCalc = (releaseCount||0) + (pond.transferInCount||0);
+      if(totalCaughtCount!==null && effectiveReleaseForCalc){
+        calcSurvival.textContent = (totalCaughtCount / effectiveReleaseForCalc * 100).toFixed(1) + '%';
       } else {
         calcSurvival.textContent = '-';
       }
@@ -5152,7 +5163,8 @@ function bindDashboardEvents(){
 
       const thisCaughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
       const totalCaughtCount = (thisCaughtCount!==null || priorCaughtCount) ? priorCaughtCount + (thisCaughtCount||0) : null;
-      const survivalRatePct = (totalCaughtCount!==null && releaseCount) ? (totalCaughtCount / releaseCount * 100) : null;
+      const effectiveReleaseForCalc = (releaseCount||0) + (pond.transferInCount||0);
+      const survivalRatePct = (totalCaughtCount!==null && effectiveReleaseForCalc) ? (totalCaughtCount / effectiveReleaseForCalc * 100) : null;
       const totalWeightKg = priorKg + (weightKg||0);
       const fcr = (totalFeedKg && totalWeightKg) ? (totalFeedKg / totalWeightKg) : null;
       const thisRevenue = (weightKg && pricePerKg) ? weightKg * pricePerKg : null;
@@ -5160,7 +5172,7 @@ function bindDashboardEvents(){
 
       const data = {
         pondId: pond.id, farmId: pond.farmId,
-        closeDate, doc, farmName, pondName, releaseCount, species, hatchery,
+        closeDate, doc, farmName, pondName, releaseCount, transferInCount: pond.transferInCount||null, species, hatchery,
         sizeCount, pricePerKg, weightKg: totalWeightKg, totalFeedKg, note, diseaseType,
         caughtCount: totalCaughtCount, survivalRatePct, fcr, revenue: totalRevenue,
         createdAt: Date.now(),
@@ -5179,6 +5191,7 @@ function bindDashboardEvents(){
 
   const closeEditForm = document.getElementById('close-edit-form');
   if(closeEditForm){
+    const editingClosure = state.closures.find(x=>x.id===editingClosureId);
     const eSize = closeEditForm.querySelector('#close-edit-size');
     const ePrice = closeEditForm.querySelector('#close-edit-price');
     const eWeight = closeEditForm.querySelector('#close-edit-weight');
@@ -5200,7 +5213,8 @@ function bindDashboardEvents(){
 
       const caughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
       eCalcCount.textContent = caughtCount!==null ? Math.round(caughtCount).toLocaleString('th-TH')+' ตัว' : '-';
-      eCalcSurvival.textContent = (caughtCount!==null && releaseCount) ? (caughtCount / releaseCount * 100).toFixed(1) + '%' : '-';
+      const effectiveReleaseForEditCalc = (releaseCount||0) + (editingClosure ? (editingClosure.transferInCount||0) : 0);
+      eCalcSurvival.textContent = (caughtCount!==null && effectiveReleaseForEditCalc) ? (caughtCount / effectiveReleaseForEditCalc * 100).toFixed(1) + '%' : '-';
       const fcr = (totalFeedKg && weightKg) ? (totalFeedKg / weightKg) : fcrManual;
       eCalcFcr.textContent = fcr!=null ? fcr.toFixed(2) : '-';
       eCalcValue.textContent = (weightKg && pricePerKg) ? (weightKg*pricePerKg).toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-';
@@ -5244,12 +5258,14 @@ function bindDashboardEvents(){
       const diseaseType = diseaseTypeRaw==='อื่นๆ' && diseaseNote ? diseaseNote : (diseaseTypeRaw || null);
 
       const caughtCount = (weightKg && sizeCount) ? weightKg * sizeCount : null;
-      const survivalRatePct = (caughtCount!==null && releaseCount) ? (caughtCount / releaseCount * 100) : null;
+      const transferInCount = editingClosure ? (editingClosure.transferInCount||null) : null;
+      const effectiveReleaseForCalc = releaseCount!=null || transferInCount!=null ? (releaseCount||0) + (transferInCount||0) : null;
+      const survivalRatePct = (caughtCount!==null && effectiveReleaseForCalc) ? (caughtCount / effectiveReleaseForCalc * 100) : null;
       const fcr = (totalFeedKg && weightKg) ? (totalFeedKg / weightKg) : fcrManual;
       const revenue = (weightKg && pricePerKg) ? weightKg * pricePerKg : null;
 
       const data = {
-        closeDate, doc, farmName, pondName, releaseCount, species, hatchery,
+        closeDate, doc, farmName, pondName, releaseCount, transferInCount, species, hatchery,
         sizeCount, pricePerKg, weightKg, totalFeedKg, note, diseaseType,
         caughtCount, survivalRatePct, fcr, revenue,
       };
@@ -5286,14 +5302,14 @@ function bindDashboardEvents(){
         const pondHarvests = harvestsForPond(pond.id);
         const totalHarvestedCount = pondHarvests.reduce((sum,h)=> sum + (h.caughtCount||0), 0);
         const totalTransferredCount = transfersForPond(pond.id).reduce((sum,t)=> sum + (t.count||0), 0);
-        const rawSurvivingCount = last ? estimatedSurvivingCount(pond.releaseCount, last.survivalRate) : null;
+        const rawSurvivingCount = last ? estimatedSurvivingCount(effectiveReleaseCount(pond), last.survivalRate) : null;
         const currentRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount - totalTransferredCount) : null;
         const weightKg = hWeightInput.value ? parseFloat(hWeightInput.value) : null;
         const sizeCount = hSizeInput.value ? parseFloat(hSizeInput.value) : null;
         if(currentRemaining!==null && weightKg && sizeCount){
           const caughtCount = weightKg * sizeCount;
           const remainingAfter = Math.max(0, currentRemaining - caughtCount);
-          const survivalRateAfter = pond.releaseCount ? (remainingAfter / pond.releaseCount * 100) : null;
+          const survivalRateAfter = effectiveReleaseCount(pond) ? (remainingAfter / effectiveReleaseCount(pond) * 100) : null;
           hPreviewRemaining.textContent = remainingAfter.toLocaleString('th-TH',{maximumFractionDigits:0}) + ' ตัว';
           hPreviewCaption.textContent = `จับได้ประมาณ ${caughtCount.toLocaleString('th-TH',{maximumFractionDigits:0})} ตัว${survivalRateAfter!==null ? ` · อัตรารอดเหลือ ${survivalRateAfter.toFixed(1)}%` : ''}`;
         } else {
@@ -5320,12 +5336,12 @@ function bindDashboardEvents(){
       const pondHarvests = harvestsForPond(pond.id);
       const totalHarvestedCount = pondHarvests.reduce((sum,h)=> sum + (h.caughtCount||0), 0);
       const totalTransferredCount = transfersForPond(pond.id).reduce((sum,t)=> sum + (t.count||0), 0);
-      const rawSurvivingCount = last ? estimatedSurvivingCount(pond.releaseCount, last.survivalRate) : null;
+      const rawSurvivingCount = last ? estimatedSurvivingCount(effectiveReleaseCount(pond), last.survivalRate) : null;
       const currentRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount - totalTransferredCount) : null;
 
       const caughtCount = weightKg * sizeCount;
       const remainingAfter = currentRemaining!==null ? Math.max(0, currentRemaining - caughtCount) : null;
-      const survivalRateAfter = (remainingAfter!==null && pond.releaseCount) ? (remainingAfter / pond.releaseCount * 100) : null;
+      const survivalRateAfter = (remainingAfter!==null && effectiveReleaseCount(pond)) ? (remainingAfter / effectiveReleaseCount(pond) * 100) : null;
       const revenue = pricePerKg!=null ? weightKg * pricePerKg : null;
 
       const data = {
@@ -5352,12 +5368,12 @@ function bindDashboardEvents(){
         const last = records[records.length-1];
         const totalHarvestedCount = harvestsForPond(pond.id).reduce((sum,h)=> sum + (h.caughtCount||0), 0);
         const totalTransferredCount = transfersForPond(pond.id).reduce((sum,t)=> sum + (t.count||0), 0);
-        const rawSurvivingCount = last ? estimatedSurvivingCount(pond.releaseCount, last.survivalRate) : null;
+        const rawSurvivingCount = last ? estimatedSurvivingCount(effectiveReleaseCount(pond), last.survivalRate) : null;
         const currentRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount - totalTransferredCount) : null;
         const count = tCountInput.value ? parseFloat(tCountInput.value) : null;
         if(currentRemaining!==null && count){
           const remainingAfter = Math.max(0, currentRemaining - count);
-          const survivalRateAfter = pond.releaseCount ? (remainingAfter / pond.releaseCount * 100) : null;
+          const survivalRateAfter = effectiveReleaseCount(pond) ? (remainingAfter / effectiveReleaseCount(pond) * 100) : null;
           tPreviewRemaining.textContent = remainingAfter.toLocaleString('th-TH',{maximumFractionDigits:0}) + ' ตัว';
           tPreviewCaption.textContent = `ย้ายออก ${count.toLocaleString('th-TH',{maximumFractionDigits:0})} ตัว${survivalRateAfter!==null ? ` · อัตรารอดเหลือ ${survivalRateAfter.toFixed(1)}%` : ''}`;
         } else {
@@ -5382,11 +5398,11 @@ function bindDashboardEvents(){
       const last = records[records.length-1];
       const totalHarvestedCount = harvestsForPond(pond.id).reduce((sum,h)=> sum + (h.caughtCount||0), 0);
       const totalTransferredCount = transfersForPond(pond.id).reduce((sum,t)=> sum + (t.count||0), 0);
-      const rawSurvivingCount = last ? estimatedSurvivingCount(pond.releaseCount, last.survivalRate) : null;
+      const rawSurvivingCount = last ? estimatedSurvivingCount(effectiveReleaseCount(pond), last.survivalRate) : null;
       const currentRemaining = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount - totalTransferredCount) : null;
 
       const remainingAfter = currentRemaining!==null ? Math.max(0, currentRemaining - count) : null;
-      const survivalRateAfter = (remainingAfter!==null && pond.releaseCount) ? (remainingAfter / pond.releaseCount * 100) : null;
+      const survivalRateAfter = (remainingAfter!==null && effectiveReleaseCount(pond)) ? (remainingAfter / effectiveReleaseCount(pond) * 100) : null;
 
       const data = {
         pondId: pond.id, transferDate, count, weightKg,
@@ -5502,7 +5518,7 @@ function bindDashboardEvents(){
         const survivalRate = survivalRateInput.value ? parseFloat(survivalRateInput.value) : null;
         const totalHarvestedCount = pond ? harvestsForPond(pond.id).reduce((sum,h)=> sum + (h.caughtCount||0), 0) : 0;
         const totalTransferredCount = pond ? transfersForPond(pond.id).reduce((sum,t)=> sum + (t.count||0), 0) : 0;
-        const rawSurvivingCount = pond ? estimatedSurvivingCount(pond.releaseCount, survivalRate) : null;
+        const rawSurvivingCount = pond ? estimatedSurvivingCount(effectiveReleaseCount(pond), survivalRate) : null;
         const survivingCount = rawSurvivingCount!==null ? Math.max(0, rawSurvivingCount - totalHarvestedCount - totalTransferredCount) : null;
         const weightG = sizeCount ? weightFromCount(sizeCount) : null;
         const kg = (survivingCount!==null && weightG!==null) ? survivingCount * weightG / 1000 : null;
