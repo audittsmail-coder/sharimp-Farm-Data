@@ -1207,6 +1207,8 @@ function renderDatePicker(){
 
 /* ---------------- Data layer (Firestore, real-time sync + offline cache) ---------------- */
 let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null, unsubTransfers = null, unsubClosures = null, unsubWeatherNotes = null, unsubMarketPrices = null;
+let batchesScopeFarmId = null; // farmId the on-demand `batches` listener is currently scoped to, or null if detached
+let signedIn = false;
 let seededFarms = false;
 let weatherNotesByDate = {}; // { 'YYYY-MM-DD': { note, updatedAt } } — every day's manually-entered weather, kept permanently
 function todayWeatherNoteVal(){ return weatherNotesByDate[todayISO()] || null; }
@@ -1248,11 +1250,6 @@ function attachFirestoreListeners(){
     render();
   }, (e)=>console.error('records listener error', e));
 
-  unsubBatches = db.collection('batches').onSnapshot((snap)=>{
-    state.batches = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-    render();
-  }, (e)=>console.error('batches listener error', e));
-
   unsubHarvests = db.collection('harvests').onSnapshot((snap)=>{
     state.harvests = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     render();
@@ -1263,22 +1260,60 @@ function attachFirestoreListeners(){
     render();
   }, (e)=>console.error('transfers listener error', e));
 
-  unsubClosures = db.collection('closures').onSnapshot((snap)=>{
-    state.closures = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-    render();
-  }, (e)=>console.error('closures listener error', e));
-
   unsubWeatherNotes = db.collection('weatherNotes').onSnapshot((snap)=>{
     const byDate = {};
     snap.docs.forEach(d=>{ byDate[d.id] = d.data(); });
     weatherNotesByDate = byDate;
     render();
   }, (e)=>console.error('weatherNotes listener error', e));
+}
 
-  unsubMarketPrices = db.collection('marketPrices').onSnapshot((snap)=>{
-    state.marketPrices = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+/* `closures`, `marketPrices` and `batches` keep growing forever (every pond
+   closure/price entry/archived cycle ever recorded) but are only needed on
+   the specific page that shows them, so they're attached on demand instead
+   of being read in full on every app load. `batches` is additionally scoped
+   to the farm of the pond currently being viewed (matches the farmId+name
+   fallback match used when reading it, see renderPondDetail's pondBatches). */
+function ensureClosuresListener(active){
+  active = active && signedIn;
+  if(active === !!unsubClosures) return;
+  if(active){
+    unsubClosures = db.collection('closures').onSnapshot((snap)=>{
+      state.closures = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      render();
+    }, (e)=>console.error('closures listener error', e));
+  } else {
+    if(unsubClosures) unsubClosures();
+    unsubClosures = null;
+    state.closures = [];
+  }
+}
+function ensureMarketPricesListener(active){
+  active = active && signedIn;
+  if(active === !!unsubMarketPrices) return;
+  if(active){
+    unsubMarketPrices = db.collection('marketPrices').onSnapshot((snap)=>{
+      state.marketPrices = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+      render();
+    }, (e)=>console.error('marketPrices listener error', e));
+  } else {
+    if(unsubMarketPrices) unsubMarketPrices();
+    unsubMarketPrices = null;
+    state.marketPrices = [];
+  }
+}
+function ensureBatchesListener(farmId){
+  if(!signedIn) farmId = null;
+  if(farmId === batchesScopeFarmId) return;
+  if(unsubBatches) unsubBatches();
+  unsubBatches = null;
+  batchesScopeFarmId = farmId;
+  state.batches = [];
+  if(!farmId) return;
+  unsubBatches = db.collection('batches').where('farmId','==',farmId).onSnapshot((snap)=>{
+    state.batches = snap.docs.map(d=>({ id:d.id, ...d.data() }));
     render();
-  }, (e)=>console.error('marketPrices listener error', e));
+  }, (e)=>console.error('batches listener error', e));
 }
 
 function detachFirestoreListeners(){
@@ -1292,6 +1327,7 @@ function detachFirestoreListeners(){
   if(unsubWeatherNotes) unsubWeatherNotes();
   if(unsubMarketPrices) unsubMarketPrices();
   unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = unsubTransfers = unsubClosures = unsubWeatherNotes = unsubMarketPrices = null;
+  batchesScopeFarmId = null;
   state = { farms: [], ponds: [], records: [], batches: [], harvests: [], transfers: [], closures: [], marketPrices: [] };
   weatherNotesByDate = {};
   currentFarmId = 'overview';
@@ -1624,6 +1660,7 @@ function suggestedFeedPctRange(sizeCount, species){
 function boot(){
   auth.onAuthStateChanged((user)=>{
     authReady = true;
+    signedIn = !!user;
     if(user){
       attachFirestoreListeners();
       ensureFarmsSeeded(); // fire-and-forget: don't block the UI on a Firestore round-trip
@@ -1645,6 +1682,12 @@ function render(){
   app.classList.toggle('harvest-mode', !!viewingHarvestPondId);
   app.classList.toggle('transfer-mode', !!viewingTransferPondId);
   app.classList.toggle('close-mode', !!viewingClosePondId);
+  ensureClosuresListener(currentFarmId === 'closures');
+  ensureMarketPricesListener(currentFarmId === 'marketprice');
+  {
+    const scopedPond = currentPondId ? state.ponds.find(x=>x.id===currentPondId) : null;
+    ensureBatchesListener(scopedPond ? scopedPond.farmId : null);
+  }
   try{
     const totalPondCount = state.ponds.length;
     const whiteShrimpPondCount = state.ponds.filter(p=>p.species===SPECIES_OPTIONS[0]).length;
@@ -4888,12 +4931,17 @@ function bindDashboardEvents(){
   document.querySelectorAll('[data-open-closure-pond]').forEach(row=>{
     const pondId = row.getAttribute('data-open-closure-pond');
     if(!pondId) return;
-    row.onclick = ()=>{
+    row.onclick = async ()=>{
       currentFarmId = row.getAttribute('data-open-closure-farm') || 'overview';
       // closing a pond now deletes it, so jump straight to its archived batch
-      // (the pond itself no longer exists to navigate into).
-      const batch = state.batches.filter(b=>b.pondId===pondId).slice().sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''))[0];
+      // (the pond itself no longer exists to navigate into). `batches` isn't
+      // preloaded here (only loaded while viewing a specific pond), so look
+      // this one up on demand instead.
+      const snap = await db.collection('batches').where('pondId','==',pondId).get().catch(()=>null);
+      const batchDocs = snap ? snap.docs.map(d=>({ id:d.id, ...d.data() })) : [];
+      const batch = batchDocs.sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''))[0];
       if(batch){
+        state.batches = batchDocs;
         viewingBatchId = batch.id;
         render();
         return;
@@ -4937,8 +4985,10 @@ function bindDashboardEvents(){
       if(!closure) return;
       if(!confirm(`กู้คืนบ่อ "${closure.pondName||''}"? ระบบจะย้อนกลับข้อมูลปิดบ่อนี้ และนำบ่อกลับไปกรอกข้อมูลรายสัปดาห์ต่อได้เหมือนเดิม`)) return;
 
-      const batch = state.batches
-        .filter(b=>b.pondId===closure.pondId)
+      // `batches` isn't preloaded here (only loaded while viewing a specific
+      // pond), so look up the pond's latest archived cycle on demand.
+      const batchSnap = await db.collection('batches').where('pondId','==',closure.pondId).get().catch(()=>null);
+      const batch = (batchSnap ? batchSnap.docs.map(d=>({ id:d.id, ...d.data() })) : [])
         .sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''))[0];
 
       const pondData = batch ? {
