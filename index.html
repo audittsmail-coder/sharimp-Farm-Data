@@ -1998,7 +1998,10 @@ function renderClosuresSummary(tabs){
                 <td>${c.weightKg!=null ? c.weightKg.toLocaleString('th-TH')+' กก.' : '-'}</td>
                 <td>${c.survivalRatePct!=null ? c.survivalRatePct.toFixed(1)+'%' : '-'}</td>
                 <td>${c.fcr!=null ? c.fcr.toFixed(2) : '-'}</td>
-                <td>${c.pricePerKg!=null ? c.pricePerKg.toLocaleString('th-TH')+' บ./กก.' : '-'}</td>
+                <td>
+                  ${c.pricePerKg!=null ? `<div>ปิดบ่อ ${c.pricePerKg.toLocaleString('th-TH')} บ./กก.</div>` : (c.harvestPricePerKg==null ? '-' : '')}
+                  ${c.harvestPricePerKg!=null ? `<div style="font-size:11px;color:var(--ink-faint);margin-top:1px;">แบ่งจับ ${c.harvestPricePerKg.toLocaleString('th-TH',{maximumFractionDigits:1})} บ./กก.</div>` : ''}
+                </td>
                 <td>${c.revenue!=null ? c.revenue.toLocaleString('th-TH',{maximumFractionDigits:0})+' บ.' : '-'}</td>
                 <td>${c.note ? escapeHtml(c.note) : '-'}</td>
                 <td style="white-space:nowrap;">
@@ -3829,6 +3832,11 @@ function renderClosureEditForm(){
             <input type="text" name="diseaseNote" id="close-edit-disease-other" placeholder="ระบุชื่อโรค" value="${escapeHtml(diseaseOtherText)}" style="${diseaseActiveVal==='อื่นๆ'?'':'display:none;'} margin-top:8px;">
           </div>
 
+          ${c.harvestWeightKg ? `
+          <div class="info-note">
+            รายการนี้รวมการแบ่งจับมาก่อน ${c.harvestWeightKg.toLocaleString('th-TH')} กก.${c.harvestPricePerKg!=null ? ` (เฉลี่ย ${c.harvestPricePerKg.toLocaleString('th-TH',{maximumFractionDigits:1})} บ./กก.)` : ''} อยู่ในช่อง "จำนวนที่จับ"/"มูลค่า" ด้านบนแล้ว — ค่าในช่องนี้แก้ได้ตามจริง แต่ยอดแบ่งจับเดิมจะไม่ถูกคำนวณซ้ำ
+          </div>` : ''}
+
           <div class="calc-box">
             <div class="calc-box-label">ผลคำนวณอัตโนมัติ</div>
             <div class="calc-grid">
@@ -5219,12 +5227,14 @@ function bindDashboardEvents(){
       const fcr = (totalFeedKg && totalWeightKg) ? (totalFeedKg / totalWeightKg) : null;
       const thisRevenue = (weightKg && pricePerKg) ? weightKg * pricePerKg : null;
       const totalRevenue = (thisRevenue!==null || priorRevenue) ? priorRevenue + (thisRevenue||0) : null;
+      const harvestPricePerKg = priorKg>0 ? (priorRevenue/priorKg) : null;
 
       const data = {
         pondId: pond.id, farmId: pond.farmId,
         closeDate, doc, farmName, pondName, releaseCount, transferInCount: pond.transferInCount||null, species, hatchery,
         sizeCount, pricePerKg, weightKg: totalWeightKg, totalFeedKg, note, diseaseType,
         caughtCount: totalCaughtCount, survivalRatePct, fcr, revenue: totalRevenue,
+        harvestWeightKg: priorKg||null, harvestRevenue: priorRevenue||null, harvestPricePerKg,
         createdAt: Date.now(),
       };
       try{
@@ -5318,6 +5328,9 @@ function bindDashboardEvents(){
         closeDate, doc, farmName, pondName, releaseCount, transferInCount, species, hatchery,
         sizeCount, pricePerKg, weightKg, totalFeedKg, note, diseaseType,
         caughtCount, survivalRatePct, fcr, revenue,
+        harvestWeightKg: editingClosure ? (editingClosure.harvestWeightKg||null) : null,
+        harvestRevenue: editingClosure ? (editingClosure.harvestRevenue||null) : null,
+        harvestPricePerKg: editingClosure ? (editingClosure.harvestPricePerKg||null) : null,
       };
       try{
         await db.collection('closures').doc(id).update(data);
