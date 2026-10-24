@@ -1920,16 +1920,36 @@ function renderOverviewDashboard(tabs){
 function distributionCardHtml(title, items, opts){
   opts = opts || {};
   if(!items || items.length === 0) return '';
+  const maxItems = opts.maxItems || 6;
   const rankClass = i => i===0 ? 'rank-0' : i===1 ? 'rank-1' : i===2 ? 'rank-2' : 'rank-3plus';
+  // Free-text groupings (hatchery/species names) can have a long tail of
+  // one-off labels that stretches this card far past its neighbors in the
+  // grid row (a CSS grid row is as tall as its tallest cell). Fold anything
+  // past maxItems into a single "others" row so every card stays a similar,
+  // balanced height.
+  let shown = items;
+  if(items.length > maxItems){
+    const kept = items.slice(0, maxItems-1);
+    const rest = items.slice(maxItems-1);
+    const count = rest.reduce((s,it)=>s+it.count, 0);
+    const pct = rest.reduce((s,it)=>s+it.pct, 0);
+    let avgSurvival = null;
+    if(opts.showSurvival){
+      const withSurv = rest.filter(it=>it.avgSurvival!=null);
+      const sumCounts = withSurv.reduce((s,it)=>s+it.count, 0);
+      avgSurvival = sumCounts ? withSurv.reduce((s,it)=>s+it.avgSurvival*it.count, 0)/sumCounts : null;
+    }
+    shown = kept.concat([{ label:`อื่นๆ (${rest.length} รายการ)`, count, pct, avgSurvival, isOthers:true }]);
+  }
   return `
     <div class="stats-group">
       <div class="stats-group-title">${escapeHtml(title)}</div>
       <div class="dist-bars">
-        ${items.map((it,i)=>`
+        ${shown.map((it,i)=>`
           <div class="dist-bar-row">
             <div class="dist-bar-label" title="${escapeHtml(it.label)}">${escapeHtml(it.label)}</div>
             <div class="dist-bar-track">
-              <div class="dist-bar-fill ${rankClass(i)}" style="width:${it.pct}%"></div>
+              <div class="dist-bar-fill ${it.isOthers ? 'rank-3plus' : rankClass(i)}" style="width:${it.pct}%"></div>
             </div>
             <div class="dist-bar-meta">${it.pct.toFixed(0)}%<span class="dist-bar-count">(${it.count})</span>${opts.showSurvival && it.avgSurvival!=null ? `<span class="dist-bar-survival">รอด ${it.avgSurvival.toFixed(0)}%</span>` : ''}</div>
           </div>
