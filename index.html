@@ -653,11 +653,6 @@
   table.closures-table tbody tr:hover td{ background:var(--surface-hi); }
   table.closures-table tbody tr.has-disease td:first-child{ border-left:4px solid var(--danger); }
   .disease-badge{ display:inline-block; margin-top:3px; padding:2px 8px; border-radius:var(--radius-pill); background:rgba(226,105,90,.16); color:var(--danger); font-size:10.5px; font-weight:700; }
-  .merge-hatchery-list{ display:flex; flex-direction:column; gap:2px; max-height:280px; overflow-y:auto; border:1px solid var(--line-soft); border-radius:var(--radius-sm); padding:4px; }
-  .merge-hatchery-item{ display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:var(--radius-sm); cursor:pointer; }
-  .merge-hatchery-item:hover{ background:var(--surface-soft); }
-  .merge-hatchery-name{ flex:1; font-size:13px; color:var(--ink); }
-  .merge-hatchery-count{ font-size:11px; color:var(--ink-faint); }
   .disease-options{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
   .disease-btn{
     background:var(--surface-soft); border:1.5px solid var(--line); color:var(--ink-soft); font-size:13px;
@@ -2023,6 +2018,49 @@ function distributionCardHtml(title, items, opts){
     </div>`;
 }
 
+// Same chart as distributionCardHtml, but for "ลูกกุ้งจากไหน" specifically —
+// free-text hatchery names are prone to inconsistent spelling, so this one
+// card also doubles as the picker for the "merge duplicate names" tool:
+// toggle it on, tick the rows that are really the same source, and merge.
+function hatcheryDistributionCardHtml(items){
+  if(!items || items.length === 0) return '';
+  const rankClass = i => i===0 ? 'rank-0' : i===1 ? 'rank-1' : i===2 ? 'rank-2' : 'rank-3plus';
+  const wide = items.length > 6;
+  const merging = showMergeHatcherySheet;
+  return `
+    <div class="stats-group${wide ? ' stats-group-full' : ''}">
+      <div class="stats-group-title" style="justify-content:space-between;">
+        <span style="display:flex;align-items:center;gap:7px;">ลูกกุ้งจากไหน</span>
+        <button type="button" id="btn-toggle-merge-hatchery" class="action-btn" style="font-size:10.5px;padding:3px 9px;">${merging ? 'ปิด' : 'เลือกเพื่อรวมชื่อซ้ำ'}</button>
+      </div>
+      <div class="dist-bars${wide ? ' dist-bars-wide' : ''}">
+        ${items.map((it,i)=>`
+          <div class="dist-bar-row">
+            ${merging ? `<input type="checkbox" class="merge-hatchery-check" value="${escapeHtml(it.label)}" ${mergeHatcherySelected.has(it.label)?'checked':''}>` : ''}
+            <div class="dist-bar-label" title="${escapeHtml(it.label)}">${escapeHtml(it.label)}</div>
+            <div class="dist-bar-track">
+              <div class="dist-bar-fill ${rankClass(i)}" style="width:${it.pct}%"></div>
+            </div>
+            <div class="dist-bar-meta">${it.pct.toFixed(0)}%<span class="dist-bar-count">(${it.count})</span>${it.avgSurvival!=null ? `<span class="dist-bar-survival">รอด ${it.avgSurvival.toFixed(0)}%</span>` : ''}</div>
+          </div>
+        `).join('')}
+      </div>
+      ${merging ? `
+      <div class="merge-hatchery-controls">
+        <p class="hint" style="margin:10px 0 8px;">ติ๊กชื่อที่เป็นแหล่งเดียวกันด้านบน (เลือกได้หลายอัน) แล้วตั้งชื่อที่จะใช้แทน ระบบจะแก้ให้ทั้งบ่อปัจจุบันและประวัติทั้งหมด</p>
+        <div class="field">
+          <label>ชื่อที่จะใช้แทนรายการที่เลือก</label>
+          <input type="text" id="merge-hatchery-target" list="hatchery-options-merge" placeholder="เลือกรายการด้านบนก่อน" value="${escapeHtml(mergeHatcheryTarget)}">
+          ${hatcheryDatalistHtml('hatchery-options-merge')}
+        </div>
+        <div id="merge-hatchery-result" class="hint">${mergeHatcheryResultHtml}</div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" type="button" id="btn-merge-hatchery" style="flex:1">รวมชื่อที่เลือก (${mergeHatcherySelected.size})</button>
+        </div>
+      </div>` : ''}
+    </div>`;
+}
+
 function renderClosuresSummary(tabs){
   const closures = allClosuresSorted();
 
@@ -2031,7 +2069,7 @@ function renderClosuresSummary(tabs){
     if(showClosureStats){
       const statsGroupsHtml =
         distributionCardHtml('ชนิดกุ้ง', buildDistribution(closures, c=>speciesShortLabel(c.species))) +
-        distributionCardHtml('ลูกกุ้งจากไหน', buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null), {showSurvival:true}) +
+        hatcheryDistributionCardHtml(buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null)) +
         distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
         distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
         distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
@@ -2058,35 +2096,6 @@ function renderClosuresSummary(tabs){
     }
   }
 
-  const hatcheryCandidates = closures.length > 0 ? hatcheryNameCounts() : [];
-  const mergeHatcheryHtml = hatcheryCandidates.length > 0 ? `
-    <div class="card">
-      <div class="farm-title-row" style="margin-bottom:${showMergeHatcherySheet?'14px':'0'};">
-        <h3 style="margin:0;">รวมชื่อลูกกุ้งที่ซ้ำกัน</h3>
-        <button type="button" id="btn-toggle-merge-hatchery" class="action-btn">${showMergeHatcherySheet ? 'ปิด' : 'รวมชื่อซ้ำ'}</button>
-      </div>
-      ${showMergeHatcherySheet ? `
-      <p class="hint" style="margin-top:0;">เลือกชื่อที่เป็นแหล่งเดียวกันแต่พิมพ์ไม่ตรงกัน (เลือกได้หลายอัน) แล้วตั้งชื่อที่จะใช้แทนทั้งหมด ระบบจะแก้ไขให้ทั้งบ่อปัจจุบันและประวัติปิดบ่อ/ประวัติเก่าให้เองทั้งหมด</p>
-      <div class="merge-hatchery-list">
-        ${hatcheryCandidates.map(h=>`
-          <label class="merge-hatchery-item">
-            <input type="checkbox" class="merge-hatchery-check" value="${escapeHtml(h.name)}" ${mergeHatcherySelected.has(h.name)?'checked':''}>
-            <span class="merge-hatchery-name">${escapeHtml(h.name)}</span>
-            <span class="merge-hatchery-count">(${h.count})</span>
-          </label>
-        `).join('')}
-      </div>
-      <div class="field" style="margin-top:12px;">
-        <label>ชื่อที่จะใช้แทนรายการที่เลือก</label>
-        <input type="text" id="merge-hatchery-target" list="hatchery-options-merge" placeholder="เลือกรายการด้านบนก่อน" value="${escapeHtml(mergeHatcheryTarget)}">
-        ${hatcheryDatalistHtml('hatchery-options-merge')}
-      </div>
-      <div id="merge-hatchery-result" class="hint">${mergeHatcheryResultHtml}</div>
-      <div class="btn-row">
-        <button class="btn btn-primary" type="button" id="btn-merge-hatchery" style="flex:1">รวมชื่อที่เลือก</button>
-      </div>` : ''}
-    </div>` : '';
-
   const bodyHtml = closures.length === 0 ? `
     <div class="empty-state">
       ${ICONS.shrimp}
@@ -2094,7 +2103,6 @@ function renderClosuresSummary(tabs){
       <p>เมื่อกด "ปิดบ่อ" แล้วบันทึกข้อมูลจากหน้ารายละเอียดบ่อ รายการจะมาแสดงที่นี่</p>
     </div>` : `
     ${statsHtml}
-    ${mergeHatcheryHtml}
     <div class="card">
       <h3>ประวัติการปิดบ่อทั้งหมด</h3>
       <div style="overflow-x:auto">
