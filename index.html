@@ -642,6 +642,12 @@
   table.rec-table td{ padding:10px 7px; border-bottom:1px solid var(--line-soft); color:var(--ink); vertical-align:top; white-space:nowrap; }
   table.rec-table tr:last-child td{ border-bottom:none; }
   table.rec-table tr:hover td{ background:var(--surface-soft); }
+  table.rec-table tr.harvest-marker-row td{
+    background:rgba(79,195,247,.10); border-left:4px solid var(--teal-400); border-bottom:1px solid var(--line-soft);
+    white-space:normal; padding:8px 10px 8px 9px;
+  }
+  table.rec-table tr.harvest-marker-row:hover td{ background:rgba(79,195,247,.16); }
+  .harvest-marker{ color:var(--teal-400); font-weight:700; font-size:12px; }
   table.closures-table tbody tr:nth-child(even) td{ background:rgba(255,255,255,.03); }
   table.closures-table tbody tr.has-disease td{ background:rgba(226,105,90,.08); }
   table.closures-table tbody tr:hover td{ background:var(--surface-hi); }
@@ -1570,6 +1576,18 @@ function metaRowHtml(items){
     <div class="meta-row">
       ${valid.map(it=>`<span class="meta-item ${it.cls||''}">${it.text}</span>`).join('')}
     </div>`;
+}
+function harvestMarkerRowHtml(h, colspan){
+  const parts = [];
+  if(h.weightKg!=null) parts.push(`${h.weightKg.toLocaleString('th-TH')} กก.`);
+  if(h.caughtCount!=null) parts.push(`${Math.round(h.caughtCount).toLocaleString('th-TH')} ตัว`);
+  if(h.pricePerKg!=null) parts.push(`${h.pricePerKg.toLocaleString('th-TH')} บ./กก.`);
+  return `
+    <tr class="harvest-marker-row">
+      <td colspan="${colspan}">
+        <div class="harvest-marker">✂️ แบ่งจับ ${fmtDate(h.harvestDate)}${parts.length ? ' — '+parts.join(' · ') : ''}${h.note ? ' · '+escapeHtml(h.note) : ''}</div>
+      </td>
+    </tr>`;
 }
 function computeAdgForPond(p, recs){
   if(!recs || recs.length===0) return null;
@@ -3108,7 +3126,12 @@ function renderPondDetail(){
   const cumulativeBiomassKg = (estimatedYieldKg||0) + totalHarvestedKg;
   const currentFcr = (latestTotalFeedRecord && cumulativeBiomassKg>0) ? (latestTotalFeedRecord.totalFeedKg / cumulativeBiomassKg) : null;
 
-  const rows = records.slice().reverse().map(r=>{
+  const recordTimeline = records.map(r=>({ type:'record', date:r.weekDate, r }))
+    .concat(pondHarvests.map(h=>({ type:'harvest', date:h.harvestDate, h })))
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const rows = recordTimeline.slice().reverse().map(item=>{
+    if(item.type==='harvest') return harvestMarkerRowHtml(item.h, 9);
+    const r = item.r;
     const w = weightFromCount(r.sizeCount);
     const recDoc = p.releaseDate ? daysBetween(p.releaseDate, r.weekDate) : null;
     const weatherNote = weatherNotesByDate[r.weekDate];
@@ -3890,7 +3913,12 @@ function renderBatchDetail(){
   const batchCumulativeBiomassKg = (estimatedYieldKg||0) + batchTotalHarvestedKg;
   const currentFcr = (latestTotalFeedRecord && batchCumulativeBiomassKg>0) ? (latestTotalFeedRecord.totalFeedKg / batchCumulativeBiomassKg) : null;
 
-  const rows = records.slice().reverse().map(r=>{
+  const batchRecordTimeline = records.map(r=>({ type:'record', date:r.weekDate, r }))
+    .concat((batch.harvests||[]).map(h=>({ type:'harvest', date:h.harvestDate, h })))
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const rows = batchRecordTimeline.slice().reverse().map(item=>{
+    if(item.type==='harvest') return harvestMarkerRowHtml(item.h, 8);
+    const r = item.r;
     const w = weightFromCount(r.sizeCount);
     const recDoc = batch.releaseDate ? daysBetween(batch.releaseDate, r.weekDate) : null;
     const weatherNote = weatherNotesByDate[r.weekDate];
