@@ -1977,6 +1977,7 @@ function renderClosuresSummary(tabs){
         distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
         distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
         distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
+        distributionCardHtml('โรคที่พบ', buildDistribution(closures, c=>c.diseaseType ? c.diseaseType.trim() : null), {showSurvival:true}) +
         distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate))) +
         yearlyWeightGroupHtml(closures) +
         sizeCompareGroupHtml(closures);
