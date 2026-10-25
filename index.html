@@ -653,6 +653,11 @@
   table.closures-table tbody tr:hover td{ background:var(--surface-hi); }
   table.closures-table tbody tr.has-disease td:first-child{ border-left:4px solid var(--danger); }
   .disease-badge{ display:inline-block; margin-top:3px; padding:2px 8px; border-radius:var(--radius-pill); background:rgba(226,105,90,.16); color:var(--danger); font-size:10.5px; font-weight:700; }
+  .merge-hatchery-list{ display:flex; flex-direction:column; gap:2px; max-height:280px; overflow-y:auto; border:1px solid var(--line-soft); border-radius:var(--radius-sm); padding:4px; }
+  .merge-hatchery-item{ display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:var(--radius-sm); cursor:pointer; }
+  .merge-hatchery-item:hover{ background:var(--surface-soft); }
+  .merge-hatchery-name{ flex:1; font-size:13px; color:var(--ink); }
+  .merge-hatchery-count{ font-size:11px; color:var(--ink-faint); }
   .disease-options{ display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
   .disease-btn{
     background:var(--surface-soft); border:1.5px solid var(--line); color:var(--ink-soft); font-size:13px;
@@ -1103,7 +1108,7 @@ function weatherBannerHtml(){
     </div>`;
 }
 
-let state = { farms: [], ponds: [], records: [], batches: [], harvests: [], transfers: [], closures: [], marketPrices: [] };
+let state = { farms: [], ponds: [], records: [], batches: [], harvests: [], transfers: [], closures: [], marketPrices: [], hatcheryNames: [] };
 let currentFarmId = 'overview';
 let currentPondId = null;
 let viewingBatchId = null;
@@ -1125,6 +1130,12 @@ let marketPriceChartMonth = null;
 let marketPriceFormDate = null;
 let bulkPriceImportResultHtml = '';
 let showClosureStats = false;
+let showMergeHatcherySheet = false;
+let mergeHatcherySelected = new Set();
+let mergeHatcheryTarget = '';
+let mergeHatcheryTargetTouched = false;
+let mergeHatcheryResultHtml = '';
+let hatcheryBackfillDone = false;
 let overviewSortBy = '';
 let showPondFormSheet = false;
 let editingPond = null;
@@ -1215,7 +1226,7 @@ function renderDatePicker(){
 }
 
 /* ---------------- Data layer (Firestore, real-time sync + offline cache) ---------------- */
-let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null, unsubTransfers = null, unsubClosures = null, unsubWeatherNotes = null, unsubMarketPrices = null;
+let unsubFarms = null, unsubPonds = null, unsubRecords = null, unsubBatches = null, unsubHarvests = null, unsubTransfers = null, unsubClosures = null, unsubWeatherNotes = null, unsubMarketPrices = null, unsubHatcheryNames = null;
 let batchesScopeFarmId = null; // farmId the on-demand `batches` listener is currently scoped to, or null if detached
 let signedIn = false;
 let seededFarms = false;
@@ -1275,6 +1286,15 @@ function attachFirestoreListeners(){
     weatherNotesByDate = byDate;
     render();
   }, (e)=>console.error('weatherNotes listener error', e));
+
+  // Small lookup collection (one tiny doc per distinct hatchery/brand name
+  // ever typed) powering the hatchery-name autocomplete — unlike `closures`/
+  // `batches`/`marketPrices` it doesn't grow with farming history, only with
+  // how many distinct names exist, so it's cheap to keep on at all times.
+  unsubHatcheryNames = db.collection('hatcheryNames').onSnapshot((snap)=>{
+    state.hatcheryNames = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    render();
+  }, (e)=>console.error('hatcheryNames listener error', e));
 }
 
 /* `closures`, `marketPrices` and `batches` keep growing forever (every pond
@@ -1335,9 +1355,10 @@ function detachFirestoreListeners(){
   if(unsubClosures) unsubClosures();
   if(unsubWeatherNotes) unsubWeatherNotes();
   if(unsubMarketPrices) unsubMarketPrices();
-  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = unsubTransfers = unsubClosures = unsubWeatherNotes = unsubMarketPrices = null;
+  if(unsubHatcheryNames) unsubHatcheryNames();
+  unsubFarms = unsubPonds = unsubRecords = unsubBatches = unsubHarvests = unsubTransfers = unsubClosures = unsubWeatherNotes = unsubMarketPrices = unsubHatcheryNames = null;
   batchesScopeFarmId = null;
-  state = { farms: [], ponds: [], records: [], batches: [], harvests: [], transfers: [], closures: [], marketPrices: [] };
+  state = { farms: [], ponds: [], records: [], batches: [], harvests: [], transfers: [], closures: [], marketPrices: [], hatcheryNames: [] };
   weatherNotesByDate = {};
   currentFarmId = 'overview';
   currentPondId = null;
@@ -1434,6 +1455,43 @@ function survivalRangeLabel(pct){
   if(pct<90) return '70-89%';
   return '90%+';
 }
+/* ---------------- Hatchery/brand name lookup (autocomplete + dedupe) ---------------- */
+function knownHatcheryNames(){
+  return state.hatcheryNames.map(h=>h.name).filter(Boolean).sort((a,b)=>a.localeCompare(b,'th'));
+}
+function hatcheryDatalistHtml(id){
+  return `<datalist id="${id}">${knownHatcheryNames().map(n=>`<option value="${escapeHtml(n)}"></option>`).join('')}</datalist>`;
+}
+async function recordHatcheryNameIfNew(name){
+  name = (name||'').trim();
+  if(!name) return;
+  if(state.hatcheryNames.some(h=>h.name===name)) return;
+  try{ await db.collection('hatcheryNames').add({ name }); }catch(e){ console.error('recordHatcheryNameIfNew failed', e); }
+}
+// Every distinct hatchery/brand name currently in use (live ponds) or ever
+// recorded at closing time (closures), with how many records use each —
+// the candidate list for the "merge duplicate names" tool below.
+function hatcheryNameCounts(){
+  const counts = {};
+  state.ponds.forEach(p=>{ if(p.brand) counts[p.brand.trim()] = (counts[p.brand.trim()]||0)+1; });
+  state.closures.forEach(c=>{ if(c.hatchery) counts[c.hatchery.trim()] = (counts[c.hatchery.trim()]||0)+1; });
+  return Object.entries(counts)
+    .map(([name,count])=>({ name, count }))
+    .sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name,'th'));
+}
+async function backfillHatcheryNamesIfNeeded(){
+  if(hatcheryBackfillDone) return;
+  hatcheryBackfillDone = true;
+  const known = new Set(knownHatcheryNames());
+  const missing = hatcheryNameCounts().map(h=>h.name).filter(n=>!known.has(n));
+  if(missing.length===0) return;
+  try{
+    const writeBatch = db.batch();
+    missing.forEach(name=>writeBatch.set(db.collection('hatcheryNames').doc(), { name }));
+    await writeBatch.commit();
+  }catch(e){ console.error('hatchery name backfill failed', e); }
+}
+
 function buildDistribution(closures, labelFn){
   const counts = {};
   const survivalSums = {};
@@ -2000,6 +2058,35 @@ function renderClosuresSummary(tabs){
     }
   }
 
+  const hatcheryCandidates = closures.length > 0 ? hatcheryNameCounts() : [];
+  const mergeHatcheryHtml = hatcheryCandidates.length > 0 ? `
+    <div class="card">
+      <div class="farm-title-row" style="margin-bottom:${showMergeHatcherySheet?'14px':'0'};">
+        <h3 style="margin:0;">รวมชื่อลูกกุ้งที่ซ้ำกัน</h3>
+        <button type="button" id="btn-toggle-merge-hatchery" class="action-btn">${showMergeHatcherySheet ? 'ปิด' : 'รวมชื่อซ้ำ'}</button>
+      </div>
+      ${showMergeHatcherySheet ? `
+      <p class="hint" style="margin-top:0;">เลือกชื่อที่เป็นแหล่งเดียวกันแต่พิมพ์ไม่ตรงกัน (เลือกได้หลายอัน) แล้วตั้งชื่อที่จะใช้แทนทั้งหมด ระบบจะแก้ไขให้ทั้งบ่อปัจจุบันและประวัติปิดบ่อ/ประวัติเก่าให้เองทั้งหมด</p>
+      <div class="merge-hatchery-list">
+        ${hatcheryCandidates.map(h=>`
+          <label class="merge-hatchery-item">
+            <input type="checkbox" class="merge-hatchery-check" value="${escapeHtml(h.name)}" ${mergeHatcherySelected.has(h.name)?'checked':''}>
+            <span class="merge-hatchery-name">${escapeHtml(h.name)}</span>
+            <span class="merge-hatchery-count">(${h.count})</span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="field" style="margin-top:12px;">
+        <label>ชื่อที่จะใช้แทนรายการที่เลือก</label>
+        <input type="text" id="merge-hatchery-target" list="hatchery-options-merge" placeholder="เลือกรายการด้านบนก่อน" value="${escapeHtml(mergeHatcheryTarget)}">
+        ${hatcheryDatalistHtml('hatchery-options-merge')}
+      </div>
+      <div id="merge-hatchery-result" class="hint">${mergeHatcheryResultHtml}</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" type="button" id="btn-merge-hatchery" style="flex:1">รวมชื่อที่เลือก</button>
+      </div>` : ''}
+    </div>` : '';
+
   const bodyHtml = closures.length === 0 ? `
     <div class="empty-state">
       ${ICONS.shrimp}
@@ -2007,6 +2094,7 @@ function renderClosuresSummary(tabs){
       <p>เมื่อกด "ปิดบ่อ" แล้วบันทึกข้อมูลจากหน้ารายละเอียดบ่อ รายการจะมาแสดงที่นี่</p>
     </div>` : `
     ${statsHtml}
+    ${mergeHatcheryHtml}
     <div class="card">
       <h3>ประวัติการปิดบ่อทั้งหมด</h3>
       <div style="overflow-x:auto">
@@ -3632,7 +3720,8 @@ function renderCloseForm(){
           </div>
           <div class="field">
             <label>ลูกกุ้งจากไหน</label>
-            <input type="text" name="hatchery" id="close-hatchery" placeholder="เช่น ฟาร์มพ่อแม่พันธุ์ ABC" value="${escapeHtml(p.brand||'')}">
+            <input type="text" name="hatchery" id="close-hatchery" list="hatchery-options-close" placeholder="เช่น ฟาร์มพ่อแม่พันธุ์ ABC" value="${escapeHtml(p.brand||'')}">
+            ${hatcheryDatalistHtml('hatchery-options-close')}
           </div>
 
           <div class="form-section-label">ผลการจับ</div>
@@ -3819,7 +3908,8 @@ function renderClosureEditForm(){
           </div>
           <div class="field">
             <label>ลูกกุ้งจากไหน</label>
-            <input type="text" name="hatchery" id="close-edit-hatchery" placeholder="เช่น ฟาร์มพ่อแม่พันธุ์ ABC" value="${escapeHtml(c.hatchery||'')}">
+            <input type="text" name="hatchery" id="close-edit-hatchery" list="hatchery-options-close-edit" placeholder="เช่น ฟาร์มพ่อแม่พันธุ์ ABC" value="${escapeHtml(c.hatchery||'')}">
+            ${hatcheryDatalistHtml('hatchery-options-close-edit')}
           </div>
 
           <div class="form-section-label">ผลการจับ</div>
@@ -4547,7 +4637,7 @@ function renderPondFormPanel(){
           <div class="field"><label>จำนวนที่ปล่อย (ตัว)</label><input type="number" inputmode="numeric" step="1" min="0" name="releaseCount" value="${p.releaseCount||''}" placeholder="เช่น 500000"></div>
           <div class="field"><label>จำนวนที่ย้าย (ตัว)</label><input type="number" inputmode="numeric" step="1" min="0" name="transferInCount" value="${p.transferInCount||''}" placeholder="ถ้ามีย้ายมาจากบ่ออื่น"></div>
         </div>
-        <div class="field"><label>แบรนด์/บริษัทลูกกุ้ง</label><input name="brand" value="${escapeHtml(p.brand||'')}" placeholder="เช่น CP, ITF"></div>
+        <div class="field"><label>แบรนด์/บริษัทลูกกุ้ง</label><input name="brand" list="hatchery-options-pondform" value="${escapeHtml(p.brand||'')}" placeholder="เช่น CP, ITF">${hatcheryDatalistHtml('hatchery-options-pondform')}</div>
         <div class="btn-row">
           <button class="btn btn-secondary" type="button" id="btn-cancel-pond" style="flex:1">ยกเลิก</button>
           <button class="btn btn-primary" type="submit" style="flex:2">${editingPond?'บันทึกการแก้ไข':'เพิ่มบ่อ'}</button>
@@ -4681,6 +4771,7 @@ function bindDashboardEvents(){
         ? db.collection('ponds').doc(editingPond.id).update(data)
         : db.collection('ponds').add(data);
       write.catch((e)=>alert('บันทึกไม่สำเร็จ: '+e.message));
+      recordHatcheryNameIfNew(data.brand);
       closePondSheet();
     });
   }
@@ -4971,6 +5062,83 @@ function bindDashboardEvents(){
   const btnToggleClosureStats = document.getElementById('btn-toggle-closure-stats');
   if(btnToggleClosureStats) btnToggleClosureStats.onclick = ()=>{
     showClosureStats = !showClosureStats;
+    render();
+  };
+
+  if(currentFarmId==='closures') backfillHatcheryNamesIfNeeded();
+
+  const btnToggleMergeHatchery = document.getElementById('btn-toggle-merge-hatchery');
+  if(btnToggleMergeHatchery) btnToggleMergeHatchery.onclick = ()=>{
+    showMergeHatcherySheet = !showMergeHatcherySheet;
+    mergeHatcherySelected = new Set();
+    mergeHatcheryTarget = '';
+    mergeHatcheryTargetTouched = false;
+    mergeHatcheryResultHtml = '';
+    render();
+  };
+
+  document.querySelectorAll('.merge-hatchery-check').forEach(cb=>{
+    cb.onchange = ()=>{
+      const name = cb.value;
+      if(cb.checked) mergeHatcherySelected.add(name); else mergeHatcherySelected.delete(name);
+      if(!mergeHatcheryTargetTouched){
+        const top = hatcheryNameCounts().find(h=>mergeHatcherySelected.has(h.name));
+        mergeHatcheryTarget = top ? top.name : '';
+      }
+      render();
+    };
+  });
+
+  const mergeHatcheryTargetInput = document.getElementById('merge-hatchery-target');
+  if(mergeHatcheryTargetInput){
+    mergeHatcheryTargetInput.addEventListener('input', ()=>{
+      mergeHatcheryTarget = mergeHatcheryTargetInput.value;
+      mergeHatcheryTargetTouched = true;
+    });
+  }
+
+  const btnMergeHatchery = document.getElementById('btn-merge-hatchery');
+  if(btnMergeHatchery) btnMergeHatchery.onclick = async ()=>{
+    const oldNames = Array.from(mergeHatcherySelected);
+    const target = mergeHatcheryTarget.trim();
+    if(oldNames.length===0){ mergeHatcheryResultHtml = '<span style="color:var(--danger)">เลือกรายการที่จะรวมก่อน</span>'; render(); return; }
+    if(!target){ mergeHatcheryResultHtml = '<span style="color:var(--danger)">กรอกชื่อที่จะใช้แทน</span>'; render(); return; }
+    const namesToReplace = oldNames.filter(n=>n!==target);
+    if(namesToReplace.length===0){ mergeHatcheryResultHtml = 'ไม่มีอะไรต้องเปลี่ยน'; render(); return; }
+    if(!confirm(`เปลี่ยนชื่อ "${namesToReplace.join('", "')}" เป็น "${target}" ทั้งหมด (บ่อปัจจุบัน + ประวัติปิดบ่อ + ประวัติเก่า)? การกระทำนี้ย้อนกลับไม่ได้`)) return;
+
+    try{
+      const dataOps = [];
+      state.ponds.forEach(p=>{ if(p.brand && namesToReplace.includes(p.brand.trim())) dataOps.push(['ponds', p.id, { brand: target }]); });
+      state.closures.forEach(c=>{ if(c.hatchery && namesToReplace.includes(c.hatchery.trim())) dataOps.push(['closures', c.id, { hatchery: target }]); });
+      const batchSnap = await db.collection('batches').where('brand','in', namesToReplace.slice(0,10)).get().catch(()=>null);
+      if(batchSnap) batchSnap.docs.forEach(d=>dataOps.push(['batches', d.id, { brand: target }]));
+
+      // keep the hatcheryNames lookup collection (autocomplete source) in sync
+      const nameCleanupOps = state.hatcheryNames
+        .filter(h=>namesToReplace.includes(h.name))
+        .map(h=>['hatcheryNames', h.id, null]);
+      const hasTargetNameDoc = state.hatcheryNames.some(h=>h.name===target);
+
+      const ops = dataOps.concat(nameCleanupOps);
+      for(let i=0;i<ops.length;i+=400){
+        const chunk = ops.slice(i, i+400);
+        const writeBatch = db.batch();
+        chunk.forEach(([col,id,data])=>{
+          if(data===null) writeBatch.delete(db.collection(col).doc(id));
+          else writeBatch.update(db.collection(col).doc(id), data);
+        });
+        await writeBatch.commit();
+      }
+      if(!hasTargetNameDoc) await db.collection('hatcheryNames').add({ name: target });
+
+      mergeHatcheryResultHtml = `<span style="color:var(--teal-400)">รวมชื่อสำเร็จ (แก้ไข ${dataOps.length} รายการ)</span>`;
+      mergeHatcherySelected = new Set();
+      mergeHatcheryTarget = '';
+      mergeHatcheryTargetTouched = false;
+    }catch(e){
+      mergeHatcheryResultHtml = `<span style="color:var(--danger)">รวมชื่อไม่สำเร็จ: ${escapeHtml(e.message)}</span>`;
+    }
     render();
   };
 
@@ -5279,6 +5447,7 @@ function bindDashboardEvents(){
         await db.collection('closures').add(data);
         await archivePondCycle(pond);
       }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
+      recordHatcheryNameIfNew(hatchery);
       viewingClosePondId = null;
       currentPondId = null;
       render();
@@ -5373,6 +5542,7 @@ function bindDashboardEvents(){
       try{
         await db.collection('closures').doc(id).update(data);
       }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
+      recordHatcheryNameIfNew(hatchery);
       editingClosureId = null;
       render();
     });
