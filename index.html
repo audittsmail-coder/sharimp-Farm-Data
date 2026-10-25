@@ -399,7 +399,7 @@
   .stats-group-full{ grid-column:1 / -1; }
   .stats-group-full.sc-compare{ max-width:50%; }
   @media (max-width:700px){ .stats-group-full.sc-compare{ max-width:100%; } }
-  .stats-group-title{ font-size:15px; font-weight:700; color:var(--orange-hi); text-transform:uppercase; letter-spacing:.03em; margin-bottom:10px; display:flex; align-items:center; gap:7px; }
+  .stats-group-title{ font-size:15px; font-weight:700; color:var(--orange-hi); text-transform:uppercase; letter-spacing:.03em; margin-bottom:10px; display:inline-flex; align-items:center; gap:7px; border:1.5px solid var(--orange); border-radius:var(--radius-sm); background:var(--orange-soft); padding:6px 12px; }
   .stats-group-title::before{ content:''; width:10px; height:10px; border-radius:50%; background:linear-gradient(135deg, var(--teal-400), var(--teal-600)); flex:none; }
   .dist-bars{ display:flex; flex-direction:column; gap:8px; }
   .dist-bars.dist-bars-wide{ display:block; column-count:2; column-gap:26px; }
@@ -2029,8 +2029,8 @@ function hatcheryDistributionCardHtml(items){
   const merging = showMergeHatcherySheet;
   return `
     <div class="stats-group${wide ? ' stats-group-full' : ''}">
-      <div class="stats-group-title" style="justify-content:space-between;">
-        <span style="display:flex;align-items:center;gap:7px;">ลูกกุ้งจากไหน</span>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+        <div class="stats-group-title" style="margin-bottom:0;">ลูกกุ้งจากไหน</div>
         <button type="button" id="btn-toggle-merge-hatchery" class="action-btn" style="font-size:10.5px;padding:3px 9px;">${merging ? 'ปิด' : 'เลือกเพื่อรวมชื่อซ้ำ'}</button>
       </div>
       <div class="dist-bars${wide ? ' dist-bars-wide' : ''}">
