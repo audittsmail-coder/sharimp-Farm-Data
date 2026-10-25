@@ -2011,7 +2011,7 @@ function distributionCardHtml(title, items, opts){
             <div class="dist-bar-track">
               <div class="dist-bar-fill ${rankClass(i)}" style="width:${it.pct}%"></div>
             </div>
-            <div class="dist-bar-meta">${it.pct.toFixed(0)}%<span class="dist-bar-count">(${it.count})</span>${opts.showSurvival && it.avgSurvival!=null ? `<span class="dist-bar-survival">รอด ${it.avgSurvival.toFixed(0)}%</span>` : ''}</div>
+            <div class="dist-bar-meta">${opts.hidePct ? `${it.count} บ่อ` : `${it.pct.toFixed(0)}%<span class="dist-bar-count">(${it.count})</span>`}${opts.showSurvival && it.avgSurvival!=null ? `<span class="dist-bar-survival">รอด ${it.avgSurvival.toFixed(0)}%</span>` : ''}</div>
           </div>
         `).join('')}
       </div>
@@ -2077,7 +2077,7 @@ function renderClosuresSummary(tabs){
           if(!c.diseaseType) return null;
           const year = c.closeDate && c.closeDate.length>=4 ? c.closeDate.slice(0,4) : null;
           return year ? `${c.diseaseType.trim()} · ${year}` : c.diseaseType.trim();
-        }), {showSurvival:true}) +
+        }), {showSurvival:true, hidePct:true}) +
         distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate))) +
         yearlyWeightGroupHtml(closures) +
         sizeCompareGroupHtml(closures);
