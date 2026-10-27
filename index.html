@@ -1126,6 +1126,7 @@ let marketPriceChartMonth = null;
 let marketPriceFormDate = null;
 let bulkPriceImportResultHtml = '';
 let showClosureStats = false;
+let showRecordForm = false;
 let showMergeHatcherySheet = false;
 let mergeHatcherySelected = new Set();
 let mergeHatcheryTarget = '';
@@ -3342,7 +3343,11 @@ function renderPondDetail(){
       </div>
 
       <div class="card" id="record-form-card">
-        <h3>${editingRecordId ? 'แก้ไขข้อมูลบันทึก' : 'บันทึกข้อมูลสัปดาห์นี้'}</h3>
+        <div class="farm-title-row" style="margin-bottom:${(showRecordForm||editingRecordId)?'14px':'0'};">
+          <h3 style="margin:0;">${editingRecordId ? 'แก้ไขข้อมูลบันทึก' : 'บันทึกข้อมูลสัปดาห์นี้'}</h3>
+          ${editingRecordId ? '' : `<button type="button" id="btn-toggle-record-form" class="action-btn">${showRecordForm ? 'ปิด' : '+ บันทึกข้อมูล'}</button>`}
+        </div>
+        ${(showRecordForm||editingRecordId) ? `
         <form id="record-form">
           <div class="field-row record-top-row">
             <div class="field">
@@ -3385,7 +3390,7 @@ function renderPondDetail(){
             ${editingRecordId ? `<button class="btn btn-sm btn-secondary" type="button" id="btn-cancel-edit-record">ยกเลิก</button>` : ''}
             <button class="btn btn-sm btn-primary record-save-btn" type="submit">${editingRecordId ? 'บันทึกการแก้ไข' : 'บันทึก'}</button>
           </div>
-        </form>
+        </form>` : ''}
       </div>
 
       ${pathogenLatestHtml}
@@ -4821,6 +4826,7 @@ function bindDashboardEvents(){
       viewingTransferPondId = null;
       comparingBatchId = null;
       choosingCompareBatch = false;
+      showRecordForm = false;
       markPondViewed(currentPondId);
       render();
     };
@@ -5186,6 +5192,7 @@ function bindDashboardEvents(){
       viewingClosePondId = null;
       viewingBiomassPondId = null;
       viewingBatchId = null;
+      showRecordForm = false;
       markPondViewed(currentPondId);
       render();
     };
@@ -5257,7 +5264,7 @@ function bindDashboardEvents(){
     };
   });
 
-  bindClickByIds(['btn-back','btn-back-bottom'], ()=>{ currentPondId=null; editingRecordId=null; viewingHarvestPondId=null; render(); });
+  bindClickByIds(['btn-back','btn-back-bottom'], ()=>{ currentPondId=null; editingRecordId=null; viewingHarvestPondId=null; showRecordForm=false; render(); });
 
   const btnEditPond = document.getElementById('btn-edit-pond');
   if(btnEditPond) btnEditPond.onclick = ()=>{
@@ -5763,6 +5770,12 @@ function bindDashboardEvents(){
   const btnCancelEditRecord = document.getElementById('btn-cancel-edit-record');
   if(btnCancelEditRecord) btnCancelEditRecord.onclick = ()=>{ editingRecordId=null; render(); };
 
+  const btnToggleRecordForm = document.getElementById('btn-toggle-record-form');
+  if(btnToggleRecordForm) btnToggleRecordForm.onclick = ()=>{
+    showRecordForm = !showRecordForm;
+    render();
+  };
+
   document.querySelectorAll('[data-del-record]').forEach(btn=>{
     btn.onclick = async ()=>{
       if(!confirm('ลบข้อมูลบันทึกนี้?')) return;
@@ -5851,6 +5864,7 @@ function bindDashboardEvents(){
         batch.set(db.collection('records').doc(), data);
       }
       await batch.commit().catch((e)=>alert('บันทึกไม่สำเร็จ: '+e.message));
+      showRecordForm = false;
       render();
     });
   }
