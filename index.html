@@ -1783,10 +1783,13 @@ function render(){
     let panelHtml = '';
     if(showSettingsSheet && !showDeleteAllConfirm) panelHtml += renderSettingsPanel();
     if(showDeleteAllConfirm) panelHtml += renderDeleteAllConfirmPanel();
-    if(showPondFormSheet) panelHtml += renderPondFormPanel();
     if(panelHtml) html += `<div style="padding:14px 16px 0 16px">${panelHtml}</div>`;
 
-    if(editingClosureId){
+    if(showPondFormSheet){
+      // Own page instead of an overlay on top of the pond-detail/overview
+      // content behind it — showing both at once was confusing.
+      html += `<div style="padding:14px 16px 0 16px">${renderPondFormPanel()}</div>`;
+    } else if(editingClosureId){
       html += renderClosureEditForm();
     } else if(viewingClosePondId){
       html += renderCloseForm();
@@ -1811,7 +1814,8 @@ function render(){
     app.innerHTML = html;
     bindDashboardEvents();
 
-    if(editingClosureId){ /* no charts on the closure-edit page */ }
+    if(showPondFormSheet){ /* no charts on the edit/add-pond page */ }
+    else if(editingClosureId){ /* no charts on the closure-edit page */ }
     else if(viewingClosePondId){ /* no charts on the close-pond page */ }
     else if(viewingBiomassPondId){ /* no charts on the biomass calculator page */ }
     else if(viewingHarvestPondId){ /* no charts on the harvest page */ }
