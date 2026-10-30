@@ -395,6 +395,7 @@
   .stats-group-full.sc-compare{ max-width:50%; }
   @media (max-width:700px){ .stats-group-full.sc-compare{ max-width:100%; } }
   .stats-group{ border:1.5px solid var(--teal-400); border-radius:var(--radius-sm); padding:12px 14px; }
+  .stats-group.stats-group-disease{ border-color:var(--coral-hi); }
   .stats-group-title{ font-size:15px; font-weight:700; color:var(--orange-hi); text-transform:uppercase; letter-spacing:.03em; margin-bottom:10px; display:flex; align-items:center; gap:7px; }
   .stats-group-title::before{ content:''; width:10px; height:10px; border-radius:50%; background:linear-gradient(135deg, var(--teal-400), var(--teal-600)); flex:none; }
   .dist-bars{ display:flex; flex-direction:column; gap:8px; }
@@ -2003,7 +2004,7 @@ function distributionCardHtml(title, items, opts){
   // columns instead of hiding anything — every item still shows.
   const wide = items.length > 6;
   return `
-    <div class="stats-group${wide ? ' stats-group-full' : ''}">
+    <div class="stats-group${wide ? ' stats-group-full' : ''}${opts.cardClass ? ' '+opts.cardClass : ''}">
       <div class="stats-group-title">${escapeHtml(title)}</div>
       <div class="dist-bars${wide ? ' dist-bars-wide' : ''}">
         ${items.map((it,i)=>`
@@ -2078,7 +2079,7 @@ function renderClosuresSummary(tabs){
           if(!c.diseaseType) return null;
           const year = c.closeDate && c.closeDate.length>=4 ? c.closeDate.slice(0,4) : null;
           return year ? `${c.diseaseType.trim()} · ${year}` : c.diseaseType.trim();
-        }), {hidePct:true, totalCount: closures.length}) +
+        }), {hidePct:true, totalCount: closures.length, cardClass:'stats-group-disease'}) +
         distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate))) +
         yearlyWeightGroupHtml(closures) +
         sizeCompareGroupHtml(closures);
