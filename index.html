@@ -1836,9 +1836,9 @@ function render(){
 function renderFarmDashboard(){
   const tabs = `<button class="farm-tab ${currentFarmId==='overview'?'active':''}" data-farm="overview">ภาพรวม</button>` +
     `<button class="farm-tab ${currentFarmId==='marketprice'?'active':''}" data-farm="marketprice">ราคาตลาด</button>` +
-    `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>` +
     `<button class="farm-tab ${currentFarmId==='registry'?'active':''}" data-farm="registry">ทะเบียนฟาร์ม</button>` +
-    `<button class="farm-tab ${currentFarmId==='breakeven'?'active':''}" data-farm="breakeven">คำนวณจุดคุ้มทุน</button>`;
+    `<button class="farm-tab ${currentFarmId==='breakeven'?'active':''}" data-farm="breakeven">คำนวณจุดคุ้มทุน</button>` +
+    `<button class="farm-tab ${currentFarmId==='closures'?'active':''}" data-farm="closures">สรุปผลที่ผ่านมา</button>`;
 
   if(currentFarmId === 'overview') return renderOverviewDashboard(tabs);
   if(currentFarmId === 'closures') return renderClosuresSummary(tabs);
