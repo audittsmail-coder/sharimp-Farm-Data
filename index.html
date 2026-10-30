@@ -3349,12 +3349,17 @@ function renderPondDetail(){
         </div>
         ${(showRecordForm||editingRecordId) ? `
         <form id="record-form">
+          <div class="field">
+            <label>วันที่บันทึก</label>
+            <input type="hidden" name="weekDate" id="record-week-date" value="${editingRecordThisRender ? editingRecordThisRender.weekDate : todayISO()}">
+            <button type="button" class="dp-trigger" id="record-week-date-btn">${escapeHtml(fmtDate(editingRecordThisRender ? editingRecordThisRender.weekDate : todayISO()))}</button>
+            <div class="hint" id="record-doc-hint">${p.releaseDate ? 'อายุกุ้ง ณ วันที่บันทึก: '+daysBetween(p.releaseDate, editingRecordThisRender ? editingRecordThisRender.weekDate : todayISO())+' วัน' : 'ยังไม่ได้ระบุวันที่ปล่อยกุ้งของบ่อนี้'}</div>
+          </div>
+
           <div class="field-row record-top-row">
             <div class="field">
-              <label>วันที่บันทึก</label>
-              <input type="hidden" name="weekDate" id="record-week-date" value="${editingRecordThisRender ? editingRecordThisRender.weekDate : todayISO()}">
-              <button type="button" class="dp-trigger" id="record-week-date-btn">${escapeHtml(fmtDate(editingRecordThisRender ? editingRecordThisRender.weekDate : todayISO()))}</button>
-              <div class="hint" id="record-doc-hint">${p.releaseDate ? 'อายุกุ้ง ณ วันที่บันทึก: '+daysBetween(p.releaseDate, editingRecordThisRender ? editingRecordThisRender.weekDate : todayISO())+' วัน' : 'ยังไม่ได้ระบุวันที่ปล่อยกุ้งของบ่อนี้'}</div>
+              <label>ไซส์กุ้ง (ตัว/กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="sizeCount" placeholder="เช่น 60" value="${editingRecordThisRender && editingRecordThisRender.sizeCount!=null ? editingRecordThisRender.sizeCount : ''}">
             </div>
             <div class="field">
               <label>อาหารต่อวัน (กก.)</label>
@@ -3369,17 +3374,13 @@ function renderPondDetail(){
           <div class="form-section-label">ข้อมูลสุ่มกุ้ง (ไม่บังคับ)</div>
           <div class="field-row record-size-row">
             <div class="field">
-              <label>ไซส์กุ้ง (ตัว/กก.)</label>
-              <input type="number" inputmode="decimal" step="0.1" name="sizeCount" placeholder="เช่น 60" value="${editingRecordThisRender && editingRecordThisRender.sizeCount!=null ? editingRecordThisRender.sizeCount : ''}">
+              <label>อาหารสะสมทั้งหมด (กก.)</label>
+              <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" placeholder="เช่น 3200" value="${editingRecordThisRender && editingRecordThisRender.totalFeedKg!=null ? editingRecordThisRender.totalFeedKg : ''}">
+              <div class="hint">สะสมตั้งแต่ปล่อยกุ้ง ใช้คำนวณ FCR (อัตราแลกเนื้อ) โดยประมาณให้</div>
             </div>
             <div class="field">
               <label>อัตรารอด (%)</label>
               <input type="number" inputmode="decimal" step="0.1" min="0" max="100" name="survivalRate" placeholder="เช่น 85" value="${editingRecordThisRender && editingRecordThisRender.survivalRate!=null ? editingRecordThisRender.survivalRate : ''}">
-            </div>
-            <div class="field">
-              <label>อาหารสะสมทั้งหมด (กก.)</label>
-              <input type="number" inputmode="decimal" step="0.1" name="totalFeedKg" placeholder="เช่น 3200" value="${editingRecordThisRender && editingRecordThisRender.totalFeedKg!=null ? editingRecordThisRender.totalFeedKg : ''}">
-              <div class="hint">สะสมตั้งแต่ปล่อยกุ้ง ใช้คำนวณ FCR (อัตราแลกเนื้อ) โดยประมาณให้</div>
             </div>
           </div>
           <div class="field">
