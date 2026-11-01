@@ -1947,7 +1947,10 @@ function renderOverviewDashboard(tabs){
         <tr class="ov-zone-row"><td colspan="6">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
             <span>${escapeHtml(farm.name)} · ${ponds.length} บ่อ</span>
-            <button type="button" class="action-btn" data-rename-farm="${farm.id}" style="font-size:10.5px; padding:3px 9px; text-transform:none; letter-spacing:normal;">${ICONS.edit} แก้ไขชื่อฟาร์ม</button>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button type="button" class="action-btn" data-rename-farm="${farm.id}" style="font-size:10.5px; padding:3px 9px; text-transform:none; letter-spacing:normal;">${ICONS.edit} แก้ไขชื่อฟาร์ม</button>
+              ${ponds.length === 0 ? `<button type="button" class="action-btn danger" data-delete-farm="${farm.id}" style="font-size:10.5px; padding:3px 9px; text-transform:none; letter-spacing:normal;">${ICONS.trash} ลบฟาร์ม</button>` : ''}
+            </div>
           </div>
         </td></tr>`;
       if(ponds.length === 0){
@@ -4789,6 +4792,23 @@ function bindDashboardEvents(){
         await db.collection('farms').doc(id).update({ name: name.trim() })
           .catch((e)=>alert('บันทึกไม่สำเร็จ: '+e.message));
       }
+    };
+  });
+
+  document.querySelectorAll('[data-delete-farm]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id = btn.getAttribute('data-delete-farm');
+      const farm = state.farms.find(f=>f.id===id);
+      if(!farm) return;
+      // only ever offered when the farm has 0 live ponds, but re-check at
+      // click time in case a pond was added to it since this render.
+      if(pondsForFarm(id).some(p=>!isPondClosed(p))){
+        alert('ฟาร์มนี้ยังมีบ่ออยู่ ลบไม่ได้ ต้องลบ/ย้ายบ่อออกก่อน');
+        return;
+      }
+      if(!confirm(`ลบฟาร์ม "${farm.name}"? การกระทำนี้ย้อนกลับไม่ได้`)) return;
+      await db.collection('farms').doc(id).delete()
+        .catch((e)=>alert('ลบไม่สำเร็จ: '+e.message));
     };
   });
 
