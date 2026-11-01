@@ -1986,13 +1986,11 @@ function renderOverviewDashboard(tabs){
   return `
     <div class="farm-tabs">${tabs}</div>
     <main>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-        <button type="button" class="action-btn" id="btn-add-farm-overview">${ICONS.plus} เพิ่มฟาร์มใหม่</button>
-      </div>
       <div class="farm-title-row">
         <h2>ภาพรวมทุกฟาร์ม</h2>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <button class="action-btn accent add-pond-trigger" id="btn-add-pond-overview" type="button">${ICONS.plus} เพิ่มบ่อใหม่</button>
+          <button type="button" class="action-btn" id="btn-add-farm-overview">${ICONS.plus} เพิ่มฟาร์มใหม่</button>
           ${sortSelectHtml}
         </div>
       </div>
