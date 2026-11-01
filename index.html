@@ -1945,7 +1945,12 @@ function renderOverviewDashboard(tabs){
   } else {
     const trs = groups.map(({farm, ponds})=>{
       const zoneRow = `
-        <tr class="ov-zone-row"><td colspan="6">${escapeHtml(farm.name)} · ${ponds.length} บ่อ</td></tr>`;
+        <tr class="ov-zone-row"><td colspan="6">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <span>${escapeHtml(farm.name)} · ${ponds.length} บ่อ</span>
+            <button type="button" class="action-btn" data-rename-farm="${farm.id}" style="font-size:10.5px; padding:3px 9px; text-transform:none; letter-spacing:normal;">${ICONS.edit} แก้ไขชื่อฟาร์ม</button>
+          </div>
+        </td></tr>`;
       const pondRows = ponds.map(({pond, doc, last, adg, sampleDayInfoResult})=>{
         const speciesShort = pond.species ? pond.species.split('(')[0].trim() : '';
         const isNew = isPondRecentlyUpdated(pond);
@@ -1983,7 +1988,6 @@ function renderOverviewDashboard(tabs){
     <main>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
         <button type="button" class="action-btn" id="btn-add-farm-overview">${ICONS.plus} เพิ่มฟาร์มใหม่</button>
-        <button type="button" class="action-btn" id="btn-rename-farm-overview">${ICONS.edit} แก้ไขชื่อฟาร์ม</button>
       </div>
       <div class="farm-title-row">
         <h2>ภาพรวมทุกฟาร์ม</h2>
@@ -4801,20 +4805,6 @@ function bindDashboardEvents(){
     }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
   };
 
-  const btnRenameFarmOverview = document.getElementById('btn-rename-farm-overview');
-  if(btnRenameFarmOverview) btnRenameFarmOverview.onclick = async ()=>{
-    if(state.farms.length===0){ alert('ยังไม่มีฟาร์มในระบบ'); return; }
-    const list = state.farms.map(f=>f.name).join('\n');
-    const typed = prompt(`พิมพ์ชื่อฟาร์มที่จะแก้ไขให้ตรงกับรายการนี้:\n${list}`);
-    if(!typed || !typed.trim()) return;
-    const farm = state.farms.find(f=>f.name.trim()===typed.trim());
-    if(!farm){ alert('ไม่พบฟาร์มชื่อนี้ กรุณาพิมพ์ให้ตรงกับรายการ'); return; }
-    const name = prompt('ชื่อฟาร์มใหม่:', farm.name);
-    if(!name || !name.trim()) return;
-    try{
-      await db.collection('farms').doc(farm.id).update({ name: name.trim() });
-    }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
-  };
 
   document.querySelectorAll('[data-open-pond]').forEach(card=>{
     card.onclick = ()=>{
