@@ -1905,8 +1905,7 @@ function renderOverviewDashboard(tabs){
         const sampleDayInfoResult = sampleDayInfo(recs);
         return { pond, doc, last, adg, sampleDayInfoResult };
       }),
-    }))
-    .filter(g => g.ponds.length > 0);
+    }));
 
   const sortKeyFns = {
     size: it => (it.last && it.last.sizeCount!=null) ? it.last.sizeCount : null,
@@ -1935,7 +1934,7 @@ function renderOverviewDashboard(tabs){
     </select>`;
 
   let bodyHtml;
-  if(groups.length === 0){
+  if(state.farms.length === 0){
     bodyHtml = `
       <div class="empty-state">
         ${ICONS.shrimp}
@@ -1951,6 +1950,9 @@ function renderOverviewDashboard(tabs){
             <button type="button" class="action-btn" data-rename-farm="${farm.id}" style="font-size:10.5px; padding:3px 9px; text-transform:none; letter-spacing:normal;">${ICONS.edit} แก้ไขชื่อฟาร์ม</button>
           </div>
         </td></tr>`;
+      if(ponds.length === 0){
+        return zoneRow + `<tr style="cursor:default;"><td colspan="6" style="text-align:center; color:var(--ink-faint); padding:14px;">ยังไม่มีบ่อในฟาร์มนี้ กด "+ เพิ่มบ่อใหม่" ด้านบนเพื่อเริ่ม</td></tr>`;
+      }
       const pondRows = ponds.map(({pond, doc, last, adg, sampleDayInfoResult})=>{
         const speciesShort = pond.species ? pond.species.split('(')[0].trim() : '';
         const isNew = isPondRecentlyUpdated(pond);
@@ -4799,7 +4801,10 @@ function bindDashboardEvents(){
     const name = prompt('ชื่อฟาร์มใหม่:');
     if(!name || !name.trim()) return;
     try{
-      await db.collection('farms').add({ name: name.trim() });
+      // the farms listener is `orderBy('order')`, which silently excludes any
+      // doc missing that field — a farm added without one would never show up.
+      const nextOrder = state.farms.reduce((max,f)=> Math.max(max, f.order||0), -1) + 1;
+      await db.collection('farms').add({ name: name.trim(), order: nextOrder });
     }catch(e){ alert('บันทึกไม่สำเร็จ: '+e.message); }
   };
 
