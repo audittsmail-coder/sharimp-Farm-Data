@@ -136,8 +136,13 @@
     display:block; width:100%; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3); color:#fff;
     font-size:13px; padding:8px 10px; font-family:inherit; border-radius:var(--radius-sm); color-scheme:dark;
   }
-  .wb-manual-edit input[type=date], .wb-manual-edit select{ max-width:240px; }
+  .wb-manual-edit select{ max-width:240px; }
   .wb-manual-edit input + input, .wb-manual-edit input + select, .wb-manual-edit select + input, .wb-manual-edit select + select{ margin-top:8px; }
+  .wb-manual-edit .dp-trigger{
+    display:block; width:100%; max-width:240px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3);
+    color:#fff; font-size:13px; padding:8px 10px; font-family:inherit; border-radius:var(--radius-sm); box-shadow:none;
+  }
+  .wb-manual-edit .dp-trigger + select{ margin-top:8px; }
   .wb-manual-edit input::placeholder{ color:rgba(255,255,255,.5); }
   .wb-manual-edit-actions{ display:flex; gap:8px; margin-top:8px; }
   .wb-manual-edit-actions button:first-child{ background:rgba(255,255,255,.92); color:var(--teal-700); border-color:transparent; }
@@ -333,7 +338,7 @@
   .dp-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:14px; }
   .field-row{ display:flex; flex-wrap:nowrap; gap:10px; }
   .field-row > .field{ flex:1 1 200px; min-width:0; }
-  .field-row > .field:has(input[type=number]), .field-row > .field:has(input[type=date]){ flex:0 1 220px; }
+  .field-row > .field:has(input[type=number]), .field-row > .field:has(input[type=date]), .field-row > .field:has(.dp-trigger){ flex:0 1 220px; }
   .hint{ font-size:11.5px; color:var(--ink-faint); margin-top:5px; }
   #record-form .record-size-row{ flex-wrap:wrap; row-gap:14px; }
   #record-form .record-top-row{ display:grid; grid-template-columns:1fr; row-gap:10px; }
@@ -625,7 +630,7 @@
     padding:8px 10px; font-size:13px;
   }
   .mp-card .field input[type=number], .mp-card .field input[type=date]{ max-width:150px; }
-  .mp-card .field-row > .field:has(input[type=number]), .mp-card .field-row > .field:has(input[type=date]){ flex:0 1 150px; }
+  .mp-card .field-row > .field:has(input[type=number]), .mp-card .field-row > .field:has(input[type=date]), .mp-card .field-row > .field:has(.dp-trigger){ flex:0 1 150px; }
   .mp-card .field-row{ gap:8px; }
   .mp-existing-badge{ color:#22C55E; font-weight:700; font-size:11px; text-transform:none; letter-spacing:0; }
   .mp-card .btn{ padding:9px 14px; font-size:12.5px; }
@@ -1049,7 +1054,7 @@ function weatherManualNoteHtml(){
     const selectedValue = existingText === '' ? '' : (isPreset ? existingText : otherOption);
     return `
       <div class="wb-manual-edit">
-        <input type="date" id="weather-note-date" max="${todayISO()}" value="${editDate}">
+        ${dateTriggerFieldHtml('weatherNoteDate', 'weather-note-date', editDate)}
         <select id="weather-note-select">
           <option value="" ${selectedValue===''?'selected':''}>-- เลือกสภาพอากาศ --</option>
           ${WEATHER_NOTE_OPTIONS.map(opt=>`<option value="${escapeHtml(opt)}" ${selectedValue===opt?'selected':''}>${escapeHtml(opt)}</option>`).join('')}
@@ -1218,6 +1223,31 @@ function renderDatePicker(){
   dpState.overlayEl.querySelectorAll('[data-dp-day]').forEach(btn=>{
     btn.onclick = ()=>{ dpState.onSelect(btn.getAttribute('data-dp-day')); closeDatePicker(); };
   });
+}
+
+// Shared markup + binding for every date field in the app, so they all open
+// the app's own calendar (openDatePicker) instead of the browser/OS native
+// date picker. The real value lives in a hidden input (still picked up by
+// FormData on submit like any other field); the visible button just shows
+// it formatted in Thai.
+function dateTriggerFieldHtml(name, id, iso, placeholder){
+  return `<input type="hidden" name="${name}" id="${id}" value="${iso||''}">
+    <button type="button" class="dp-trigger" id="${id}-btn">${iso ? escapeHtml(fmtDate(iso)) : (placeholder||'เลือกวันที่')}</button>`;
+}
+function bindDateTrigger(id, opts){
+  opts = opts || {};
+  const input = document.getElementById(id);
+  const btn = document.getElementById(id+'-btn');
+  if(!input || !btn) return;
+  btn.onclick = ()=>{
+    const max = opts.max!==undefined ? opts.max : todayISO();
+    const marked = (typeof opts.markedDates === 'function') ? opts.markedDates() : (opts.markedDates||[]);
+    openDatePicker(input.value, max, (iso)=>{
+      input.value = iso;
+      btn.textContent = fmtDate(iso);
+      if(opts.onChange) opts.onChange(iso);
+    }, marked);
+  };
 }
 
 /* ---------------- Data layer (Firestore, real-time sync + offline cache) ---------------- */
@@ -2353,7 +2383,7 @@ function renderMarketPriceTab(tabs){
         <form id="market-price-form">
           <div class="field">
             <label>วันที่</label>
-            <input type="date" name="date" id="mp-date" value="${marketPriceFormDate || todayISO()}" required>
+            ${dateTriggerFieldHtml('date', 'mp-date', marketPriceFormDate || todayISO())}
           </div>
           <div id="mp-rows">
             ${[40,50,60,70,80,90].map(s=>marketPriceQuickRowHtml(s, marketPriceFormDate || todayISO())).join('')}
@@ -3538,7 +3568,7 @@ function renderHarvestForm(){
           <div class="field-row">
             <div class="field">
               <label>วันที่จับ</label>
-              <input type="date" name="harvestDate" id="harvest-date" value="${todayISO()}" required>
+              ${dateTriggerFieldHtml('harvestDate', 'harvest-date', todayISO())}
             </div>
             <div class="field">
               <label>ไซส์ที่จับ (ตัว/กก.)</label>
@@ -3642,7 +3672,7 @@ function renderTransferForm(){
         <form id="transfer-form">
           <div class="field">
             <label>วันที่ย้าย</label>
-            <input type="date" name="transferDate" id="transfer-date" value="${todayISO()}" required>
+            ${dateTriggerFieldHtml('transferDate', 'transfer-date', todayISO())}
           </div>
           <div class="field-row">
             <div class="field">
@@ -3720,7 +3750,7 @@ function renderCloseForm(){
           <div class="field-row">
             <div class="field">
               <label>วันที่จับ</label>
-              <input type="date" name="closeDate" id="close-date" value="${todayISO()}" required>
+              ${dateTriggerFieldHtml('closeDate', 'close-date', todayISO())}
             </div>
             <div class="field">
               <label>จำนวนวันที่เลี้ยง (วัน)</label>
@@ -3908,7 +3938,7 @@ function renderClosureEditForm(){
           <div class="field-row">
             <div class="field">
               <label>วันที่จับ</label>
-              <input type="date" name="closeDate" id="close-edit-date" value="${c.closeDate||todayISO()}" required>
+              ${dateTriggerFieldHtml('closeDate', 'close-edit-date', c.closeDate||todayISO())}
             </div>
             <div class="field">
               <label>จำนวนวันที่เลี้ยง (วัน)</label>
@@ -4655,7 +4685,7 @@ function renderPondFormPanel(){
           ${editingPond ? `<input type="hidden" name="farmId" value="${editingPond.farmId}">` : ''}
         </div>
         <div class="field-row">
-          <div class="field"><label>วันที่ปล่อยกุ้ง</label><input type="date" name="releaseDate" value="${p.releaseDate || (editingPond ? '' : todayISO())}"></div>
+          <div class="field"><label>วันที่ปล่อยกุ้ง</label>${dateTriggerFieldHtml('releaseDate', 'pond-release-date', p.releaseDate || (editingPond ? '' : todayISO()), 'ยังไม่ได้ระบุ')}</div>
           <div class="field"><label>ชนิดกุ้ง</label>
             <select name="species"><option value="">เลือกชนิด</option>${speciesOpts}</select>
           </div>
@@ -4754,6 +4784,7 @@ function bindDashboardEvents(){
 
   const pondFormEl = document.getElementById('pond-form');
   if(pondFormEl){
+    bindDateTrigger('pond-release-date', {});
     const cancelPondBtn = document.getElementById('btn-cancel-pond');
     if(cancelPondBtn) cancelPondBtn.onclick = closePondSheet;
 
@@ -4872,11 +4903,9 @@ function bindDashboardEvents(){
   };
   const btnSaveWeatherNote = document.getElementById('btn-save-weather-note');
   if(btnSaveWeatherNote) btnSaveWeatherNote.onclick = saveWeatherNote;
-  const weatherNoteDateInput = document.getElementById('weather-note-date');
-  if(weatherNoteDateInput) weatherNoteDateInput.onchange = ()=>{
-    editingWeatherNoteDate = weatherNoteDateInput.value || todayISO();
-    render();
-  };
+  bindDateTrigger('weather-note-date', {
+    onChange: (iso)=>{ editingWeatherNoteDate = iso || todayISO(); render(); },
+  });
   const weatherNoteSelect = document.getElementById('weather-note-select');
   const weatherNoteCustom = document.getElementById('weather-note-custom');
   if(weatherNoteSelect && weatherNoteCustom){
@@ -4896,15 +4925,14 @@ function bindDashboardEvents(){
 
   const marketPriceForm = document.getElementById('market-price-form');
   if(marketPriceForm){
-    const mpDateInput = document.getElementById('mp-date');
-    if(mpDateInput){
-      mpDateInput.addEventListener('input', ()=>{
-        if(mpDateInput.value && mpDateInput.value !== marketPriceFormDate){
-          marketPriceFormDate = mpDateInput.value;
+    bindDateTrigger('mp-date', {
+      onChange: (iso)=>{
+        if(iso && iso !== marketPriceFormDate){
+          marketPriceFormDate = iso;
           render();
         }
-      });
-    }
+      },
+    });
     marketPriceForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const fd = new FormData(marketPriceForm);
@@ -5374,7 +5402,6 @@ function bindDashboardEvents(){
 
   const closeForm = document.getElementById('close-form');
   if(closeForm){
-    const cDate = closeForm.querySelector('#close-date');
     const cDoc = closeForm.querySelector('#close-doc');
     const cReleaseCount = closeForm.querySelector('#close-releasecount');
     const cSize = closeForm.querySelector('#close-size');
@@ -5394,12 +5421,12 @@ function bindDashboardEvents(){
 
     let docManuallyEdited = false;
     if(cDoc) cDoc.addEventListener('input', ()=>{ docManuallyEdited = true; });
-    if(cDate && cDoc && pond && pond.releaseDate){
-      cDate.addEventListener('input', ()=>{
-        if(docManuallyEdited || !cDate.value) return;
-        cDoc.value = daysBetween(pond.releaseDate, cDate.value);
-      });
-    }
+    bindDateTrigger('close-date', {
+      onChange: (iso)=>{
+        if(docManuallyEdited || !cDoc || !pond || !pond.releaseDate) return;
+        cDoc.value = daysBetween(pond.releaseDate, iso);
+      },
+    });
 
     const updateCalc = ()=>{
       const releaseCount = cReleaseCount.value ? parseFloat(cReleaseCount.value) : null;
@@ -5495,6 +5522,7 @@ function bindDashboardEvents(){
 
   const closeEditForm = document.getElementById('close-edit-form');
   if(closeEditForm){
+    bindDateTrigger('close-edit-date', {});
     const editingClosure = state.closures.find(x=>x.id===editingClosureId);
     const eSize = closeEditForm.querySelector('#close-edit-size');
     const ePrice = closeEditForm.querySelector('#close-edit-price');
@@ -5597,6 +5625,7 @@ function bindDashboardEvents(){
 
   const harvestForm = document.getElementById('harvest-form');
   if(harvestForm){
+    bindDateTrigger('harvest-date', {});
     const hWeightInput = harvestForm.querySelector('input[name=weightKg]');
     const hSizeInput = harvestForm.querySelector('input[name=sizeCount]');
     const hPreviewRemaining = document.getElementById('harvest-preview-remaining');
@@ -5664,6 +5693,7 @@ function bindDashboardEvents(){
 
   const transferForm = document.getElementById('transfer-form');
   if(transferForm){
+    bindDateTrigger('transfer-date', {});
     const tCountInput = transferForm.querySelector('input[name=count]');
     const tWeightInput = transferForm.querySelector('input[name=weightKg]');
     const tPreviewRemaining = document.getElementById('transfer-preview-remaining');
