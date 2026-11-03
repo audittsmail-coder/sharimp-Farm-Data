@@ -328,6 +328,7 @@
   .dp-day.dp-disabled{ color:var(--ink-faint); opacity:.4; cursor:default; }
   .dp-day.dp-today{ border:1.5px solid var(--teal-500); }
   .dp-day.dp-selected{ background:var(--teal-500); color:#fff; }
+  .dp-day.dp-marked{ box-shadow:inset 0 0 0 1.5px var(--amber); }
   .dp-day.dp-empty{ cursor:default; }
   .dp-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:14px; }
   .field-row{ display:flex; flex-wrap:nowrap; gap:10px; }
@@ -1152,10 +1153,10 @@ function closeDatePicker(){
   dpState = null;
 }
 
-function openDatePicker(selectedISO, maxISO, onSelect){
+function openDatePicker(selectedISO, maxISO, onSelect, markedISOs){
   closeDatePicker();
   const base = new Date((selectedISO || maxISO)+'T00:00:00');
-  dpState = { viewYear: base.getFullYear(), viewMonth: base.getMonth(), selectedISO, maxISO, onSelect };
+  dpState = { viewYear: base.getFullYear(), viewMonth: base.getMonth(), selectedISO, maxISO, onSelect, markedDates: new Set(markedISOs||[]) };
   const overlay = document.createElement('div');
   overlay.className = 'dp-overlay';
   overlay.onclick = (e)=>{ if(e.target===overlay) closeDatePicker(); };
@@ -1183,7 +1184,8 @@ function renderDatePicker(){
     const disabled = iso > maxISO;
     const isSelected = iso === selectedISO;
     const isToday = iso === today;
-    cells += `<button type="button" class="dp-day${disabled?' dp-disabled':''}${isSelected?' dp-selected':''}${(isToday && !isSelected)?' dp-today':''}" data-dp-day="${iso}"${disabled?' disabled':''}>${day}</button>`;
+    const isMarked = dpState.markedDates.has(iso);
+    cells += `<button type="button" class="dp-day${disabled?' dp-disabled':''}${isSelected?' dp-selected':''}${(isToday && !isSelected)?' dp-today':''}${isMarked?' dp-marked':''}" data-dp-day="${iso}"${disabled?' disabled':''}>${day}</button>`;
   }
   dpState.overlayEl.innerHTML = `
     <div class="dp-card" role="dialog" aria-modal="true">
@@ -5814,7 +5816,8 @@ function bindDashboardEvents(){
     };
     if(dateBtn && dateInput){
       dateBtn.onclick = ()=>{
-        openDatePicker(dateInput.value, todayISO(), applyWeekDate);
+        const recordedDates = recordsForPond(currentPondId).map(r=>r.weekDate);
+        openDatePicker(dateInput.value, todayISO(), applyWeekDate, recordedDates);
       };
     }
 
