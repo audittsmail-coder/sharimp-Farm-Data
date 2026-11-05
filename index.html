@@ -3334,7 +3334,6 @@ function renderPondDetail(){
           p.releaseDate ? { text: `ปล่อย ${fmtDate(p.releaseDate)}`, cls:'coral' } : null,
           p.releaseCount ? { text: `จำนวนปล่อย ${Number(p.releaseCount).toLocaleString('th-TH')} ตัว` } : null,
           doc!==null ? { text: `DOC ${doc} วัน`, cls:'amber' } : null,
-          pathogenRec ? { text: `ผลเชื้อ (${fmtDate(pathogenRec.weekDate)}): ${escapeHtml(PATHOGEN_SEVERITY_LABEL[pathogenRec.severity]||pathogenRec.severity)}`, cls: PATHOGEN_SEVERITY_CLASS[pathogenRec.severity]||'' } : null,
         ])}
         <div class="action-row">
           <button class="action-btn" id="btn-edit-pond">${ICONS.edit} แก้ไขข้อมูลบ่อ</button>
