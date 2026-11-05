@@ -3331,8 +3331,8 @@ function renderPondDetail(){
         ${metaRowHtml([
           { text: escapeHtml(p.species||'ยังไม่ระบุชนิด') },
           p.brand ? { text: `แบรนด์: ${escapeHtml(p.brand)}` } : null,
-          p.releaseDate ? { text: `ปล่อย ${fmtDate(p.releaseDate)}`, cls:'coral' } : null,
-          p.releaseCount ? { text: `จำนวนปล่อย ${Number(p.releaseCount).toLocaleString('th-TH')} ตัว` } : null,
+          p.releaseDate ? { text: `ปล่อย ${fmtDate(p.releaseDate)}` } : null,
+          p.releaseCount ? { text: `จำนวนปล่อย ${Number(p.releaseCount).toLocaleString('th-TH')} ตัว`, cls:'coral' } : null,
           doc!==null ? { text: `DOC ${doc} วัน`, cls:'amber' } : null,
         ])}
         <div class="action-row">
@@ -4122,8 +4122,8 @@ function renderBatchDetail(){
         ${metaRowHtml([
           { text: escapeHtml(batch.species||'ยังไม่ระบุชนิด') },
           batch.brand ? { text: `แบรนด์: ${escapeHtml(batch.brand)}` } : null,
-          batch.releaseDate ? { text: `ปล่อย ${fmtDate(batch.releaseDate)}`, cls:'coral' } : null,
-          batch.releaseCount ? { text: `จำนวนปล่อย ${Number(batch.releaseCount).toLocaleString('th-TH')} ตัว` } : null,
+          batch.releaseDate ? { text: `ปล่อย ${fmtDate(batch.releaseDate)}` } : null,
+          batch.releaseCount ? { text: `จำนวนปล่อย ${Number(batch.releaseCount).toLocaleString('th-TH')} ตัว`, cls:'coral' } : null,
           { text: `บันทึกเมื่อ ${fmtDate(batch.savedAt)}`, cls:'amber' },
         ])}
       </div>
