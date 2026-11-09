@@ -2168,8 +2168,11 @@ function renderClosuresSummary(tabs){
             ${closures.map(c=>`
               <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" class="${c.diseaseType ? 'has-disease' : ''}" style="cursor:pointer;">
                 <td>
-                  <div style="font-weight:700;color:var(--heading);font-family:'Taviraj',serif;">${speciesShortLabel(c.species) ? `<span class="species-tag">${escapeHtml(speciesShortLabel(c.species))}</span>` : ''}${escapeHtml(c.pondName||'-')}</div>
-                  ${c.farmName ? `<div style="font-size:11px;color:var(--ink-faint);margin-top:1px;">${escapeHtml(c.farmName)}</div>` : ''}
+                  <div style="font-weight:700;color:var(--heading);font-family:'Taviraj',serif;">${escapeHtml(c.pondName||'-')}</div>
+                  ${(speciesShortLabel(c.species) || c.farmName) ? `
+                  <div style="font-size:11px;color:var(--ink-faint);margin-top:1px;display:flex;align-items:center;gap:6px;">
+                    ${speciesShortLabel(c.species) ? `<span class="species-tag">${escapeHtml(speciesShortLabel(c.species))}</span>` : ''}${c.farmName ? escapeHtml(c.farmName) : ''}
+                  </div>` : ''}
                   ${c.diseaseType ? `<div class="disease-badge">🦠 ${escapeHtml(c.diseaseType)}</div>` : ''}
                 </td>
                 <td>${fmtDate(c.closeDate)}</td>
