@@ -424,10 +424,13 @@
   .dist-bar-fill.rank-1{ background:linear-gradient(90deg, var(--orange), var(--orange-hi)); }
   .dist-bar-fill.rank-2{ background:var(--slate-hi); opacity:.8; }
   .dist-bar-fill.rank-3plus{ background:var(--slate); opacity:.6; }
-  .dist-bar-label-stack{ display:flex; flex-direction:column; white-space:normal; overflow:visible; text-overflow:unset; line-height:1.25; }
-  .dist-bar-label-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .dist-bar-label-sub{ font-size:9.5px; font-weight:500; color:var(--ink-faint); margin-top:1px; }
   .dist-bar-meta{ flex:0 0 auto; font-family:'Taviraj',serif; font-weight:700; font-size:13.5px; color:var(--heading); min-width:42px; text-align:right; }
+  .hatchery-zone{ margin-top:16px; }
+  .hatchery-zone:first-of-type{ margin-top:2px; }
+  .hatchery-zone-title{
+    font-size:11px; font-weight:700; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:8px; padding-bottom:5px; border-bottom:1px solid var(--line);
+  }
   .dist-bar-count{ font-family:inherit; font-weight:400; font-size:9.5px; color:var(--ink-faint); margin-left:2px; }
   .dist-bar-survival{ font-family:inherit; font-weight:500; font-size:9.5px; color:var(--teal-400); margin-left:5px; white-space:nowrap; }
   @keyframes growBar{ from{ width:0; } }
@@ -2082,21 +2085,39 @@ function distributionCardHtml(title, items, opts){
 // free-text hatchery names are prone to inconsistent spelling, so this one
 // card also doubles as the picker for the "merge duplicate names" tool:
 // toggle it on, tick the rows that are really the same source, and merge.
-function hatcherySpeciesNote(closures, hatcheryLabel){
-  const counts = {};
-  (closures||[]).forEach(c=>{
-    const h = c.hatchery ? c.hatchery.trim() : null;
-    if(h !== hatcheryLabel) return;
-    const s = speciesShortLabel(c.species);
-    if(s) counts[s] = (counts[s]||0) + 1;
-  });
-  const labels = Object.keys(counts).sort((a,b)=> counts[b]-counts[a]);
-  return labels.length ? labels.join(' / ') : null;
+function speciesZoneLabel(species){
+  if(!species) return null;
+  if(species.includes('ขาว')) return 'กุ้งขาว';
+  if(species.includes('ดำ')) return 'กุ้งกุลาดำ';
+  return null;
 }
-function hatcheryDistributionCardHtml(items, closures){
+function hatcheryZoneHtml(zoneLabel, items, merging){
   if(!items || items.length === 0) return '';
   const rankClass = i => i===0 ? 'rank-0' : i===1 ? 'rank-1' : i===2 ? 'rank-2' : 'rank-3plus';
   const wide = items.length > 6;
+  return `
+    <div class="hatchery-zone">
+      <div class="hatchery-zone-title">${escapeHtml(zoneLabel)}</div>
+      <div class="dist-bars${wide ? ' dist-bars-wide' : ''}">
+        ${items.map((it,i)=>`
+          <div class="dist-bar-row">
+            ${merging ? `<input type="checkbox" class="merge-hatchery-check" value="${escapeHtml(it.label)}" ${mergeHatcherySelected.has(it.label)?'checked':''}>` : ''}
+            <div class="dist-bar-label" title="${escapeHtml(it.label)}">${escapeHtml(it.label)}</div>
+            <div class="dist-bar-track">
+              <div class="dist-bar-fill ${rankClass(i)}" style="width:${it.pct}%"></div>
+            </div>
+            <div class="dist-bar-meta">${it.pct.toFixed(0)}%<span class="dist-bar-count">(${it.count})</span>${it.avgSurvival!=null ? `<span class="dist-bar-survival">รอด ${it.avgSurvival.toFixed(0)}%</span>` : ''}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+function hatcheryDistributionCardHtml(closures){
+  const byHatchery = c=>c.hatchery ? c.hatchery.trim() : null;
+  const whiteItems = buildDistribution(closures.filter(c=>speciesZoneLabel(c.species)==='กุ้งขาว'), byHatchery);
+  const blackItems = buildDistribution(closures.filter(c=>speciesZoneLabel(c.species)==='กุ้งกุลาดำ'), byHatchery);
+  if(whiteItems.length === 0 && blackItems.length === 0) return '';
+  const wide = whiteItems.length > 6 || blackItems.length > 6;
   const merging = showMergeHatcherySheet;
   return `
     <div class="stats-group${wide ? ' stats-group-full' : ''}">
@@ -2104,23 +2125,8 @@ function hatcheryDistributionCardHtml(items, closures){
         <div class="stats-group-title" style="margin-bottom:0;">ลูกกุ้งจากไหน</div>
         <button type="button" id="btn-toggle-merge-hatchery" class="action-btn" style="font-size:10.5px;padding:3px 9px;">${merging ? 'ปิด' : 'เลือกเพื่อรวมชื่อซ้ำ'}</button>
       </div>
-      <div class="dist-bars${wide ? ' dist-bars-wide' : ''}">
-        ${items.map((it,i)=>{
-          const speciesNote = hatcherySpeciesNote(closures, it.label);
-          return `
-          <div class="dist-bar-row">
-            ${merging ? `<input type="checkbox" class="merge-hatchery-check" value="${escapeHtml(it.label)}" ${mergeHatcherySelected.has(it.label)?'checked':''}>` : ''}
-            <div class="dist-bar-label dist-bar-label-stack" title="${escapeHtml(it.label)}">
-              <span class="dist-bar-label-name">${escapeHtml(it.label)}</span>
-              ${speciesNote ? `<span class="dist-bar-label-sub">${escapeHtml(speciesNote)}</span>` : ''}
-            </div>
-            <div class="dist-bar-track">
-              <div class="dist-bar-fill ${rankClass(i)}" style="width:${it.pct}%"></div>
-            </div>
-            <div class="dist-bar-meta">${it.pct.toFixed(0)}%<span class="dist-bar-count">(${it.count})</span>${it.avgSurvival!=null ? `<span class="dist-bar-survival">รอด ${it.avgSurvival.toFixed(0)}%</span>` : ''}</div>
-          </div>`;
-        }).join('')}
-      </div>
+      ${hatcheryZoneHtml('กุ้งขาว', whiteItems, merging)}
+      ${hatcheryZoneHtml('กุ้งกุลาดำ', blackItems, merging)}
       ${merging ? `
       <div class="merge-hatchery-controls">
         <p class="hint" style="margin:10px 0 8px;">ติ๊กชื่อที่เป็นแหล่งเดียวกันด้านบน (เลือกได้หลายอัน) แล้วตั้งชื่อที่จะใช้แทน ระบบจะแก้ให้ทั้งบ่อปัจจุบันและประวัติทั้งหมด</p>
@@ -2145,7 +2151,7 @@ function renderClosuresSummary(tabs){
     if(showClosureStats){
       const statsGroupsHtml =
         distributionCardHtml('ชนิดกุ้ง', buildDistribution(closures, c=>speciesShortLabel(c.species))) +
-        hatcheryDistributionCardHtml(buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null), closures) +
+        hatcheryDistributionCardHtml(closures) +
         distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
         distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
         distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
