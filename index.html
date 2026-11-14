@@ -424,6 +424,9 @@
   .dist-bar-fill.rank-1{ background:linear-gradient(90deg, var(--orange), var(--orange-hi)); }
   .dist-bar-fill.rank-2{ background:var(--slate-hi); opacity:.8; }
   .dist-bar-fill.rank-3plus{ background:var(--slate); opacity:.6; }
+  .dist-bar-label-stack{ display:flex; flex-direction:column; white-space:normal; overflow:visible; text-overflow:unset; line-height:1.25; }
+  .dist-bar-label-name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dist-bar-label-sub{ font-size:9.5px; font-weight:500; color:var(--ink-faint); margin-top:1px; }
   .dist-bar-meta{ flex:0 0 auto; font-family:'Taviraj',serif; font-weight:700; font-size:13.5px; color:var(--heading); min-width:42px; text-align:right; }
   .dist-bar-count{ font-family:inherit; font-weight:400; font-size:9.5px; color:var(--ink-faint); margin-left:2px; }
   .dist-bar-survival{ font-family:inherit; font-weight:500; font-size:9.5px; color:var(--teal-400); margin-left:5px; white-space:nowrap; }
@@ -2079,7 +2082,18 @@ function distributionCardHtml(title, items, opts){
 // free-text hatchery names are prone to inconsistent spelling, so this one
 // card also doubles as the picker for the "merge duplicate names" tool:
 // toggle it on, tick the rows that are really the same source, and merge.
-function hatcheryDistributionCardHtml(items){
+function hatcherySpeciesNote(closures, hatcheryLabel){
+  const counts = {};
+  (closures||[]).forEach(c=>{
+    const h = c.hatchery ? c.hatchery.trim() : null;
+    if(h !== hatcheryLabel) return;
+    const s = speciesShortLabel(c.species);
+    if(s) counts[s] = (counts[s]||0) + 1;
+  });
+  const labels = Object.keys(counts).sort((a,b)=> counts[b]-counts[a]);
+  return labels.length ? labels.join(' / ') : null;
+}
+function hatcheryDistributionCardHtml(items, closures){
   if(!items || items.length === 0) return '';
   const rankClass = i => i===0 ? 'rank-0' : i===1 ? 'rank-1' : i===2 ? 'rank-2' : 'rank-3plus';
   const wide = items.length > 6;
@@ -2091,16 +2105,21 @@ function hatcheryDistributionCardHtml(items){
         <button type="button" id="btn-toggle-merge-hatchery" class="action-btn" style="font-size:10.5px;padding:3px 9px;">${merging ? 'ปิด' : 'เลือกเพื่อรวมชื่อซ้ำ'}</button>
       </div>
       <div class="dist-bars${wide ? ' dist-bars-wide' : ''}">
-        ${items.map((it,i)=>`
+        ${items.map((it,i)=>{
+          const speciesNote = hatcherySpeciesNote(closures, it.label);
+          return `
           <div class="dist-bar-row">
             ${merging ? `<input type="checkbox" class="merge-hatchery-check" value="${escapeHtml(it.label)}" ${mergeHatcherySelected.has(it.label)?'checked':''}>` : ''}
-            <div class="dist-bar-label" title="${escapeHtml(it.label)}">${escapeHtml(it.label)}</div>
+            <div class="dist-bar-label dist-bar-label-stack" title="${escapeHtml(it.label)}">
+              <span class="dist-bar-label-name">${escapeHtml(it.label)}</span>
+              ${speciesNote ? `<span class="dist-bar-label-sub">${escapeHtml(speciesNote)}</span>` : ''}
+            </div>
             <div class="dist-bar-track">
               <div class="dist-bar-fill ${rankClass(i)}" style="width:${it.pct}%"></div>
             </div>
             <div class="dist-bar-meta">${it.pct.toFixed(0)}%<span class="dist-bar-count">(${it.count})</span>${it.avgSurvival!=null ? `<span class="dist-bar-survival">รอด ${it.avgSurvival.toFixed(0)}%</span>` : ''}</div>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       </div>
       ${merging ? `
       <div class="merge-hatchery-controls">
@@ -2126,7 +2145,7 @@ function renderClosuresSummary(tabs){
     if(showClosureStats){
       const statsGroupsHtml =
         distributionCardHtml('ชนิดกุ้ง', buildDistribution(closures, c=>speciesShortLabel(c.species))) +
-        hatcheryDistributionCardHtml(buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null)) +
+        hatcheryDistributionCardHtml(buildDistribution(closures, c=>c.hatchery ? c.hatchery.trim() : null), closures) +
         distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
         distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
         distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
