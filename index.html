@@ -1487,6 +1487,11 @@ function survivalRangeLabel(pct){
   if(pct<90) return '70-89%';
   return '90%+';
 }
+function priceRangeLabel(price){
+  if(price==null) return null;
+  const band = Math.floor(price/30)*30;
+  return `${band}-${band+29} บ./กก.`;
+}
 /* ---------------- Hatchery/brand name lookup (autocomplete + dedupe) ---------------- */
 function knownHatcheryNames(){
   return state.hatcheryNames.map(h=>h.name).filter(Boolean).sort((a,b)=>a.localeCompare(b,'th'));
@@ -2125,6 +2130,7 @@ function renderClosuresSummary(tabs){
         distributionCardHtml('ไซส์ที่จับส่วนใหญ่', buildDistribution(closures, c=>sizeRangeLabel(c.sizeCount))) +
         distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
         distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
+        distributionCardHtml('ช่วงราคาที่จับส่วนใหญ่', buildDistribution(closures, c=>priceRangeLabel(c.pricePerKg!=null ? c.pricePerKg : c.harvestPricePerKg))) +
         distributionCardHtml('โรคที่พบ (แยกตามปี)', buildDistribution(closures, c=>{
           if(!c.diseaseType) return null;
           const year = c.closeDate && c.closeDate.length>=4 ? c.closeDate.slice(0,4) : null;
