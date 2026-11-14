@@ -397,7 +397,7 @@
   .calc-tile .l{ font-size:10.5px; color:var(--ink-faint); margin-top:3px; }
   .field label .info-hint{ color:var(--ink-faint); font-weight:400; cursor:help; }
 
-  .stats-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:22px 26px; align-items:start; }
+  .stats-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); grid-auto-flow:row dense; grid-auto-rows:4px; gap:22px 26px; align-items:start; }
   .stats-group-full{ grid-column:1 / -1; }
   .stats-group-full.sc-compare{ max-width:50%; }
   @media (max-width:700px){ .stats-group-full.sc-compare{ max-width:100%; } }
@@ -1794,6 +1794,23 @@ function boot(){
   auth.signInAnonymously().catch((e)=>console.error('anonymous sign-in failed', e));
 }
 
+// .stats-grid uses the "CSS grid masonry" trick: a fine-grained
+// grid-auto-rows track plus `dense` packing, with each card's actual
+// row-span computed here from its real rendered height. Without this, grid
+// would size every row to its tallest card, leaving short cards (e.g.
+// "ชนิดกุ้ง") with a lot of empty space below their content.
+function layoutMasonryStatsGrid(){
+  const grid = document.querySelector('.stats-grid');
+  if(!grid) return;
+  const rowH = 4;
+  const rowGap = parseFloat(getComputedStyle(grid).rowGap) || 0;
+  grid.querySelectorAll(':scope > .stats-group').forEach(card=>{
+    const h = card.getBoundingClientRect().height;
+    const span = Math.max(1, Math.ceil((h + rowGap) / (rowH + rowGap)));
+    card.style.gridRowEnd = `span ${span}`;
+  });
+}
+
 /* ---------------- Rendering ---------------- */
 function render(){
   const app = document.getElementById('app');
@@ -1860,6 +1877,7 @@ function render(){
 
     app.innerHTML = html;
     bindDashboardEvents();
+    layoutMasonryStatsGrid();
 
     if(showPondFormSheet){ /* no charts on the edit/add-pond page */ }
     else if(editingClosureId){ /* no charts on the closure-edit page */ }
