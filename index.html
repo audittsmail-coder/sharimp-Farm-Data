@@ -2131,14 +2131,14 @@ function renderClosuresSummary(tabs){
         distributionCardHtml('อัตรารอดส่วนใหญ่', buildDistribution(closures, c=>survivalRangeLabel(c.survivalRatePct))) +
         distributionCardHtml('อายุ (DOC) ส่วนใหญ่ที่จับ', buildDistribution(closures, c=>docRangeLabel(c.doc))) +
         distributionCardHtml('ช่วงราคาที่จับส่วนใหญ่', buildDistribution(closures, c=>priceRangeLabel(c.pricePerKg!=null ? c.pricePerKg : c.harvestPricePerKg))) +
+        distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate))) +
+        yearlyWeightGroupHtml(closures) +
+        sizeCompareGroupHtml(closures) +
         distributionCardHtml('โรคที่พบ (แยกตามปี)', buildDistribution(closures, c=>{
           if(!c.diseaseType) return null;
           const year = c.closeDate && c.closeDate.length>=4 ? c.closeDate.slice(0,4) : null;
           return year ? `${c.diseaseType.trim()} · ${year}` : c.diseaseType.trim();
-        }), {hidePct:true, totalCount: closures.length, cardClass:'stats-group-disease'}) +
-        distributionCardHtml('ช่วงไตรมาสที่ปิดบ่อ', buildDistribution(closures, c=>quarterLabel(c.closeDate))) +
-        yearlyWeightGroupHtml(closures) +
-        sizeCompareGroupHtml(closures);
+        }), {hidePct:true, totalCount: closures.length, cardClass:'stats-group-disease'});
       statsHtml = `
         <div class="card">
           <div class="farm-title-row" style="margin-bottom:14px;">
