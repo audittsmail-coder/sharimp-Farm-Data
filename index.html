@@ -517,7 +517,11 @@
   .pathogen-entry .pe-date{ font-size:11.5px; color:var(--ink-faint); font-weight:600; }
   .pathogen-entry .pe-worse{ font-size:10.5px; color:var(--coral); font-weight:700; }
   .pathogen-entry .pe-text{ font-size:13.5px; color:var(--ink); line-height:1.55; }
-  .pathogen-entry .pe-water{ font-size:11.5px; color:var(--teal-400); font-weight:600; margin-top:5px; }
+  .pe-table{ width:auto; max-width:280px; border-collapse:collapse; margin-top:2px; }
+  .pe-table td{ padding:3px 10px 3px 0; font-size:12px; border-bottom:1px solid var(--line-soft); }
+  .pe-table tr:last-child td{ border-bottom:none; }
+  .pe-table td:first-child{ color:var(--ink-faint); font-weight:600; white-space:nowrap; }
+  .pe-table td:last-child{ color:var(--ink); font-weight:700; width:100%; }
 
   /* Harvest ("แบ่งจับ") page: distinct dark-blue backdrop + orange accent so it visually reads as a separate mode */
   .harvest-page{ display:contents; }
@@ -1651,16 +1655,30 @@ function latestPathogenInfo(pond){
 function pathogenHistoryForPond(pond){
   return (pond && pond.pathogenHistory) ? pond.pathogenHistory.slice().sort((a,b)=>(a.weekDate||'').localeCompare(b.weekDate||'')) : [];
 }
-function pathogenExtraValuesHtml(entry){
+// The free-text "status" field is usually a comma-separated list of
+// findings like "ขาวน้ำหาง 50 ↑, แบคเส้นสาย 30% ↑, EHP 3%" — split each
+// clause into a label (text before the first digit) and its value so the
+// whole result reads as a small table instead of one dense paragraph.
+function parsePathogenFindings(status){
+  if(!status) return [];
+  return status.split(',').map(s=>s.trim()).filter(Boolean).map(seg=>{
+    const m = seg.match(/^([^\d]*?)\s*(\d.*)$/);
+    return (m && m[1].trim()) ? { label: m[1].trim(), value: m[2].trim() } : { label: seg, value: '' };
+  });
+}
+function pathogenEntryTableHtml(entry){
   if(!entry) return '';
-  const parts = [];
-  if(entry.ammonia!=null) parts.push(`แอมโมเนีย ${entry.ammonia} mg/L`);
-  if(entry.nitrite!=null) parts.push(`ไนไตรต์ ${entry.nitrite} mg/L`);
-  if(entry.ph!=null) parts.push(`pH ${entry.ph}`);
-  if(entry.alkalinity!=null) parts.push(`อัลคาไลน์ ${entry.alkalinity} mg/L`);
-  if(entry.salinity!=null) parts.push(`ความเค็ม ${entry.salinity} ppt`);
-  if(parts.length===0) return '';
-  return `<div class="pe-water">${parts.join(' · ')}</div>`;
+  const rows = parsePathogenFindings(entry.status);
+  if(entry.ammonia!=null) rows.push({ label:'แอมโมเนีย', value:`${entry.ammonia} mg/L` });
+  if(entry.nitrite!=null) rows.push({ label:'ไนไตรต์', value:`${entry.nitrite} mg/L` });
+  if(entry.ph!=null) rows.push({ label:'pH', value:`${entry.ph}` });
+  if(entry.alkalinity!=null) rows.push({ label:'อัลคาไลน์', value:`${entry.alkalinity} mg/L` });
+  if(entry.salinity!=null) rows.push({ label:'ความเค็ม', value:`${entry.salinity} ppt` });
+  if(rows.length===0) return `<div class="pe-text">-</div>`;
+  return `
+    <table class="pe-table"><tbody>
+      ${rows.map(r=>`<tr><td>${escapeHtml(r.label)}</td><td>${escapeHtml(r.value)}</td></tr>`).join('')}
+    </tbody></table>`;
 }
 function pathogenChipHtml(severity, status, compact){
   if(!severity) return '';
@@ -3366,8 +3384,7 @@ function renderPondDetail(){
             ${pathogenChipHtml(pathogenRec.severity, pathogenRec.status)}
             ${pathogenRec.worsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
           </div>
-          <div class="pe-text">${escapeHtml(pathogenRec.status||'-')}</div>
-          ${pathogenExtraValuesHtml(pathogenRec)}
+          ${pathogenEntryTableHtml(pathogenRec)}
           ${pathogenHistoryCount>1 ? `<div style="margin-top:8px;font-size:11px;color:var(--ink-faint)">ตรวจสะสมมาแล้ว ${pathogenHistoryCount} ครั้ง</div>` : ''}
         </div>
       </div>
@@ -4157,8 +4174,7 @@ function renderBatchDetail(){
               ${pathogenChipHtml(r.severity, r.status)}
               ${r.worsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
             </div>
-            <div class="pe-text">${escapeHtml(r.status||'-')}</div>
-            ${pathogenExtraValuesHtml(r)}
+            ${pathogenEntryTableHtml(r)}
           </div>
         `).join('')}
       </div>
