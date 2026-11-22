@@ -225,6 +225,7 @@
   .pond-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
   .doc-chip{ background:var(--teal-100); color:var(--teal-400); font-size:11px; font-weight:700; padding:3px 9px; border-radius:var(--radius-pill); flex:none; letter-spacing:.01em; }
   .species-tag{ display:inline-block; background:var(--surface-hi); border:1px solid var(--line); color:var(--ink); font-size:10px; font-weight:700; padding:1px 7px; border-radius:var(--radius-pill); letter-spacing:.01em; vertical-align:middle; }
+  .pond-caretaker{ font-weight:400; font-size:11px; color:var(--ink-faint); margin-left:6px; }
   .stat-row{ display:flex; gap:8px; margin-top:10px; }
   .stat{ flex:1; background:var(--surface-soft); border-radius:var(--radius-sm); padding:7px 10px; border:1px solid var(--line-soft); }
   .stat .label{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
@@ -1166,6 +1167,24 @@ function todayISO(){ return new Date().toISOString().slice(0,10); }
 function weightFromCount(count){ if(!count||count<=0) return null; return 1000/count; }
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstChild; }
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+// Pond number and caretaker name are separate fields (caretakerName), shown
+// together wherever a pond's name appears so the pond number stays the clear,
+// unambiguous part and the caretaker reads as secondary/muted.
+function pondNameHtml(p){
+  return `${escapeHtml(p.name||'')}${p.caretakerName ? `<span class="pond-caretaker">${escapeHtml(p.caretakerName)}</span>` : ''}`;
+}
+// Flat "name(caretaker)" text — only for the one-off text snapshots this app
+// already freezes at archive time (closure/batch pondName), which keep using
+// the old combined-string convention so their historical display is untouched.
+function pondNameWithCaretakerText(p){
+  return p.name ? (p.name + (p.caretakerName ? `(${p.caretakerName})` : '')) : '';
+}
+// Normalizes a pond display name for matching across the name/caretaker split
+// (e.g. matching a live pond against an archived batch's frozen "301(ตาไท)"
+// text) by stripping any trailing "(...)" suffix before comparing.
+function pondNameForMatch(name){
+  return (name||'').replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+}
 
 /* ---------------- Custom date picker (max-date aware) ---------------- */
 const THAI_MONTH_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
@@ -2037,7 +2056,7 @@ function renderOverviewDashboard(tabs){
           <tr data-open-pond="${pond.id}">
             <td>
               <div class="ov-pond-row">
-                <div class="ov-pond-name">${escapeHtml(pond.name)}${isNew ? ` <span class="ov-update-badge">อัปเดตใหม่</span>` : ''}${hasHarvest ? ` <span class="ov-harvest-badge">แบ่งจับแล้ว</span>` : ''}</div>
+                <div class="ov-pond-name">${pondNameHtml(pond)}${isNew ? ` <span class="ov-update-badge">อัปเดตใหม่</span>` : ''}${hasHarvest ? ` <span class="ov-harvest-badge">แบ่งจับแล้ว</span>` : ''}</div>
                 ${speciesShort ? `<span class="ov-pond-species">${escapeHtml(speciesShort)}</span>` : ''}
               </div>
             </td>
@@ -3261,7 +3280,7 @@ function renderPondCard(p){
     <div class="pond-card" data-open-pond="${p.id}">
       <div class="pond-card-top">
         <div>
-          <h3>${escapeHtml(p.name)}</h3>
+          <h3>${pondNameHtml(p)}</h3>
           <div class="pond-meta">${escapeHtml(p.species||'ยังไม่ระบุชนิด')} ${p.brand ? '· '+escapeHtml(p.brand) : ''}</div>
           ${p.pathogenSeverity ? `<div style="margin-top:5px">${pathogenChipHtml(p.pathogenSeverity, p.pathogenStatus)}</div>` : ''}
         </div>
@@ -3288,7 +3307,7 @@ function renderPondSidebarRow(p){
   const metaBits = [speciesShort, doc!==null ? 'DOC '+doc+' วัน' : ''].filter(Boolean).join(' · ');
   return `
     <button type="button" class="pond-sidebar-row ${isActive?'active':''}" data-open-pond="${p.id}">
-      <div class="psr-name">${escapeHtml(p.name)}</div>
+      <div class="psr-name">${pondNameHtml(p)}</div>
       ${metaBits ? `<div class="psr-meta">${escapeHtml(metaBits)}</div>` : ''}
       ${p.pathogenSeverity ? `<div style="margin-top:6px">${pathogenChipHtml(p.pathogenSeverity, p.pathogenStatus)}</div>` : ''}
     </button>`;
@@ -3300,7 +3319,7 @@ function renderPondDetail(){
   const records = recordsForPond(p.id);
   const pathogenRec = latestPathogenInfo(p);
   const pondBatches = state.batches
-    .filter(b=>b.pondId===p.id || (b.farmId===p.farmId && b.pondName && p.name && b.pondName.trim().toLowerCase()===p.name.trim().toLowerCase()))
+    .filter(b=>b.pondId===p.id || (b.farmId===p.farmId && b.pondName && p.name && pondNameForMatch(b.pondName)===pondNameForMatch(p.name)))
     .slice()
     .sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''));
   const editingRecordThisRender = editingRecordId ? records.find(r=>r.id===editingRecordId) : null;
@@ -3384,7 +3403,7 @@ function renderPondDetail(){
     </div>
     <main>
       <div class="pond-head">
-        <h2>${escapeHtml(p.name)}</h2>
+        <h2>${pondNameHtml(p)}</h2>
         ${metaRowHtml([
           { text: escapeHtml(p.species||'ยังไม่ระบุชนิด') },
           p.brand ? { text: `แบรนด์: ${escapeHtml(p.brand)}` } : null,
@@ -3606,7 +3625,7 @@ function renderHarvestForm(){
     </div>
     <main>
       <div class="pond-head">
-        <h2>แบ่งจับ — ${escapeHtml(p.name)}</h2>
+        <h2>แบ่งจับ — ${pondNameHtml(p)}</h2>
       </div>
 
       <div class="summary-strip">
@@ -3711,7 +3730,7 @@ function renderTransferForm(){
     </div>
     <main>
       <div class="pond-head">
-        <h2>ย้ายกุ้ง — ${escapeHtml(p.name)}</h2>
+        <h2>ย้ายกุ้ง — ${pondNameHtml(p)}</h2>
       </div>
 
       <div class="summary-strip">
@@ -3802,7 +3821,7 @@ function renderCloseForm(){
     </div>
     <main>
       <div class="pond-head">
-        <h2>ปิดบ่อ — ${escapeHtml(p.name)}</h2>
+        <h2>ปิดบ่อ — ${pondNameHtml(p)}</h2>
       </div>
 
       <div class="card" id="close-form-card">
@@ -3826,7 +3845,7 @@ function renderCloseForm(){
             </div>
             <div class="field">
               <label>บ่อที่</label>
-              <input type="text" name="pondName" id="close-pondname" placeholder="เช่น บ่อ 1" value="${escapeHtml(p.name)}">
+              <input type="text" name="pondName" id="close-pondname" placeholder="เช่น บ่อ 1" value="${escapeHtml(pondNameWithCaretakerText(p))}">
             </div>
           </div>
 
@@ -3932,7 +3951,7 @@ function renderBiomassCalc(){
     </div>
     <main>
       <div class="pond-head">
-        <h2>คำนวณ Biomass — ${escapeHtml(p.name)}</h2>
+        <h2>คำนวณ Biomass — ${pondNameHtml(p)}</h2>
       </div>
 
       <div class="card">
@@ -4297,7 +4316,7 @@ function renderComparePicker(){
     </div>
     <main>
       <div class="pond-head">
-        <h2>เลือกรุ่นเปรียบเทียบ — ${escapeHtml(p.name)}</h2>
+        <h2>เลือกรุ่นเปรียบเทียบ — ${pondNameHtml(p)}</h2>
       </div>
       <div class="card">
         <p class="hint" style="margin-top:0;">เลือกรุ่นที่ปิดไปแล้ว (บ่อไหนก็ได้) เพื่อเทียบการเติบโตกับรุ่นปัจจุบัน</p>
@@ -4334,7 +4353,7 @@ function renderCompareView(){
     </div>
     <main>
       <div class="pond-head">
-        <h2>เปรียบเทียบรุ่น — ${escapeHtml(p.name)}</h2>
+        <h2>เปรียบเทียบรุ่น — ${pondNameHtml(p)}</h2>
       </div>
       <p class="hint" style="text-align:center;margin-top:10px;">
         รุ่นปัจจุบัน เทียบกับรุ่น ${cb.releaseDate ? 'ปล่อย '+fmtDate(cb.releaseDate) : 'ไม่ระบุวันปล่อย'} (บันทึกเมื่อ ${fmtDate(cb.savedAt)})<br>
@@ -4790,7 +4809,10 @@ function renderPondFormPanel(){
     <div class="card panel-card">
       <h3>${editingPond? 'แก้ไขข้อมูลบ่อ' : 'เพิ่มบ่อใหม่'}</h3>
       <form id="pond-form">
-        <div class="field"><label>ชื่อบ่อ</label><input required name="name" value="${escapeHtml(p.name||'')}" placeholder="เช่น บ่อ 1"></div>
+        <div class="field-row">
+          <div class="field"><label>ชื่อบ่อ</label><input required name="name" value="${escapeHtml(p.name||'')}" placeholder="เช่น บ่อ 1"></div>
+          <div class="field"><label>ชื่อคนเลี้ยง</label><input name="caretakerName" value="${escapeHtml(p.caretakerName||'')}" placeholder="เช่น ตาไท"></div>
+        </div>
         <div class="field">
           <label>ฟาร์ม</label>
           <select name="farmId" required ${editingPond?'disabled':''}>
@@ -4840,7 +4862,7 @@ async function archivePondCycle(pond){
       note:t.note||'',
     }));
     await db.collection('batches').add({
-      pondId: pond.id, pondName: pond.name, farmId: pond.farmId,
+      pondId: pond.id, pondName: pondNameWithCaretakerText(pond), farmId: pond.farmId,
       species: pond.species||'', brand: pond.brand||'',
       releaseCount: pond.releaseCount||null, transferInCount: pond.transferInCount||null, releaseDate: pond.releaseDate||'',
       savedAt: todayISO(),
@@ -4909,6 +4931,7 @@ function bindDashboardEvents(){
       if(!farmId){ alert('กรุณาเลือกฟาร์ม'); return; }
       const data = {
         name: fd.get('name').trim(),
+        caretakerName: (fd.get('caretakerName')||'').trim(),
         releaseDate: fd.get('releaseDate') || '',
         species: fd.get('species') || '',
         releaseCount: fd.get('releaseCount') ? parseFloat(fd.get('releaseCount')) : null,
