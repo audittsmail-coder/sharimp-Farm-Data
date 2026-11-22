@@ -2233,7 +2233,7 @@ function renderClosuresSummary(tabs){
           <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>ราคาที่จับ</th><th>มูลค่า</th><th>หมายเหตุ</th><th></th></tr></thead>
           <tbody>
             ${closures.map(c=>`
-              <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" class="${c.diseaseType ? 'has-disease' : ''}" style="cursor:pointer;">
+              <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" data-open-closure-id="${c.id}" class="${c.diseaseType ? 'has-disease' : ''}" style="cursor:pointer;">
                 <td>
                   <div style="font-weight:700;color:var(--heading);font-family:'Taviraj',serif;">
                     ${escapeHtml(c.pondName||'-')}${c.farmName ? `<span style="font-weight:400;font-size:11px;color:var(--ink-faint);font-family:inherit;margin-left:6px;">${escapeHtml(c.farmName)}</span>` : ''}
@@ -4117,6 +4117,35 @@ function renderClosureEditForm(){
   `;
 }
 
+// The archived batch only has rearing data; the actual closing outcome
+// (price/survival/FCR/disease/etc.) is merged on as `batch.closureSummary`
+// when opened from the closures-history table (see the row click handler).
+// Render it as a small table so it's not mistaken for another rearing stat.
+function batchClosureSummaryHtml(cs){
+  if(!cs) return '';
+  const rows = [];
+  if(cs.closeDate) rows.push({ label:'วันที่ปิด', value: fmtDate(cs.closeDate) });
+  if(cs.doc!=null) rows.push({ label:'อายุ (DOC)', value: `${cs.doc} วัน` });
+  if(cs.sizeCount!=null) rows.push({ label:'ไซส์ที่จับ', value: `${cs.sizeCount} ตัว/กก.` });
+  if(cs.weightKg!=null) rows.push({ label:'น้ำหนักที่จับ', value: `${cs.weightKg.toLocaleString('th-TH')} กก.` });
+  if(cs.survivalRatePct!=null) rows.push({ label:'อัตรารอด', value: `${cs.survivalRatePct.toFixed(1)}%` });
+  if(cs.fcr!=null) rows.push({ label:'FCR', value: cs.fcr.toFixed(2) });
+  if(cs.pricePerKg!=null) rows.push({ label:'ราคาที่จับ', value: `ปิดบ่อ ${cs.pricePerKg.toLocaleString('th-TH')} บ./กก.` });
+  else if(cs.harvestPricePerKg!=null) rows.push({ label:'ราคาที่จับ', value: `แบ่งจับ ${cs.harvestPricePerKg.toLocaleString('th-TH',{maximumFractionDigits:1})} บ./กก.` });
+  if(cs.revenue!=null) rows.push({ label:'มูลค่ารวม', value: `${cs.revenue.toLocaleString('th-TH',{maximumFractionDigits:0})} บ.` });
+  if(cs.diseaseType) rows.push({ label:'โรคที่พบ', value: cs.diseaseType });
+  if(cs.note) rows.push({ label:'หมายเหตุ', value: cs.note });
+  if(rows.length===0) return '';
+  return `
+    <div class="card">
+      <h3>สรุปปิดบ่อ</h3>
+      <table class="pe-table" style="max-width:none;">
+        <tbody>
+          ${rows.map(r=>`<tr><td>${escapeHtml(r.label)}</td><td>${escapeHtml(r.value)}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
 function renderBatchDetail(){
   const batch = state.batches.find(b=>b.id===viewingBatchId);
   if(!batch){ viewingBatchId = null; return renderPondDetail(); }
@@ -4195,6 +4224,8 @@ function renderBatchDetail(){
           { text: `บันทึกเมื่อ ${fmtDate(batch.savedAt)}`, cls:'amber' },
         ])}
       </div>
+
+      ${batchClosureSummaryHtml(batch.closureSummary)}
 
       <div class="summary-strip">
         <div class="summary-box">
@@ -5281,6 +5312,7 @@ function bindDashboardEvents(){
 
   document.querySelectorAll('[data-open-closure-pond]').forEach(row=>{
     const pondId = row.getAttribute('data-open-closure-pond');
+    const closureId = row.getAttribute('data-open-closure-id');
     if(!pondId) return;
     row.onclick = async ()=>{
       currentFarmId = row.getAttribute('data-open-closure-farm') || 'overview';
@@ -5292,6 +5324,20 @@ function bindDashboardEvents(){
       const batchDocs = snap ? snap.docs.map(d=>({ id:d.id, ...d.data() })) : [];
       const batch = batchDocs.sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''))[0];
       if(batch){
+        // The archived batch doc only has rearing data (records/harvests/…),
+        // not the closing-time outcome (price/survival/FCR/disease/etc.) —
+        // that lives on the matching `closures` doc, already loaded here
+        // since this row only renders while that collection is in view.
+        const closure = closureId ? state.closures.find(c=>c.id===closureId) : null;
+        if(closure){
+          batch.closureSummary = {
+            closeDate: closure.closeDate, doc: closure.doc, sizeCount: closure.sizeCount,
+            pricePerKg: closure.pricePerKg, weightKg: closure.weightKg, totalFeedKg: closure.totalFeedKg,
+            note: closure.note, diseaseType: closure.diseaseType, survivalRatePct: closure.survivalRatePct,
+            fcr: closure.fcr, revenue: closure.revenue, harvestWeightKg: closure.harvestWeightKg,
+            harvestRevenue: closure.harvestRevenue, harvestPricePerKg: closure.harvestPricePerKg,
+          };
+        }
         state.batches = batchDocs;
         viewingBatchId = batch.id;
         render();
