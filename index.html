@@ -4709,13 +4709,13 @@ function drawChartsFor(records, releaseDate){
   const sizeEl = document.getElementById('chart-size');
   if(sizeEl){
     const values = records.map(r=>{ const w=weightFromCount(r.sizeCount); return w? +w.toFixed(2):null; });
-    sizeEl.innerHTML = svgLineChart({labels, values, color:'#2E93CB', fillColor:'rgba(46,147,203,.18)'});
+    sizeEl.innerHTML = svgLineChart({labels, values, color:'#2E93CB', fillColor:'rgba(46,147,203,.18)', curved:true});
   }
 
   const feedEl = document.getElementById('chart-feed');
   if(feedEl){
     const values = records.map(r=>r.feedPerDay);
-    feedEl.innerHTML = svgLineChart({labels, values, color:'#EFB753', fillColor:'rgba(239,183,83,.18)'});
+    feedEl.innerHTML = svgLineChart({labels, values, color:'#EFB753', fillColor:'rgba(239,183,83,.18)', curved:true});
   }
 
   const adgEl = document.getElementById('chart-adg');
@@ -4726,7 +4726,7 @@ function drawChartsFor(records, releaseDate){
       const w0 = weightFromCount(records[i-1].sizeCount), w1 = weightFromCount(records[i].sizeCount);
       adgData.push((d>0 && w0!==null && w1!==null) ? +(((w1-w0)/d)).toFixed(3) : null);
     }
-    adgEl.innerHTML = svgLineChart({labels, values: adgData, color:'#E8815F', fillColor:'rgba(232,129,95,.18)'});
+    adgEl.innerHTML = svgLineChart({labels, values: adgData, color:'#E8815F', fillColor:'rgba(232,129,95,.18)', curved:true});
   }
 }
 
