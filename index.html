@@ -4840,6 +4840,25 @@ function renderPondFormPanel(){
   `;
 }
 function closePondSheet(){ showPondFormSheet=false; editingPond=null; render(); }
+// Single "go up one level" rule, shared by every back-button and the
+// iOS-style edge-swipe gesture — in the same priority order render() peels
+// layers off in, so both always undo exactly the one deepest open view.
+function goBack(){
+  if(showDeleteAllConfirm){ showDeleteAllConfirm = false; render(); return; }
+  if(showSettingsSheet){ showSettingsSheet = false; render(); return; }
+  if(showPondFormSheet){ closePondSheet(); return; }
+  if(editingClosureId){ editingClosureId = null; render(); return; }
+  if(viewingClosePondId){ viewingClosePondId = null; render(); return; }
+  if(viewingBiomassPondId){ viewingBiomassPondId = null; render(); return; }
+  if(viewingHarvestPondId){ viewingHarvestPondId = null; render(); return; }
+  if(viewingTransferPondId){ viewingTransferPondId = null; render(); return; }
+  if(viewingBatchId){ viewingBatchId = null; currentFarmId = 'overview'; currentPondId = null; render(); return; }
+  if(comparingBatchId){ comparingBatchId = null; render(); return; }
+  if(choosingCompareBatch){ choosingCompareBatch = false; render(); return; }
+  if(currentPondId){ currentPondId = null; editingRecordId = null; viewingHarvestPondId = null; showRecordForm = false; render(); return; }
+  if(currentFarmId !== 'overview'){ currentFarmId = 'overview'; currentPondId = null; render(); return; }
+  // already at the root screen — nothing to go back to
+}
 
 /* ---------------- Archive the current cycle's records/harvests into `batches`, then delete the pond (closing removes it entirely) ---------------- */
 async function archivePondCycle(pond){
@@ -5457,7 +5476,7 @@ function bindDashboardEvents(){
     };
   });
 
-  bindClickByIds(['btn-back','btn-back-bottom'], ()=>{ currentPondId=null; editingRecordId=null; viewingHarvestPondId=null; showRecordForm=false; render(); });
+  bindClickByIds(['btn-back','btn-back-bottom'], goBack);
 
   const btnEditPond = document.getElementById('btn-edit-pond');
   if(btnEditPond) btnEditPond.onclick = ()=>{
@@ -5483,22 +5502,22 @@ function bindDashboardEvents(){
   const btnOpenHarvest = document.getElementById('btn-open-harvest');
   if(btnOpenHarvest) btnOpenHarvest.onclick = ()=>{ viewingHarvestPondId = currentPondId; render(); };
 
-  bindClickByIds(['btn-back-harvest','btn-back-harvest-bottom'], ()=>{ viewingHarvestPondId = null; render(); });
+  bindClickByIds(['btn-back-harvest','btn-back-harvest-bottom'], goBack);
 
   const btnOpenTransfer = document.getElementById('btn-open-transfer');
   if(btnOpenTransfer) btnOpenTransfer.onclick = ()=>{ viewingTransferPondId = currentPondId; render(); };
 
-  bindClickByIds(['btn-back-transfer','btn-back-transfer-bottom'], ()=>{ viewingTransferPondId = null; render(); });
+  bindClickByIds(['btn-back-transfer','btn-back-transfer-bottom'], goBack);
 
   const btnClosePond = document.getElementById('btn-close-pond');
   if(btnClosePond) btnClosePond.onclick = ()=>{ viewingClosePondId = currentPondId; render(); };
 
-  bindClickByIds(['btn-back-close','btn-back-close-bottom'], ()=>{ viewingClosePondId = null; render(); });
+  bindClickByIds(['btn-back-close','btn-back-close-bottom'], goBack);
 
   const btnOpenBiomass = document.getElementById('btn-open-biomass');
   if(btnOpenBiomass) btnOpenBiomass.onclick = ()=>{ viewingBiomassPondId = currentPondId; render(); };
 
-  bindClickByIds(['btn-back-biomass','btn-back-biomass-bottom'], ()=>{ viewingBiomassPondId = null; render(); });
+  bindClickByIds(['btn-back-biomass','btn-back-biomass-bottom'], goBack);
 
   const biomassRelease = document.getElementById('biomass-release');
   const biomassSurvival = document.getElementById('biomass-survival');
@@ -5670,7 +5689,7 @@ function bindDashboardEvents(){
     });
   }
 
-  bindClickByIds(['btn-back-close-edit','btn-back-close-edit-bottom'], ()=>{ editingClosureId = null; render(); });
+  bindClickByIds(['btn-back-close-edit','btn-back-close-edit-bottom'], goBack);
 
   const closeEditForm = document.getElementById('close-edit-form');
   if(closeEditForm){
@@ -5914,7 +5933,7 @@ function bindDashboardEvents(){
     };
   });
 
-  bindClickByIds(['btn-back-batch','btn-back-batch-bottom'], ()=>{ viewingBatchId=null; currentFarmId='overview'; currentPondId=null; render(); });
+  bindClickByIds(['btn-back-batch','btn-back-batch-bottom'], goBack);
 
   document.querySelectorAll('[data-view-batch]').forEach(btn=>{
     btn.onclick = ()=>{ viewingBatchId = btn.getAttribute('data-view-batch'); render(); };
@@ -5940,8 +5959,8 @@ function bindDashboardEvents(){
   }
 
   bindClickByIds(['btn-open-compare-picker'], ()=>{ choosingCompareBatch = true; render(); });
-  bindClickByIds(['btn-back-compare-picker'], ()=>{ choosingCompareBatch = false; render(); });
-  bindClickByIds(['btn-back-compare','btn-back-compare-bottom'], ()=>{ comparingBatchId = null; render(); });
+  bindClickByIds(['btn-back-compare-picker'], goBack);
+  bindClickByIds(['btn-back-compare','btn-back-compare-bottom'], goBack);
 
   document.querySelectorAll('[data-del-batch]').forEach(btn=>{
     btn.onclick = async ()=>{
@@ -6149,6 +6168,30 @@ function bindDashboardEvents(){
     bkcUpdate();
   }
 }
+
+// iOS-style edge-swipe-back: a drag starting within EDGE_PX of the left
+// edge that moves right more than it moves vertically triggers goBack().
+// Bound once here (not per-render) since it's independent of the current page.
+(function initEdgeSwipeBack(){
+  const EDGE_PX = 24, THRESHOLD_PX = 70;
+  let tracking = false, triggered = false, startX = 0, startY = 0;
+  document.addEventListener('touchstart', (e)=>{
+    if(e.touches.length !== 1) return;
+    const t = e.touches[0];
+    if(t.clientX > EDGE_PX) { tracking = false; return; }
+    tracking = true; triggered = false; startX = t.clientX; startY = t.clientY;
+  }, { passive: true });
+  document.addEventListener('touchmove', (e)=>{
+    if(!tracking || triggered) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX, dy = t.clientY - startY;
+    if(dx > THRESHOLD_PX && dx > Math.abs(dy) * 1.5){
+      triggered = true;
+      goBack();
+    }
+  }, { passive: true });
+  document.addEventListener('touchend', ()=>{ tracking = false; triggered = false; }, { passive: true });
+})();
 
 /* ---------------- Go ---------------- */
 boot();
