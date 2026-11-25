@@ -1733,31 +1733,45 @@ function computeAdgForPond(p, recs){
 }
 const THAI_WEEKDAY_SHORT = ['อา','จ','อ','พ','พฤ','ศ','ส'];
 const SAMPLE_DAY_STATUS_CLASS = { overdue:'ov-sample-overdue', today:'ov-sample-today', tomorrow:'ov-sample-tomorrow' };
-function sampleDayInfo(recs){
-  if(!recs || recs.length===0) return null;
-  const counts = {};
-  recs.forEach(r=>{
-    if(!r.weekDate) return;
-    const dow = new Date(r.weekDate+'T00:00:00').getDay();
-    counts[dow] = (counts[dow]||0)+1;
-  });
-  const entries = Object.entries(counts);
-  if(entries.length===0) return null;
-  const maxCount = Math.max(...entries.map(([,c])=>c));
-  const dows = entries.filter(([,c])=>c===maxCount).map(([dow])=>parseInt(dow,10)).sort((a,b)=>a-b);
-  const label = dows.map(dow=>THAI_WEEKDAY_SHORT[dow]).join(', ');
+const FIRST_SAMPLE_DOC = 42; // farm convention: first size sample is taken around DOC 42
+function sampleDayInfo(recs, releaseDate){
+  let primaryDow, label, expectedDate;
+  if(recs && recs.length>0){
+    const counts = {};
+    recs.forEach(r=>{
+      if(!r.weekDate) return;
+      const dow = new Date(r.weekDate+'T00:00:00').getDay();
+      counts[dow] = (counts[dow]||0)+1;
+    });
+    const entries = Object.entries(counts);
+    if(entries.length===0) return null;
+    const maxCount = Math.max(...entries.map(([,c])=>c));
+    const dows = entries.filter(([,c])=>c===maxCount).map(([dow])=>parseInt(dow,10)).sort((a,b)=>a-b);
+    label = dows.map(dow=>THAI_WEEKDAY_SHORT[dow]).join(', ');
 
-  // overdue: the next expected sample date after the LAST actual record has
-  // already arrived. This stays red across week boundaries until a new record
-  // is actually added — it does not reset just because a new week started.
-  const primaryDow = dows[0];
-  const sortedDates = recs.map(r=>r.weekDate).filter(Boolean).sort();
-  const lastRecordDate = sortedDates[sortedDates.length-1];
-  const lastRecord = new Date(lastRecordDate+'T00:00:00');
-  const expectedDate = new Date(lastRecord);
-  expectedDate.setDate(expectedDate.getDate()+1);
-  while(expectedDate.getDay() !== primaryDow){
+    // overdue: the next expected sample date after the LAST actual record has
+    // already arrived. This stays red across week boundaries until a new record
+    // is actually added — it does not reset just because a new week started.
+    primaryDow = dows[0];
+    const sortedDates = recs.map(r=>r.weekDate).filter(Boolean).sort();
+    const lastRecordDate = sortedDates[sortedDates.length-1];
+    const lastRecord = new Date(lastRecordDate+'T00:00:00');
+    expectedDate = new Date(lastRecord);
     expectedDate.setDate(expectedDate.getDate()+1);
+    while(expectedDate.getDay() !== primaryDow){
+      expectedDate.setDate(expectedDate.getDate()+1);
+    }
+  } else if(releaseDate){
+    // No records yet — anchor the very first expected sample off DOC 42
+    // (release date + 42 days) instead of a historical majority, since
+    // there's no history yet to vote on. Once that first record lands, the
+    // branch above takes over and the weekly cadence repeats from there.
+    expectedDate = new Date(releaseDate+'T00:00:00');
+    expectedDate.setDate(expectedDate.getDate()+FIRST_SAMPLE_DOC);
+    primaryDow = expectedDate.getDay();
+    label = THAI_WEEKDAY_SHORT[primaryDow];
+  } else {
+    return null;
   }
 
   const today = new Date(todayISO()+'T00:00:00');
@@ -1994,7 +2008,7 @@ function renderOverviewDashboard(tabs){
         const recs = recordsForPond(pond.id);
         const last = recs[recs.length-1];
         const adg = computeAdgForPond(pond, recs);
-        const sampleDayInfoResult = sampleDayInfo(recs);
+        const sampleDayInfoResult = sampleDayInfo(recs, pond.releaseDate);
         return { pond, doc, last, adg, sampleDayInfoResult };
       }),
     }));
