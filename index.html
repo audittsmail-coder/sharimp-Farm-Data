@@ -516,7 +516,6 @@
   .pathogen-entry.good{ border-left-color:var(--teal-500); }
   .pathogen-entry .pe-head{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:5px; }
   .pathogen-entry .pe-date{ font-size:11.5px; color:var(--ink-faint); font-weight:600; }
-  .pathogen-entry .pe-worse{ font-size:10.5px; color:var(--coral); font-weight:700; }
   .pathogen-entry .pe-text{ font-size:13.5px; color:var(--ink); line-height:1.55; }
   .pathogen-entry .pe-water{ font-size:11.5px; color:var(--teal-400); font-weight:600; margin-top:5px; }
   .pe-table{ width:auto; max-width:280px; border-collapse:collapse; margin-top:2px; }
@@ -1661,7 +1660,6 @@ function sizeCompareGroupHtml(closures){
 // pathogenNitrite/pathogenPh/pathogenAlkalinity/pathogenSalinity) and each history entry
 // (ammonia/nitrite/ph/alkalinity/salinity) — shown only when the import tool actually
 // supplied them.
-const PATHOGEN_SEVERITY_LABEL = { critical:'วิกฤต', watch:'เฝ้าระวัง', normal:'ปกติ' };
 const PATHOGEN_SEVERITY_CLASS = { critical:'coral', watch:'amber', normal:'good' };
 function latestPathogenInfo(pond){
   if(!pond || !pond.pathogenSeverity) return null;
@@ -1686,13 +1684,25 @@ function pathogenExtraValuesHtml(entry){
   if(parts.length===0) return '';
   return `<div class="pe-water">${parts.join(' · ')}</div>`;
 }
-function pathogenChipHtml(severity, status, compact){
+// Compares a reading's severity to the one right before it — no more
+// spelling out "วิกฤต/เฝ้าระวัง/ปกติ", just whether it's trending up or down.
+function pathogenTrend(history, weekDate, severity){
+  const prior = (history||[]).filter(h=>h.weekDate && h.weekDate < weekDate).sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
+  if(prior.length===0) return null;
+  const prevRank = PATHOGEN_SEVERITY_RANK[prior[prior.length-1].severity] ?? 0;
+  const currRank = PATHOGEN_SEVERITY_RANK[severity] ?? 0;
+  if(currRank > prevRank) return 'up';
+  if(currRank < prevRank) return 'down';
+  return null;
+}
+function pathogenTrendChipHtml(history, weekDate, severity, status, compact){
   if(!severity) return '';
-  const cls = PATHOGEN_SEVERITY_CLASS[severity] || '';
-  const label = PATHOGEN_SEVERITY_LABEL[severity] || severity;
+  const trend = pathogenTrend(history, weekDate, severity);
+  if(!trend) return '';
+  const cls = trend==='up' ? 'coral' : 'good';
+  const symbol = trend==='up' ? '▲' : '▼';
   const cssClass = compact ? `pathogen-chip compact ${cls}` : `pathogen-chip ${cls}`;
-  const text = compact ? escapeHtml(label) : `เชื้อ: ${escapeHtml(label)}`;
-  return `<span class="${cssClass}" title="${escapeHtml(status||'')}">${text}</span>`;
+  return `<span class="${cssClass}" title="${escapeHtml(status||'')}">${symbol}</span>`;
 }
 function metaRowHtml(items){
   const valid = items.filter(Boolean);
@@ -2078,7 +2088,7 @@ function renderOverviewDashboard(tabs){
             <td>${last && last.sizeCount!=null ? last.sizeCount : '-'}</td>
             <td>${doc!==null ? doc+' วัน' : '-'}</td>
             <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
-            <td>${pond.pathogenSeverity ? pathogenChipHtml(pond.pathogenSeverity, pond.pathogenStatus, true) : '-'}</td>
+            <td>${pathogenTrendChipHtml(pond.pathogenHistory, pond.pathogenDate, pond.pathogenSeverity, pond.pathogenStatus, true) || '-'}</td>
           </tr>`;
       }).join('');
       return zoneRow + pondRows;
@@ -3290,13 +3300,14 @@ function renderPondCard(p){
   const recs = recordsForPond(p.id);
   const last = recs[recs.length-1];
   const adg = computeAdgForPond(p, recs);
+  const pathogenTrendChip = pathogenTrendChipHtml(p.pathogenHistory, p.pathogenDate, p.pathogenSeverity, p.pathogenStatus);
   return `
     <div class="pond-card" data-open-pond="${p.id}">
       <div class="pond-card-top">
         <div>
           <h3>${pondNameHtml(p)}</h3>
           <div class="pond-meta">${escapeHtml(p.species||'ยังไม่ระบุชนิด')} ${p.brand ? '· '+escapeHtml(p.brand) : ''}</div>
-          ${p.pathogenSeverity ? `<div style="margin-top:5px">${pathogenChipHtml(p.pathogenSeverity, p.pathogenStatus)}</div>` : ''}
+          ${pathogenTrendChip ? `<div style="margin-top:5px">${pathogenTrendChip}</div>` : ''}
         </div>
         ${doc!==null ? `<span class="doc-chip">DOC ${doc} วัน</span>` : ''}
       </div>
@@ -3319,11 +3330,12 @@ function renderPondSidebarRow(p){
   const isActive = p.id === currentPondId;
   const speciesShort = p.species ? p.species.split('(')[0].trim() : '';
   const metaBits = [speciesShort, doc!==null ? 'DOC '+doc+' วัน' : ''].filter(Boolean).join(' · ');
+  const pathogenTrendChip = pathogenTrendChipHtml(p.pathogenHistory, p.pathogenDate, p.pathogenSeverity, p.pathogenStatus);
   return `
     <button type="button" class="pond-sidebar-row ${isActive?'active':''}" data-open-pond="${p.id}">
       <div class="psr-name">${pondNameHtml(p)}</div>
       ${metaBits ? `<div class="psr-meta">${escapeHtml(metaBits)}</div>` : ''}
-      ${p.pathogenSeverity ? `<div style="margin-top:6px">${pathogenChipHtml(p.pathogenSeverity, p.pathogenStatus)}</div>` : ''}
+      ${pathogenTrendChip ? `<div style="margin-top:6px">${pathogenTrendChip}</div>` : ''}
     </button>`;
 }
 
@@ -3401,8 +3413,7 @@ function renderPondDetail(){
         <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[pathogenRec.severity]||''}">
           <div class="pe-head">
             <span class="pe-date">${fmtDate(pathogenRec.weekDate)}${pathogenDaysAgo!==null ? ` · ${pathogenDaysAgo<=0?'วันนี้':pathogenDaysAgo+' วันที่แล้ว'}` : ''}</span>
-            ${pathogenChipHtml(pathogenRec.severity, pathogenRec.status)}
-            ${pathogenRec.worsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
+            ${pathogenTrendChipHtml(pathogenHistory, pathogenRec.weekDate, pathogenRec.severity, pathogenRec.status)}
           </div>
           <div class="pe-text">${escapeHtml(pathogenRec.status||'-')}</div>
           ${pathogenExtraValuesHtml(pathogenRec)}
@@ -4221,8 +4232,7 @@ function renderBatchDetail(){
           <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[r.severity]||''}">
             <div class="pe-head">
               <span class="pe-date">${fmtDate(r.weekDate)}</span>
-              ${pathogenChipHtml(r.severity, r.status)}
-              ${r.worsened ? `<span class="pe-worse">▲ แย่ลงจากรอบก่อน</span>` : ''}
+              ${pathogenTrendChipHtml(batchPathogenEntriesAsc, r.weekDate, r.severity, r.status)}
             </div>
             <div class="pe-text">${escapeHtml(r.status||'-')}</div>
             ${pathogenExtraValuesHtml(r)}
