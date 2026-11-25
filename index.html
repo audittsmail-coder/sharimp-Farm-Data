@@ -1684,25 +1684,27 @@ function pathogenExtraValuesHtml(entry){
   if(parts.length===0) return '';
   return `<div class="pe-water">${parts.join(' · ')}</div>`;
 }
-// Compares a reading's severity to the one right before it — no more
-// spelling out "วิกฤต/เฝ้าระวัง/ปกติ", just whether it's trending up or down.
-function pathogenTrend(history, weekDate, severity){
-  const prior = (history||[]).filter(h=>h.weekDate && h.weekDate < weekDate).sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
-  if(prior.length===0) return null;
-  const prevRank = PATHOGEN_SEVERITY_RANK[prior[prior.length-1].severity] ?? 0;
-  const currRank = PATHOGEN_SEVERITY_RANK[severity] ?? 0;
-  if(currRank > prevRank) return 'up';
-  if(currRank < prevRank) return 'down';
-  return null;
+// Not every round reports a severity worth labelling, but ammonia is a
+// plain number every "weekly culture log" sync tends to include — so the
+// chip shows the latest known ammonia reading as of a given date (falling
+// back through rounds that didn't record one) plus a trend arrow against
+// whichever ammonia reading came before it.
+function pathogenAmmoniaAsOf(history, asOfDate){
+  const withAmmonia = (history||[]).filter(h=>h.ammonia!=null && h.weekDate && h.weekDate<=asOfDate).sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
+  return withAmmonia.length ? withAmmonia[withAmmonia.length-1] : null;
 }
-function pathogenTrendChipHtml(history, weekDate, severity, status, compact){
-  if(!severity) return '';
-  const trend = pathogenTrend(history, weekDate, severity);
-  if(!trend) return '';
-  const cls = trend==='up' ? 'coral' : 'good';
-  const symbol = trend==='up' ? '▲' : '▼';
+function pathogenAmmoniaChipHtml(history, asOfDate, compact){
+  const latest = pathogenAmmoniaAsOf(history, asOfDate || '9999-12-31');
+  if(!latest) return '';
+  const earlier = (history||[]).filter(h=>h.ammonia!=null && h.weekDate && h.weekDate < latest.weekDate).sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
+  const prev = earlier.length ? earlier[earlier.length-1] : null;
+  let cls = '', symbol = '';
+  if(prev){
+    if(latest.ammonia > prev.ammonia){ cls = 'coral'; symbol = ' ▲'; }
+    else if(latest.ammonia < prev.ammonia){ cls = 'good'; symbol = ' ▼'; }
+  }
   const cssClass = compact ? `pathogen-chip compact ${cls}` : `pathogen-chip ${cls}`;
-  return `<span class="${cssClass}" title="${escapeHtml(status||'')}">${symbol}</span>`;
+  return `<span class="${cssClass}" title="แอมโมเนีย ${latest.ammonia} mg/L (${escapeHtml(fmtDate(latest.weekDate))})">${latest.ammonia}${symbol}</span>`;
 }
 function metaRowHtml(items){
   const valid = items.filter(Boolean);
@@ -2088,7 +2090,7 @@ function renderOverviewDashboard(tabs){
             <td>${last && last.sizeCount!=null ? last.sizeCount : '-'}</td>
             <td>${doc!==null ? doc+' วัน' : '-'}</td>
             <td class="ov-adg">${adg!==null ? adg.toFixed(2) : '-'}</td>
-            <td>${pathogenTrendChipHtml(pond.pathogenHistory, pond.pathogenDate, pond.pathogenSeverity, pond.pathogenStatus, true) || '-'}</td>
+            <td>${pathogenAmmoniaChipHtml(pond.pathogenHistory, null, true) || '-'}</td>
           </tr>`;
       }).join('');
       return zoneRow + pondRows;
@@ -3300,14 +3302,14 @@ function renderPondCard(p){
   const recs = recordsForPond(p.id);
   const last = recs[recs.length-1];
   const adg = computeAdgForPond(p, recs);
-  const pathogenTrendChip = pathogenTrendChipHtml(p.pathogenHistory, p.pathogenDate, p.pathogenSeverity, p.pathogenStatus);
+  const pathogenAmmoniaChip = pathogenAmmoniaChipHtml(p.pathogenHistory);
   return `
     <div class="pond-card" data-open-pond="${p.id}">
       <div class="pond-card-top">
         <div>
           <h3>${pondNameHtml(p)}</h3>
           <div class="pond-meta">${escapeHtml(p.species||'ยังไม่ระบุชนิด')} ${p.brand ? '· '+escapeHtml(p.brand) : ''}</div>
-          ${pathogenTrendChip ? `<div style="margin-top:5px">${pathogenTrendChip}</div>` : ''}
+          ${pathogenAmmoniaChip ? `<div style="margin-top:5px">${pathogenAmmoniaChip}</div>` : ''}
         </div>
         ${doc!==null ? `<span class="doc-chip">DOC ${doc} วัน</span>` : ''}
       </div>
@@ -3330,12 +3332,12 @@ function renderPondSidebarRow(p){
   const isActive = p.id === currentPondId;
   const speciesShort = p.species ? p.species.split('(')[0].trim() : '';
   const metaBits = [speciesShort, doc!==null ? 'DOC '+doc+' วัน' : ''].filter(Boolean).join(' · ');
-  const pathogenTrendChip = pathogenTrendChipHtml(p.pathogenHistory, p.pathogenDate, p.pathogenSeverity, p.pathogenStatus);
+  const pathogenAmmoniaChip = pathogenAmmoniaChipHtml(p.pathogenHistory);
   return `
     <button type="button" class="pond-sidebar-row ${isActive?'active':''}" data-open-pond="${p.id}">
       <div class="psr-name">${pondNameHtml(p)}</div>
       ${metaBits ? `<div class="psr-meta">${escapeHtml(metaBits)}</div>` : ''}
-      ${pathogenTrendChip ? `<div style="margin-top:6px">${pathogenTrendChip}</div>` : ''}
+      ${pathogenAmmoniaChip ? `<div style="margin-top:6px">${pathogenAmmoniaChip}</div>` : ''}
     </button>`;
 }
 
@@ -3413,7 +3415,7 @@ function renderPondDetail(){
         <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[pathogenRec.severity]||''}">
           <div class="pe-head">
             <span class="pe-date">${fmtDate(pathogenRec.weekDate)}${pathogenDaysAgo!==null ? ` · ${pathogenDaysAgo<=0?'วันนี้':pathogenDaysAgo+' วันที่แล้ว'}` : ''}</span>
-            ${pathogenTrendChipHtml(pathogenHistory, pathogenRec.weekDate, pathogenRec.severity, pathogenRec.status)}
+            ${pathogenAmmoniaChipHtml(pathogenHistory, pathogenRec.weekDate)}
           </div>
           <div class="pe-text">${escapeHtml(pathogenRec.status||'-')}</div>
           ${pathogenExtraValuesHtml(pathogenRec)}
@@ -4232,7 +4234,7 @@ function renderBatchDetail(){
           <div class="pathogen-entry ${PATHOGEN_SEVERITY_CLASS[r.severity]||''}">
             <div class="pe-head">
               <span class="pe-date">${fmtDate(r.weekDate)}</span>
-              ${pathogenTrendChipHtml(batchPathogenEntriesAsc, r.weekDate, r.severity, r.status)}
+              ${pathogenAmmoniaChipHtml(batchPathogenEntriesAsc, r.weekDate)}
             </div>
             <div class="pe-text">${escapeHtml(r.status||'-')}</div>
             ${pathogenExtraValuesHtml(r)}
