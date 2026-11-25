@@ -505,6 +505,7 @@
   .pathogen-chip.coral{ background:var(--coral-soft); color:var(--coral); }
   .pathogen-chip.amber{ background:var(--amber-soft); color:var(--amber); }
   .pathogen-chip.good{ background:var(--teal-100); color:var(--teal-400); }
+  .pathogen-chip .pe-chip-label{ font-weight:500; opacity:.75; }
 
   .pathogen-list{ display:flex; flex-direction:column; gap:10px; }
   .pathogen-entry{
@@ -1704,7 +1705,7 @@ function pathogenAmmoniaChipHtml(history, asOfDate, compact){
     else if(latest.ammonia < prev.ammonia){ cls = 'good'; symbol = ' ▼'; }
   }
   const cssClass = compact ? `pathogen-chip compact ${cls}` : `pathogen-chip ${cls}`;
-  return `<span class="${cssClass}" title="แอมโมเนีย ${latest.ammonia} mg/L (${escapeHtml(fmtDate(latest.weekDate))})">${latest.ammonia}${symbol}</span>`;
+  return `<span class="${cssClass}" title="แอมโมเนีย ${latest.ammonia} mg/L (${escapeHtml(fmtDate(latest.weekDate))})"><span class="pe-chip-label">NH₃</span> ${latest.ammonia}${symbol}</span>`;
 }
 function metaRowHtml(items){
   const valid = items.filter(Boolean);
