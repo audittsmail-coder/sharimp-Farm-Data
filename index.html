@@ -182,6 +182,9 @@
     font-weight:600;
   }
 
+  .closure-farm-filter{ padding:0 0 14px 0; }
+  .closure-farm-filter .farm-tab{ padding:6px 13px; font-size:12.5px; }
+
   .farm-title-row{ display:flex; align-items:center; justify-content:space-between; margin:8px 0 14px 0; gap:10px; flex-wrap:wrap; }
   .farm-title-row h2{ font-size:21px; margin:0; color:var(--heading); }
   .sort-select{
@@ -1147,6 +1150,7 @@ let marketPriceChartMonth = null;
 let marketPriceFormDate = null;
 let bulkPriceImportResultHtml = '';
 let showClosureStats = false;
+let closuresFarmFilter = 'all';
 let showRecordForm = false;
 let showMergeHatcherySheet = false;
 let mergeHatcherySelected = new Set();
@@ -2213,7 +2217,14 @@ function hatcheryDistributionCardHtml(closures){
 }
 
 function renderClosuresSummary(tabs){
-  const closures = allClosuresSorted();
+  const allClosures = allClosuresSorted();
+  const farmsWithClosures = state.farms.filter(f=>allClosures.some(c=>c.farmId===f.id));
+  const filterTabsHtml = farmsWithClosures.length > 0 ? `
+    <div class="farm-tabs closure-farm-filter">
+      <button type="button" class="farm-tab ${closuresFarmFilter==='all'?'active':''}" data-closure-farm-filter="all">ทั้งหมด</button>
+      ${farmsWithClosures.map(f=>`<button type="button" class="farm-tab ${closuresFarmFilter===f.id?'active':''}" data-closure-farm-filter="${f.id}">${escapeHtml(f.name)}</button>`).join('')}
+    </div>` : '';
+  const closures = closuresFarmFilter==='all' ? allClosures : allClosures.filter(c=>c.farmId===closuresFarmFilter);
 
   let statsHtml = '';
   if(closures.length > 0){
@@ -2252,15 +2263,20 @@ function renderClosuresSummary(tabs){
     }
   }
 
-  const bodyHtml = closures.length === 0 ? `
+  const bodyHtml = allClosures.length === 0 ? `
     <div class="empty-state">
       ${ICONS.shrimp}
       <p><b>ยังไม่มีข้อมูลปิดบ่อ</b></p>
       <p>เมื่อกด "ปิดบ่อ" แล้วบันทึกข้อมูลจากหน้ารายละเอียดบ่อ รายการจะมาแสดงที่นี่</p>
+    </div>` : closures.length === 0 ? `
+    ${statsHtml}
+    <div class="empty-state">
+      ${ICONS.shrimp}
+      <p><b>ฟาร์มนี้ยังไม่มีข้อมูลปิดบ่อ</b></p>
     </div>` : `
     ${statsHtml}
     <div class="card">
-      <h3>ประวัติการปิดบ่อทั้งหมด</h3>
+      <h3>ประวัติการปิดบ่อ${closuresFarmFilter==='all' ? 'ทั้งหมด' : ''}</h3>
       <div style="overflow-x:auto">
         <table class="rec-table closures-table">
           <thead><tr><th>บ่อ</th><th>วันที่ปิด</th><th>DOC</th><th>ไซส์</th><th>น้ำหนักจับ</th><th>อัตรารอด</th><th>FCR</th><th>ราคาที่จับ</th><th>มูลค่า</th><th>หมายเหตุ</th><th></th></tr></thead>
@@ -2269,7 +2285,7 @@ function renderClosuresSummary(tabs){
               <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" data-open-closure-id="${c.id}" class="${c.diseaseType ? 'has-disease' : ''}" style="cursor:pointer;">
                 <td>
                   <div style="font-weight:700;color:var(--heading);font-family:'Taviraj',serif;">
-                    ${escapeHtml(c.pondName||'-')}${c.farmName ? `<span style="font-weight:400;font-size:11px;color:var(--ink-faint);font-family:inherit;margin-left:6px;">${escapeHtml(c.farmName)}</span>` : ''}
+                    ${escapeHtml(c.pondName||'-')}${(c.farmName && closuresFarmFilter==='all') ? `<span style="font-weight:400;font-size:11px;color:var(--ink-faint);font-family:inherit;margin-left:6px;">${escapeHtml(c.farmName)}</span>` : ''}
                   </div>
                   ${speciesShortLabel(c.species) ? `<div style="margin-top:3px;"><span class="species-tag">${escapeHtml(speciesShortLabel(c.species))}</span></div>` : ''}
                   ${c.diseaseType ? `<div class="disease-badge">🦠 ${escapeHtml(c.diseaseType)}</div>` : ''}
@@ -2303,6 +2319,7 @@ function renderClosuresSummary(tabs){
       <div class="farm-title-row">
         <h2>สรุปผลที่ผ่านมา</h2>
       </div>
+      ${filterTabsHtml}
       ${bodyHtml}
     </main>
   `;
@@ -5311,6 +5328,13 @@ function bindDashboardEvents(){
     showClosureStats = !showClosureStats;
     render();
   };
+
+  document.querySelectorAll('[data-closure-farm-filter]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      closuresFarmFilter = btn.getAttribute('data-closure-farm-filter');
+      render();
+    });
+  });
 
   if(currentFarmId==='closures') backfillHatcheryNamesIfNeeded();
 
