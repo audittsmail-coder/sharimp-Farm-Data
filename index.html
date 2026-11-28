@@ -4976,7 +4976,13 @@ function drawBatchCharts(){
 }
 
 /* ---------------- Settings panel (inline, not a fixed overlay) ---------------- */
+// The "delete everything" control is intentionally NOT reachable from the
+// normal settings view — a stray tap while exploring settings must never be
+// one step away from wiping the farm's data. It only appears for someone who
+// deliberately navigates to the app with this secret URL hash.
+const DANGER_ZONE_HASH = '#danger-zone';
 function renderSettingsPanel(){
+  const showDangerZone = location.hash === DANGER_ZONE_HASH;
   return `
     <div class="card panel-card">
       <h3>ตั้งค่า</h3>
@@ -4994,10 +5000,11 @@ function renderSettingsPanel(){
       <div class="btn-row" style="margin-top:14px">
         <button class="btn btn-secondary" type="button" id="btn-close-settings" style="width:100%">ปิด</button>
       </div>
+      ${showDangerZone ? `
       <div class="settings-danger-zone">
         <div class="settings-danger-label">โซนอันตราย</div>
         <button class="btn btn-danger-outline" type="button" id="btn-clear-data" style="width:100%">ลบข้อมูลทั้งหมด</button>
-      </div>
+      </div>` : ''}
       <div class="app-version">เวอร์ชันแอป: ${escapeHtml(APP_VERSION)}</div>
     </div>
   `;
