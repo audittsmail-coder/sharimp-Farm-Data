@@ -771,20 +771,42 @@
   .ov-sample-overdue{ color:var(--danger); font-weight:700; }
   .ov-sample-today{ color:#22C55E; font-weight:700; }
   .ov-sample-tomorrow{ color:var(--teal-400); font-weight:700; }
-  table.overview-table tr.ov-zone-row td{
+  .ov-zone-head{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
     background:var(--surface-hi); color:var(--teal-400); font-weight:700; font-size:12.5px;
-    text-transform:uppercase; letter-spacing:.05em; padding:8px 7px;
+    text-transform:uppercase; letter-spacing:.05em; padding:8px 7px; border-radius:var(--radius-sm);
   }
-  .overview-table tr.ov-zone-row:hover td{ background:var(--surface-hi); }
+  table.overview-table tr.ov-zone-row td{ padding:0; }
   @media (min-width:700px){
     table.overview-table{ font-size:15px; }
     table.overview-table th, table.overview-table td{ padding:13px 10px; }
     table.overview-table th{ font-size:13.5px; }
+    table.overview-table tr.ov-zone-row td{ padding:0; }
     .ov-pond-name{ font-size:18.5px; min-width:140px; }
     .ov-pond-species{ font-size:13px; }
     .pathogen-chip.compact{ padding:4px 11px; font-size:13px; }
     .ov-update-badge, .ov-harvest-badge{ font-size:12px; padding:2px 9px; }
-    table.overview-table tr.ov-zone-row td{ font-size:14.5px; padding:11px 10px; }
+    .ov-zone-head{ font-size:14.5px; padding:11px 10px; }
+  }
+
+  .view-toggle{ display:inline-flex; border:1.5px solid var(--ink-faint); border-radius:var(--radius-sm); overflow:hidden; }
+  .view-toggle-btn{
+    background:var(--surface); color:var(--ink-soft); border:none; font-size:12px; font-weight:600;
+    padding:7px 14px; cursor:pointer; transition:all .15s var(--ease);
+  }
+  .view-toggle-btn:not(:last-child){ border-right:1.5px solid var(--ink-faint); }
+  .view-toggle-btn:hover{ color:var(--heading); }
+  .view-toggle-btn.active{ background:var(--teal-500); color:#fff; }
+
+  .ov-zone-card{ margin-bottom:12px; }
+  .ov-zone-card .ov-zone-head{ margin-bottom:12px; }
+  .ov-card-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(165px, 1fr)); gap:10px; }
+  .ov-card{ cursor:pointer; padding-top:12px; padding-bottom:12px; }
+  .ov-card.status-overdue::before{ background:linear-gradient(var(--danger), var(--danger)); opacity:1; }
+  .ov-card.status-today::before{ background:linear-gradient(#22C55E, #16A34A); opacity:1; }
+  .ov-card.status-tomorrow::before{ background:linear-gradient(var(--teal-400), var(--teal-600)); opacity:1; }
+  @media (min-width:700px){
+    .ov-card-grid{ grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); }
   }
 
   .panel-card{ border-color:var(--teal-500); box-shadow:0 0 0 3px rgba(46,147,203,.14), var(--shadow-sm); }
@@ -1159,6 +1181,7 @@ let mergeHatcheryTargetTouched = false;
 let mergeHatcheryResultHtml = '';
 let hatcheryBackfillDone = false;
 let overviewSortBy = '';
+let overviewViewMode = 'table';
 let showPondFormSheet = false;
 let editingPond = null;
 let editingRecordId = null;
@@ -2056,6 +2079,21 @@ function renderOverviewDashboard(tabs){
       <option value="adg" ${overviewSortBy==='adg'?'selected':''}>เรียงตาม ADG</option>
     </select>`;
 
+  const viewToggleHtml = `
+    <div class="view-toggle">
+      <button type="button" class="view-toggle-btn ${overviewViewMode==='table'?'active':''}" data-overview-view="table">ตาราง</button>
+      <button type="button" class="view-toggle-btn ${overviewViewMode==='grid'?'active':''}" data-overview-view="grid">ช่อง</button>
+    </div>`;
+
+  const zoneHeaderHtml = (farm, pondsCount)=> `
+    <div class="ov-zone-head">
+      <span>${escapeHtml(farm.name)} · ${pondsCount} บ่อ</span>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button type="button" class="action-btn" data-rename-farm="${farm.id}" style="font-size:10.5px; padding:3px 9px; text-transform:none; letter-spacing:normal;">${ICONS.edit} แก้ไขชื่อฟาร์ม</button>
+        ${pondsCount === 0 ? `<button type="button" class="action-btn danger" data-delete-farm="${farm.id}" style="font-size:10.5px; padding:3px 9px; text-transform:none; letter-spacing:normal;">${ICONS.trash} ลบฟาร์ม</button>` : ''}
+      </div>
+    </div>`;
+
   let bodyHtml;
   if(state.farms.length === 0){
     bodyHtml = `
@@ -2064,18 +2102,50 @@ function renderOverviewDashboard(tabs){
         <p><b>ยังไม่มีบ่อในระบบ</b></p>
         <p>เลือกฟาร์มด้านบนแล้วกด "+ เพิ่มบ่อ" เพื่อเริ่มบันทึกข้อมูล</p>
       </div>`;
+  } else if(overviewViewMode === 'grid'){
+    bodyHtml = groups.map(({farm, ponds})=>{
+      if(ponds.length === 0){
+        return `<div class="card ov-zone-card">${zoneHeaderHtml(farm, 0)}<p style="text-align:center; color:var(--ink-faint); padding:14px 0 2px; margin:0;">ยังไม่มีบ่อในฟาร์มนี้ กด "+ เพิ่มบ่อใหม่" ด้านบนเพื่อเริ่ม</p></div>`;
+      }
+      const cardsHtml = ponds.map(({pond, doc, last, adg, sampleDayInfoResult})=>{
+        const speciesShort = pond.species ? pond.species.split('(')[0].trim() : '';
+        const isNew = isPondRecentlyUpdated(pond);
+        const hasHarvest = harvestsForPond(pond.id).length > 0;
+        const pathogenAmmoniaChip = pathogenAmmoniaChipHtml(pond.pathogenHistory, null, true);
+        const statusClass = sampleDayInfoResult && sampleDayInfoResult.status ? `status-${sampleDayInfoResult.status}` : '';
+        return `
+          <div class="pond-card ov-card ${statusClass}" data-open-pond="${pond.id}">
+            <div class="pond-card-top">
+              <div>
+                <h3>${pondNameHtml(pond)}</h3>
+                ${speciesShort ? `<div class="pond-meta">${escapeHtml(speciesShort)}</div>` : ''}
+              </div>
+              ${doc!==null ? `<span class="doc-chip">DOC ${doc} วัน</span>` : ''}
+            </div>
+            ${(isNew || hasHarvest) ? `<div style="margin-top:6px; display:flex; gap:5px; flex-wrap:wrap;">${isNew ? `<span class="ov-update-badge">อัปเดตใหม่</span>` : ''}${hasHarvest ? `<span class="ov-harvest-badge">แบ่งจับแล้ว</span>` : ''}</div>` : ''}
+            <div class="stat-row">
+              <div class="stat">
+                <div class="label">วันที่สุ่ม</div>
+                <div class="val">${sampleDayInfoResult ? `<span class="${SAMPLE_DAY_STATUS_CLASS[sampleDayInfoResult.status]||''}">${escapeHtml(sampleDayInfoResult.label)}</span>` : '-'}</div>
+              </div>
+              <div class="stat">
+                <div class="label">ไซส์</div>
+                <div class="val">${last && last.sizeCount!=null ? last.sizeCount : '-'}</div>
+              </div>
+              <div class="stat">
+                <div class="label">ADG</div>
+                <div class="val coral">${adg!==null ? adg.toFixed(2) : '-'}</div>
+              </div>
+            </div>
+            ${pathogenAmmoniaChip ? `<div style="margin-top:9px">${pathogenAmmoniaChip}</div>` : ''}
+          </div>`;
+      }).join('');
+      return `<div class="card ov-zone-card">${zoneHeaderHtml(farm, ponds.length)}<div class="ov-card-grid">${cardsHtml}</div></div>`;
+    }).join('');
   } else {
     const trs = groups.map(({farm, ponds})=>{
       const zoneRow = `
-        <tr class="ov-zone-row"><td colspan="6">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-            <span>${escapeHtml(farm.name)} · ${ponds.length} บ่อ</span>
-            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              <button type="button" class="action-btn" data-rename-farm="${farm.id}" style="font-size:10.5px; padding:3px 9px; text-transform:none; letter-spacing:normal;">${ICONS.edit} แก้ไขชื่อฟาร์ม</button>
-              ${ponds.length === 0 ? `<button type="button" class="action-btn danger" data-delete-farm="${farm.id}" style="font-size:10.5px; padding:3px 9px; text-transform:none; letter-spacing:normal;">${ICONS.trash} ลบฟาร์ม</button>` : ''}
-            </div>
-          </div>
-        </td></tr>`;
+        <tr class="ov-zone-row"><td colspan="6">${zoneHeaderHtml(farm, ponds.length)}</td></tr>`;
       if(ponds.length === 0){
         return zoneRow + `<tr style="cursor:default;"><td colspan="6" style="text-align:center; color:var(--ink-faint); padding:14px;">ยังไม่มีบ่อในฟาร์มนี้ กด "+ เพิ่มบ่อใหม่" ด้านบนเพื่อเริ่ม</td></tr>`;
       }
@@ -2119,7 +2189,8 @@ function renderOverviewDashboard(tabs){
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <button class="action-btn accent add-pond-trigger" id="btn-add-pond-overview" type="button">${ICONS.plus} เพิ่มบ่อใหม่</button>
           <button type="button" class="action-btn accent" id="btn-add-farm-overview">${ICONS.plus} เพิ่มฟาร์มใหม่</button>
-          ${sortSelectHtml}
+          ${state.farms.length > 0 ? viewToggleHtml : ''}
+          ${overviewViewMode==='table' ? sortSelectHtml : ''}
         </div>
       </div>
       ${bodyHtml}
@@ -5322,6 +5393,13 @@ function bindDashboardEvents(){
     overviewSortBy = overviewSortSelect.value;
     render();
   };
+
+  document.querySelectorAll('[data-overview-view]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      overviewViewMode = btn.getAttribute('data-overview-view');
+      render();
+    });
+  });
 
   const btnToggleClosureStats = document.getElementById('btn-toggle-closure-stats');
   if(btnToggleClosureStats) btnToggleClosureStats.onclick = ()=>{
