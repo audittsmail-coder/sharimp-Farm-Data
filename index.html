@@ -801,8 +801,13 @@
   .ov-zone-card{ margin-bottom:12px; }
   .ov-zone-card .ov-zone-head{ margin-bottom:12px; }
   .ov-card-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(165px, 1fr)); gap:10px; }
-  .ov-card{ cursor:pointer; padding-top:12px; padding-bottom:12px; }
+  .ov-card{ cursor:pointer; padding-top:12px; padding-bottom:12px; display:flex; flex-direction:column; }
   .ov-card .pond-caretaker{ font-size:11px; }
+  .ov-card-name-wrap{ flex:1; min-width:0; }
+  .ov-card-name-wrap h3{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ov-card-name-wrap .pond-meta{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:15px; }
+  .ov-card-badges{ min-height:19px; margin-top:6px; display:flex; gap:5px; flex-wrap:wrap; align-items:flex-start; }
+  .ov-card-chip{ margin-top:auto; padding-top:9px; min-height:15px; }
   .ov-card.status-overdue::before{ background:linear-gradient(var(--danger), var(--danger)); opacity:1; }
   .ov-card.status-today::before{ background:linear-gradient(#22C55E, #16A34A); opacity:1; }
   .ov-card.status-tomorrow::before{ background:linear-gradient(var(--teal-400), var(--teal-600)); opacity:1; }
@@ -2117,13 +2122,13 @@ function renderOverviewDashboard(tabs){
         return `
           <div class="pond-card ov-card ${statusClass}" data-open-pond="${pond.id}">
             <div class="pond-card-top">
-              <div>
-                <h3>${pondNameHtml(pond)}</h3>
-                ${speciesShort ? `<div class="pond-meta">${escapeHtml(speciesShort)}</div>` : ''}
+              <div class="ov-card-name-wrap">
+                <h3 title="${escapeHtml((pond.name||'')+(pond.caretakerName?' '+pond.caretakerName:''))}">${pondNameHtml(pond)}</h3>
+                <div class="pond-meta">${speciesShort ? escapeHtml(speciesShort) : ''}</div>
               </div>
               ${doc!==null ? `<span class="doc-chip">DOC ${doc} วัน</span>` : ''}
             </div>
-            ${(isNew || hasHarvest) ? `<div style="margin-top:6px; display:flex; gap:5px; flex-wrap:wrap;">${isNew ? `<span class="ov-update-badge">อัปเดตใหม่</span>` : ''}${hasHarvest ? `<span class="ov-harvest-badge">แบ่งจับแล้ว</span>` : ''}</div>` : ''}
+            <div class="ov-card-badges">${isNew ? `<span class="ov-update-badge">อัปเดตใหม่</span>` : ''}${hasHarvest ? `<span class="ov-harvest-badge">แบ่งจับแล้ว</span>` : ''}</div>
             <div class="stat-row">
               <div class="stat">
                 <div class="label">วันที่สุ่ม</div>
@@ -2138,7 +2143,7 @@ function renderOverviewDashboard(tabs){
                 <div class="val coral">${adg!==null ? adg.toFixed(2) : '-'}</div>
               </div>
             </div>
-            ${pathogenAmmoniaChip ? `<div style="margin-top:9px">${pathogenAmmoniaChip}</div>` : ''}
+            <div class="ov-card-chip">${pathogenAmmoniaChip}</div>
           </div>`;
       }).join('');
       return `<div class="card ov-zone-card">${zoneHeaderHtml(farm, ponds.length)}<div class="ov-card-grid">${cardsHtml}</div></div>`;
