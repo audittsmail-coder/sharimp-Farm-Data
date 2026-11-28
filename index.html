@@ -1044,6 +1044,7 @@ const APP_VERSION = '__BUILD_VERSION__';
 const ICONS = {
   wave: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 15c1.5-1.5 3-1.5 4.5 0s3 1.5 4.5 0 3-1.5 4.5 0 3 1.5 4.5 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M2 19c1.5-1.5 3-1.5 4.5 0s3 1.5 4.5 0 3-1.5 4.5 0 3 1.5 4.5 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.5"/><path d="M12 4c0 0-3 2.2-3 5a3 3 0 006 0c0-2.8-3-5-3-5z" fill="currentColor"/></svg>`,
   gear: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.7"/><path d="M19.4 13.5a1.7 1.7 0 00.34 1.87l.06.06a2.05 2.05 0 11-2.9 2.9l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V20a2.05 2.05 0 01-4.1 0v-.1a1.7 1.7 0 00-1.1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2.05 2.05 0 11-2.9-2.9l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H4a2.05 2.05 0 010-4.1h.1a1.7 1.7 0 001.55-1.1 1.7 1.7 0 00-.34-1.87l-.06-.06a2.05 2.05 0 112.9-2.9l.06.06a1.7 1.7 0 001.87.34H10a1.7 1.7 0 001-1.55V4a2.05 2.05 0 014.1 0v.1a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2.05 2.05 0 112.9 2.9l-.06.06a1.7 1.7 0 00-.34 1.87V10a1.7 1.7 0 001.55 1h.1a2.05 2.05 0 010 4.1h-.1a1.7 1.7 0 00-1.55 1z" stroke="currentColor" stroke-width="1.4"/></svg>`,
+  palette: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3a9 9 0 100 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2H17a4 4 0 004-4c0-4-4-7.4-9-7.4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7.3" cy="10.2" r="1.3" fill="currentColor"/><circle cx="9.7" cy="6.5" r="1.3" fill="currentColor"/><circle cx="14.3" cy="6.5" r="1.3" fill="currentColor"/><circle cx="16.7" cy="10.2" r="1.3" fill="currentColor"/></svg>`,
   back: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   plus: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`,
   shrimp: `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#D6EAF5"/><path d="M8 15c1-4 3-7 6-8" stroke="#123F5C" stroke-width="1.5" stroke-linecap="round"/><circle cx="15" cy="8" r="1.3" fill="#D9694A"/></svg>`,
@@ -1236,6 +1237,7 @@ let viewingClosePondId = null;
 let viewingBiomassPondId = null;
 let editingClosureId = null;
 let showSettingsSheet = false;
+let showThemeSheet = false;
 let showDeleteAllConfirm = false;
 let editingWeatherNote = false;
 let editingWeatherNoteDate = null;
@@ -2015,11 +2017,15 @@ function render(){
           <h1>บันทึกสุ่มกุ้งอนันต์ฟาร์ม</h1>
           <div class="sub">ข้อมูลรายสัปดาห์ · ${state.farms.length} ฟาร์ม · <span class="sub-highlight">กุ้งขาว ${whiteShrimpPondCount} บ่อ · กุ้งดำ ${blackTigerPondCount} บ่อ · รวม ${totalPondCount} บ่อ</span></div>
         </div>
-        <button class="icon-btn" id="btn-settings" title="ตั้งค่า">${ICONS.gear}</button>
+        <div style="display:flex; gap:6px; flex:none;">
+          <button class="icon-btn" id="btn-theme" title="เปลี่ยนสีธีม">${ICONS.palette}</button>
+          <button class="icon-btn" id="btn-settings" title="ตั้งค่า">${ICONS.gear}</button>
+        </div>
       </div>
     `;
 
     let panelHtml = '';
+    if(showThemeSheet) panelHtml += renderThemePanel();
     if(showSettingsSheet && !showDeleteAllConfirm) panelHtml += renderSettingsPanel();
     if(showDeleteAllConfirm) panelHtml += renderDeleteAllConfirmPanel();
     if(panelHtml) html += `<div style="padding:14px 16px 0 16px">${panelHtml}</div>`;
@@ -4975,14 +4981,26 @@ function drawBatchCharts(){
   drawChartsFor(batch.records || [], batch.releaseDate);
 }
 
+/* ---------------- Theme panel (inline, not a fixed overlay) ---------------- */
+// Its own dedicated button/panel, separate from Settings — so switching the
+// display color is a quick one-tap action for anyone using the app, not
+// buried behind the same menu as the (far riskier) delete-everything option.
+function renderThemePanel(){
+  return `
+    <div class="card panel-card">
+      <h3>สีธีมของแอป</h3>
+      <div class="accent-swatch-row" style="margin-top:10px;">
+        ${ACCENT_THEMES.map(t=>`<button type="button" class="accent-swatch ${accentTheme===t.id?'active':''}" data-accent-theme="${t.id}" style="background:${t.swatch}" title="${escapeHtml(t.label)}" aria-label="${escapeHtml(t.label)}"></button>`).join('')}
+      </div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-secondary" type="button" id="btn-close-theme" style="width:100%">ปิด</button>
+      </div>
+    </div>
+  `;
+}
+
 /* ---------------- Settings panel (inline, not a fixed overlay) ---------------- */
-// The "delete everything" control is intentionally NOT reachable from the
-// normal settings view — a stray tap while exploring settings must never be
-// one step away from wiping the farm's data. It only appears for someone who
-// deliberately navigates to the app with this secret URL hash.
-const DANGER_ZONE_HASH = '#danger-zone';
 function renderSettingsPanel(){
-  const showDangerZone = location.hash === DANGER_ZONE_HASH;
   return `
     <div class="card panel-card">
       <h3>ตั้งค่า</h3>
@@ -4991,20 +5009,13 @@ function renderSettingsPanel(){
         เมื่อกลับมาออนไลน์ ข้อมูลที่แก้ไขระหว่างออฟไลน์จะซิงก์ขึ้นอัตโนมัติ<br>
         <b>หมายเหตุ:</b> แอปนี้ไม่มีรหัสผ่านป้องกัน ใครก็ตามที่มีลิงก์เข้าดู/แก้ไขข้อมูลได้
       </p>
-      <div style="margin-top:14px">
-        <label style="display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:4px;">สีธีมของแอป</label>
-        <div class="accent-swatch-row">
-          ${ACCENT_THEMES.map(t=>`<button type="button" class="accent-swatch ${accentTheme===t.id?'active':''}" data-accent-theme="${t.id}" style="background:${t.swatch}" title="${escapeHtml(t.label)}" aria-label="${escapeHtml(t.label)}"></button>`).join('')}
-        </div>
-      </div>
       <div class="btn-row" style="margin-top:14px">
         <button class="btn btn-secondary" type="button" id="btn-close-settings" style="width:100%">ปิด</button>
       </div>
-      ${showDangerZone ? `
       <div class="settings-danger-zone">
         <div class="settings-danger-label">โซนอันตราย</div>
         <button class="btn btn-danger-outline" type="button" id="btn-clear-data" style="width:100%">ลบข้อมูลทั้งหมด</button>
-      </div>` : ''}
+      </div>
       <div class="app-version">เวอร์ชันแอป: ${escapeHtml(APP_VERSION)}</div>
     </div>
   `;
@@ -5076,6 +5087,7 @@ function closePondSheet(){ showPondFormSheet=false; editingPond=null; render(); 
 function goBack(){
   if(showDeleteAllConfirm){ showDeleteAllConfirm = false; render(); return; }
   if(showSettingsSheet){ showSettingsSheet = false; render(); return; }
+  if(showThemeSheet){ showThemeSheet = false; render(); return; }
   if(showPondFormSheet){ closePondSheet(); return; }
   if(editingClosureId){ editingClosureId = null; render(); return; }
   if(viewingClosePondId){ viewingClosePondId = null; render(); return; }
@@ -5138,10 +5150,16 @@ function bindClickByIds(ids, handler){
 }
 function bindDashboardEvents(){
   const btnSettings = document.getElementById('btn-settings');
-  if(btnSettings) btnSettings.onclick = ()=>{ showSettingsSheet=true; showDeleteAllConfirm=false; render(); };
+  if(btnSettings) btnSettings.onclick = ()=>{ showSettingsSheet=true; showThemeSheet=false; showDeleteAllConfirm=false; render(); };
 
   const btnCloseSettings = document.getElementById('btn-close-settings');
   if(btnCloseSettings) btnCloseSettings.onclick = ()=>{ showSettingsSheet=false; render(); };
+
+  const btnTheme = document.getElementById('btn-theme');
+  if(btnTheme) btnTheme.onclick = ()=>{ showThemeSheet=true; showSettingsSheet=false; render(); };
+
+  const btnCloseTheme = document.getElementById('btn-close-theme');
+  if(btnCloseTheme) btnCloseTheme.onclick = ()=>{ showThemeSheet=false; render(); };
 
   const btnClearData = document.getElementById('btn-clear-data');
   if(btnClearData) btnClearData.onclick = ()=>{ showDeleteAllConfirm=true; render(); };
