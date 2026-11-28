@@ -76,6 +76,56 @@
     --heading:#FBCFE8; --teal-100:rgba(236,72,153,.16);
     --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(236,72,153,.14), transparent 60%);
   }
+  :root[data-accent="blue"]{
+    --teal-900:#07142A; --teal-700:#1E40AF; --teal-600:#2563EB; --teal-500:#3B82F6; --teal-400:#60A5FA;
+    --heading:#93C5FD; --teal-100:rgba(59,130,246,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(59,130,246,.14), transparent 60%);
+  }
+  :root[data-accent="cyan"]{
+    --teal-900:#042F2E; --teal-700:#0E7490; --teal-600:#0891B2; --teal-500:#06B6D4; --teal-400:#22D3EE;
+    --heading:#67E8F9; --teal-100:rgba(6,182,212,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(6,182,212,.14), transparent 60%);
+  }
+  :root[data-accent="forest"]{
+    --teal-900:#0A2614; --teal-700:#166534; --teal-600:#15803D; --teal-500:#16A34A; --teal-400:#4ADE80;
+    --heading:#86EFAC; --teal-100:rgba(22,163,74,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(22,163,74,.14), transparent 60%);
+  }
+  :root[data-accent="plum"]{
+    --teal-900:#20081F; --teal-700:#701A75; --teal-600:#86198F; --teal-500:#A21CAF; --teal-400:#C026D3;
+    --heading:#F0ABFC; --teal-100:rgba(162,28,175,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(162,28,175,.14), transparent 60%);
+  }
+  :root[data-accent="fuchsia"]{
+    --teal-900:#2A0620; --teal-700:#A21CAF; --teal-600:#C026D3; --teal-500:#D946EF; --teal-400:#E879F9;
+    --heading:#F5D0FE; --teal-100:rgba(217,70,239,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(217,70,239,.14), transparent 60%);
+  }
+  :root[data-accent="crimson"]{
+    --teal-900:#260707; --teal-700:#991B1B; --teal-600:#B91C1C; --teal-500:#DC2626; --teal-400:#F87171;
+    --heading:#FCA5A5; --teal-100:rgba(220,38,38,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(220,38,38,.14), transparent 60%);
+  }
+  :root[data-accent="wine"]{
+    --teal-900:#1A0812; --teal-700:#6B1030; --teal-600:#9F1239; --teal-500:#BE123C; --teal-400:#FB7185;
+    --heading:#FDA4AF; --teal-100:rgba(190,18,60,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(190,18,60,.14), transparent 60%);
+  }
+  :root[data-accent="amber"]{
+    --teal-900:#451A03; --teal-700:#B45309; --teal-600:#D97706; --teal-500:#F59E0B; --teal-400:#FBBF24;
+    --heading:#FDE68A; --teal-100:rgba(245,158,11,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(245,158,11,.14), transparent 60%);
+  }
+  :root[data-accent="copper"]{
+    --teal-900:#2B1304; --teal-700:#7C3A12; --teal-600:#9A4B1C; --teal-500:#C2622A; --teal-400:#E08E5B;
+    --heading:#F3C9A5; --teal-100:rgba(194,98,42,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(194,98,42,.14), transparent 60%);
+  }
+  :root[data-accent="slate"]{
+    --teal-900:#0B1016; --teal-700:#334155; --teal-600:#475569; --teal-500:#64748B; --teal-400:#94A3B8;
+    --heading:#CBD5E1; --teal-100:rgba(100,116,139,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(100,116,139,.14), transparent 60%);
+  }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -1057,9 +1107,19 @@ const ICONS = {
 const ACCENT_THEMES = [
   { id:'teal', label:'ฟ้าน้ำทะเล', swatch:'#2E93CB' },
   { id:'indigo', label:'น้ำเงินคราม', swatch:'#6366F1' },
+  { id:'blue', label:'น้ำเงินเข้ม', swatch:'#3B82F6' },
+  { id:'cyan', label:'ฟ้าสด', swatch:'#06B6D4' },
   { id:'green', label:'เขียวมรกต', swatch:'#19B894' },
+  { id:'forest', label:'เขียวเข้ม', swatch:'#16A34A' },
   { id:'purple', label:'ม่วง', swatch:'#8B5CF6' },
+  { id:'plum', label:'ม่วงเข้ม', swatch:'#A21CAF' },
+  { id:'fuchsia', label:'ชมพูบานเย็น', swatch:'#D946EF' },
   { id:'rose', label:'ชมพู', swatch:'#EC4899' },
+  { id:'crimson', label:'แดงเข้ม', swatch:'#DC2626' },
+  { id:'wine', label:'แดงไวน์', swatch:'#BE123C' },
+  { id:'amber', label:'ทอง', swatch:'#F59E0B' },
+  { id:'copper', label:'ทองแดง', swatch:'#C2622A' },
+  { id:'slate', label:'เทาเข้ม', swatch:'#64748B' },
 ];
 const ACCENT_THEME_STORAGE_KEY = 'shrimpfarm_accent_theme_v1';
 let accentTheme = 'teal';
