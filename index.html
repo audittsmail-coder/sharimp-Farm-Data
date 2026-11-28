@@ -476,6 +476,11 @@
   .btn-danger{ background:var(--danger); color:#fff; }
   .btn-danger:hover{ background:#EA7C6F; }
   .btn-danger:disabled{ opacity:.4; cursor:default; background:var(--surface-soft); color:var(--ink-faint); }
+  .btn-danger-outline{ background:transparent; color:var(--danger); border:1.5px solid var(--danger); }
+  .btn-danger-outline:hover{ background:var(--coral-soft); }
+
+  .settings-danger-zone{ margin-top:22px; padding-top:16px; border-top:1px dashed var(--line); }
+  .settings-danger-label{ font-size:11px; font-weight:700; color:var(--danger); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
   .btn-block{ width:100%; }
   .btn-row{ display:flex; gap:10px; margin-top:4px; }
   .record-action-row{ justify-content:center; flex-wrap:wrap; gap:6px; }
@@ -4987,8 +4992,11 @@ function renderSettingsPanel(){
         </div>
       </div>
       <div class="btn-row" style="margin-top:14px">
-        <button class="btn btn-secondary" type="button" id="btn-close-settings" style="flex:1">ปิด</button>
-        <button class="btn btn-secondary" type="button" id="btn-clear-data" style="flex:2">ลบข้อมูลทั้งหมด</button>
+        <button class="btn btn-secondary" type="button" id="btn-close-settings" style="width:100%">ปิด</button>
+      </div>
+      <div class="settings-danger-zone">
+        <div class="settings-danger-label">โซนอันตราย</div>
+        <button class="btn btn-danger-outline" type="button" id="btn-clear-data" style="width:100%">ลบข้อมูลทั้งหมด</button>
       </div>
       <div class="app-version">เวอร์ชันแอป: ${escapeHtml(APP_VERSION)}</div>
     </div>
