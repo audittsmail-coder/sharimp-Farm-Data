@@ -527,6 +527,10 @@
   .pe-table tr:last-child td{ border-bottom:none; }
   .pe-table td:first-child{ color:var(--ink-faint); font-weight:600; white-space:nowrap; }
   .pe-table td:last-child{ color:var(--ink); font-weight:700; width:100%; }
+  table.pathogen-history-table td.pe-row-status{ white-space:normal; min-width:160px; line-height:1.5; }
+  table.pathogen-history-table tr.pe-row-coral td:first-child{ box-shadow:inset 3px 0 0 var(--coral); }
+  table.pathogen-history-table tr.pe-row-amber td:first-child{ box-shadow:inset 3px 0 0 var(--amber); }
+  table.pathogen-history-table tr.pe-row-good td:first-child{ box-shadow:inset 3px 0 0 var(--teal-500); }
 
   /* Harvest ("แบ่งจับ") page: distinct dark-blue backdrop + orange accent so it visually reads as a separate mode */
   .harvest-page{ display:contents; }
@@ -1179,6 +1183,7 @@ let marketPriceFormDate = null;
 let bulkPriceImportResultHtml = '';
 let showClosureStats = false;
 let closuresFarmFilter = 'all';
+let showPathogenHistoryFull = false;
 let showRecordForm = false;
 let showMergeHatcherySheet = false;
 let mergeHatcherySelected = new Set();
@@ -1717,6 +1722,28 @@ function pathogenExtraValuesHtml(entry){
   if(entry.salinity!=null) parts.push(`ความเค็ม ${entry.salinity} ppt`);
   if(parts.length===0) return '';
   return `<div class="pe-water">${parts.join(' · ')}</div>`;
+}
+function pathogenHistoryTableHtml(history){
+  if(!history || history.length===0) return '';
+  const sorted = history.slice().sort((a,b)=>(b.weekDate||'').localeCompare(a.weekDate||''));
+  return `
+    <div style="overflow-x:auto; margin-top:10px;">
+      <table class="rec-table pathogen-history-table">
+        <thead><tr><th>วันที่</th><th>สถานะ/ผลเชื้อ</th><th>แอมโมเนีย</th><th>ไนไตรท์</th><th>pH</th><th>ด่าง</th><th>ความเค็ม</th></tr></thead>
+        <tbody>
+          ${sorted.map(r=>`
+            <tr class="pe-row-${PATHOGEN_SEVERITY_CLASS[r.severity]||''}">
+              <td>${fmtDate(r.weekDate)}</td>
+              <td class="pe-row-status">${escapeHtml(r.status||'-')}</td>
+              <td>${r.ammonia!=null ? r.ammonia+' mg/L' : '-'}</td>
+              <td>${r.nitrite!=null ? r.nitrite+' mg/L' : '-'}</td>
+              <td>${r.ph!=null ? r.ph : '-'}</td>
+              <td>${r.alkalinity!=null ? r.alkalinity+' mg/L' : '-'}</td>
+              <td>${r.salinity!=null ? r.salinity+' ppt' : '-'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 // Not every round reports a severity worth labelling, but ammonia is a
 // plain number every "weekly culture log" sync tends to include — so the
@@ -3514,9 +3541,11 @@ function renderPondDetail(){
           </div>
           <div class="pe-text">${escapeHtml(pathogenRec.status||'-')}</div>
           ${pathogenExtraValuesHtml(pathogenRec)}
-          ${pathogenHistoryCount>1 ? `<div style="margin-top:8px;font-size:11px;color:var(--ink-faint)">ตรวจสะสมมาแล้ว ${pathogenHistoryCount} ครั้ง</div>` : ''}
         </div>
       </div>
+      ${pathogenHistoryCount>1 ? `
+      <button type="button" id="btn-toggle-pathogen-history" class="action-btn" style="margin-top:10px;font-size:11px;padding:4px 10px;">${showPathogenHistoryFull ? 'ซ่อนประวัติ' : `ดูประวัติทั้งหมด (${pathogenHistoryCount} ครั้ง)`}</button>
+      ${showPathogenHistoryFull ? pathogenHistoryTableHtml(pathogenHistory) : ''}` : ''}
     </div>` : '';
 
   return `
@@ -5148,6 +5177,7 @@ function bindDashboardEvents(){
       comparingBatchId = null;
       choosingCompareBatch = false;
       showRecordForm = false;
+      showPathogenHistoryFull = false;
       markPondViewed(currentPondId);
       render();
     };
@@ -5410,6 +5440,12 @@ function bindDashboardEvents(){
   const btnToggleClosureStats = document.getElementById('btn-toggle-closure-stats');
   if(btnToggleClosureStats) btnToggleClosureStats.onclick = ()=>{
     showClosureStats = !showClosureStats;
+    render();
+  };
+
+  const btnTogglePathogenHistory = document.getElementById('btn-toggle-pathogen-history');
+  if(btnTogglePathogenHistory) btnTogglePathogenHistory.onclick = ()=>{
+    showPathogenHistoryFull = !showPathogenHistoryFull;
     render();
   };
 
