@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="อนันต์ฟาร์ม">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Taviraj:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Taviraj:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Kanit:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Trirong:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&family=Mitr:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#081824;
@@ -55,7 +55,13 @@
     --shadow:0 2px 4px rgba(0,0,0,.24), 0 12px 28px rgba(0,0,0,.32);
     --shadow-lg:0 8px 16px rgba(0,0,0,.28), 0 24px 48px rgba(0,0,0,.4);
     --ease:cubic-bezier(.25,.8,.35,1);
+    --font-heading:'Taviraj', serif;
+    --font-body:'IBM Plex Sans Thai', sans-serif;
   }
+  :root[data-font="modern"]{ --font-heading:'Kanit', sans-serif; --font-body:'Kanit', sans-serif; }
+  :root[data-font="classic"]{ --font-heading:'Trirong', serif; --font-body:'Sarabun', sans-serif; }
+  :root[data-font="minimal"]{ --font-heading:'Noto Sans Thai', sans-serif; --font-body:'Noto Sans Thai', sans-serif; }
+  :root[data-font="rounded"]{ --font-heading:'Mitr', sans-serif; --font-body:'Mitr', sans-serif; }
   :root[data-accent="indigo"]{
     --teal-900:#0B1020; --teal-700:#3730A3; --teal-600:#4F46E5; --teal-500:#6366F1; --teal-400:#818CF8;
     --heading:#A5B4FC; --teal-100:rgba(99,102,241,.16);
@@ -131,11 +137,11 @@
   body{
     background:var(--bg);
     color:var(--ink);
-    font-family:'IBM Plex Sans Thai', sans-serif;
+    font-family:var(--font-body);
     -webkit-font-smoothing:antialiased;
     min-height:100vh;
   }
-  h1,h2,h3,.display{ font-family:'Taviraj', serif; font-weight:600; letter-spacing:.2px; }
+  h1,h2,h3,.display{ font-family:var(--font-heading); font-weight:600; letter-spacing:.2px; }
   button{ font-family:inherit; }
   input,select,textarea{ font-family:inherit; }
   ::selection{ background:var(--teal-500); color:#04121C; }
@@ -176,7 +182,7 @@
   .weather-today{ display:flex; align-items:center; gap:10px; }
   .wb-icon{ font-size:32px; line-height:1; flex:none; }
   .wb-location{ font-size:10.5px; color:rgba(255,255,255,.7); font-weight:600; letter-spacing:.02em; margin-bottom:1px; }
-  .wb-temp{ font-size:24px; font-weight:700; font-family:'Taviraj',serif; color:#fff; line-height:1; }
+  .wb-temp{ font-size:24px; font-weight:700; font-family:var(--font-heading); color:#fff; line-height:1; }
   .wb-label{ font-size:11px; color:rgba(255,255,255,.82); margin-top:3px; font-weight:500; }
   .weather-forecast{ display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; margin-top:10px; -webkit-overflow-scrolling:touch; }
   .weather-forecast::-webkit-scrollbar{ display:none; }
@@ -302,7 +308,7 @@
   .stat-row{ display:flex; gap:8px; margin-top:10px; }
   .stat{ flex:1; background:var(--surface-soft); border-radius:var(--radius-sm); padding:7px 10px; border:1px solid var(--line-soft); }
   .stat .label{ font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
-  .stat .val{ font-size:17px; font-weight:700; color:var(--ink); margin-top:1px; font-family:'Taviraj',serif; }
+  .stat .val{ font-size:17px; font-weight:700; color:var(--ink); margin-top:1px; font-family:var(--font-heading); }
   .stat .val.coral{ color:var(--coral); }
   .stat .val.amber{ color:var(--amber); }
   .empty-state{ text-align:center; padding:56px 20px; color:var(--ink-faint); }
@@ -337,7 +343,7 @@
   }
   .pond-sidebar-row:hover{ border-color:var(--teal-500); }
   .pond-sidebar-row.active{ background:var(--surface-hi); border-color:var(--teal-500); box-shadow:0 0 0 1px var(--teal-500); }
-  .pond-sidebar-row .psr-name{ font-weight:700; font-size:14.5px; color:var(--heading); font-family:'Taviraj',serif; }
+  .pond-sidebar-row .psr-name{ font-weight:700; font-size:14.5px; color:var(--heading); font-family:var(--font-heading); }
   .pond-sidebar-row .psr-meta{ font-size:11.5px; color:var(--ink-faint); margin-top:2px; }
 
   @media (min-width: 860px){
@@ -391,7 +397,7 @@
     box-shadow:var(--shadow-lg); width:100%; max-width:340px; padding:16px;
   }
   .dp-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-  .dp-title{ font-weight:700; font-size:16px; color:var(--heading); font-family:'Taviraj',serif; }
+  .dp-title{ font-weight:700; font-size:16px; color:var(--heading); font-family:var(--font-heading); }
   .dp-nav-btn{
     width:32px; height:32px; border-radius:var(--radius-sm); border:1px solid var(--line);
     background:var(--surface); color:var(--ink); display:flex; align-items:center; justify-content:center;
@@ -437,7 +443,7 @@
     .record-action-tab{ padding:15px 28px; font-size:16px; }
   }
 
-  .feedpct-value{ color:var(--teal-400); font-weight:700; font-family:'Taviraj',serif; margin-left:4px; }
+  .feedpct-value{ color:var(--teal-400); font-weight:700; font-family:var(--font-heading); margin-left:4px; }
   .field input[type=range]{
     width:100%; padding:0; border:none; background:none; box-shadow:none;
     -webkit-appearance:none; appearance:none; height:20px; cursor:pointer; margin:6px 0 0 0;
@@ -467,7 +473,7 @@
   .calc-box-label{ font-size:12.5px; font-weight:700; color:var(--heading); margin-bottom:10px; }
   .calc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .calc-tile{ background:var(--surface-hi); border-radius:var(--radius-sm); padding:11px 8px; text-align:center; }
-  .calc-tile .n{ font-size:16px; font-weight:700; color:var(--teal-400); font-family:'Taviraj',serif; }
+  .calc-tile .n{ font-size:16px; font-weight:700; color:var(--teal-400); font-family:var(--font-heading); }
   .calc-tile .l{ font-size:10.5px; color:var(--ink-faint); margin-top:3px; }
   .field label .info-hint{ color:var(--ink-faint); font-weight:400; cursor:help; }
 
@@ -498,7 +504,7 @@
   .dist-bar-fill.rank-1{ background:linear-gradient(90deg, var(--orange), var(--orange-hi)); }
   .dist-bar-fill.rank-2{ background:var(--slate-hi); opacity:.8; }
   .dist-bar-fill.rank-3plus{ background:var(--slate); opacity:.6; }
-  .dist-bar-meta{ flex:0 0 auto; font-family:'Taviraj',serif; font-weight:700; font-size:13.5px; color:var(--heading); min-width:42px; text-align:right; }
+  .dist-bar-meta{ flex:0 0 auto; font-family:var(--font-heading); font-weight:700; font-size:13.5px; color:var(--heading); min-width:42px; text-align:right; }
   .hatchery-zone{ margin-top:16px; }
   .hatchery-zone:first-of-type{ margin-top:2px; }
   .hatchery-zone-title{
@@ -511,7 +517,7 @@
 
   .sc-compare .dist-bar-track{ height:13px; }
   .sc-compare .dist-bar-label{ font-size:11px; font-weight:500; }
-  .sc-bar-meta{ flex:0 0 auto; font-family:'Taviraj',serif; font-weight:600; font-size:11.5px; color:var(--ink); min-width:86px; text-align:right; white-space:nowrap; }
+  .sc-bar-meta{ flex:0 0 auto; font-family:var(--font-heading); font-weight:600; font-size:11.5px; color:var(--ink); min-width:86px; text-align:right; white-space:nowrap; }
   .sc-verdict{ margin-top:10px; padding:7px 10px; background:var(--surface-soft); color:var(--ink-soft); font-size:11px; font-weight:500; text-align:center; }
 
   .btn{ border:none; border-radius:var(--radius-sm); padding:12px 16px; font-size:14px; font-weight:600; cursor:pointer; transition:transform .12s var(--ease), background .15s var(--ease), opacity .15s var(--ease); }
@@ -688,7 +694,7 @@
     flex:1; min-width:78px; background:linear-gradient(150deg, var(--teal-500), var(--teal-700)); color:#fff;
     border-radius:var(--radius); padding:13px; text-align:center; box-shadow:var(--shadow-sm);
   }
-  .summary-box .n{ font-size:20px; font-weight:700; font-family:'Taviraj',serif; }
+  .summary-box .n{ font-size:20px; font-weight:700; font-family:var(--font-heading); }
   .summary-box .l{ font-size:10.5px; opacity:.8; margin-top:3px; font-weight:500; }
 
   .chart-wrap{ position:relative; height:180px; margin-top:8px; }
@@ -800,11 +806,11 @@
 
   .freg-header-stats{ display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 16px 0; }
   .freg-stat{ flex:1 1 110px; background:var(--surface-soft); border:1px solid var(--line-soft); border-radius:var(--radius-sm); padding:12px 14px; text-align:center; }
-  .freg-stat .n{ font-size:20px; font-weight:700; color:var(--heading); font-family:'Taviraj',serif; }
+  .freg-stat .n{ font-size:20px; font-weight:700; color:var(--heading); font-family:var(--font-heading); }
   .freg-stat .l{ font-size:10.5px; color:var(--ink-faint); margin-top:3px; }
   .freg-card{ margin-bottom:12px; }
   .freg-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; }
-  .freg-name{ font-size:17px; font-weight:700; color:var(--heading); font-family:'Taviraj',serif; }
+  .freg-name{ font-size:17px; font-weight:700; color:var(--heading); font-family:var(--font-heading); }
   .freg-owner{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
   .freg-badges{ display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
   .freg-issue-badge{
@@ -818,14 +824,14 @@
   .freg-ids{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
   .freg-id-chip{ flex:1 1 170px; background:var(--surface-soft); border:1px solid var(--line-soft); border-radius:var(--radius-sm); padding:8px 12px; }
   .freg-id-chip .lab{ font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.03em; }
-  .freg-id-chip .val{ font-family:'Taviraj',serif; font-weight:700; font-size:14px; color:var(--ink); margin-top:2px; word-break:break-all; }
+  .freg-id-chip .val{ font-family:var(--font-heading); font-weight:700; font-size:14px; color:var(--ink); margin-top:2px; word-break:break-all; }
   .freg-addr{ font-size:12px; color:var(--ink-soft); margin-top:10px; }
   .freg-area-tiles{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
   .freg-area-tile{
     flex:1 1 90px; background:var(--surface-soft); border:1px solid var(--line-soft); border-radius:var(--radius-sm);
     padding:9px 8px; text-align:center;
   }
-  .freg-area-tile .n{ font-size:16px; font-weight:700; color:var(--teal-400); font-family:'Taviraj',serif; }
+  .freg-area-tile .n{ font-size:16px; font-weight:700; color:var(--teal-400); font-family:var(--font-heading); }
   .freg-area-tile .l{ font-size:10px; color:var(--ink-faint); margin-top:2px; }
 
   table.overview-table th, table.overview-table td{ padding:6px 4px; white-space:nowrap; font-size:13.5px; }
@@ -907,6 +913,14 @@
     content:'✓'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     color:#fff; font-size:15px; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.4);
   }
+
+  .font-option-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .font-option{
+    background:var(--surface-soft); border:1.5px solid var(--line); color:var(--ink); font-size:14.5px;
+    padding:9px 14px; border-radius:var(--radius-sm); cursor:pointer; transition:all .15s var(--ease);
+  }
+  .font-option:hover{ border-color:var(--teal-500); }
+  .font-option.active{ border-color:var(--teal-500); background:var(--teal-100); color:var(--heading); font-weight:600; }
 
   .batch-list{ display:flex; flex-direction:column; gap:2px; }
   .batch-row{
@@ -1138,6 +1152,32 @@ function setAccentTheme(theme){
   accentTheme = theme;
   applyAccentTheme(theme);
   try{ localStorage.setItem(ACCENT_THEME_STORAGE_KEY, theme); }catch(e){}
+}
+
+const FONT_THEMES = [
+  { id:'default', label:'เดิม', heading:'Taviraj', body:'IBM Plex Sans Thai', fallback:'serif' },
+  { id:'modern', label:'โมเดิร์น', heading:'Kanit', body:'Kanit', fallback:'sans-serif' },
+  { id:'classic', label:'คลาสสิก', heading:'Trirong', body:'Sarabun', fallback:'serif' },
+  { id:'minimal', label:'มินิมอล', heading:'Noto Sans Thai', body:'Noto Sans Thai', fallback:'sans-serif' },
+  { id:'rounded', label:'มนกลม', heading:'Mitr', body:'Mitr', fallback:'sans-serif' },
+];
+const FONT_THEME_STORAGE_KEY = 'shrimpfarm_font_theme_v1';
+let fontTheme = 'default';
+function applyFontTheme(theme){
+  document.documentElement.setAttribute('data-font', theme);
+}
+function loadFontTheme(){
+  try{
+    const saved = localStorage.getItem(FONT_THEME_STORAGE_KEY);
+    if(saved && FONT_THEMES.some(t=>t.id===saved)) fontTheme = saved;
+  }catch(e){ /* localStorage unavailable (private mode etc.) — fall back to default */ }
+  applyFontTheme(fontTheme);
+}
+function setFontTheme(theme){
+  if(!FONT_THEMES.some(t=>t.id===theme)) return;
+  fontTheme = theme;
+  applyFontTheme(theme);
+  try{ localStorage.setItem(FONT_THEME_STORAGE_KEY, theme); }catch(e){}
 }
 
 const FARM_SEED = ['ฟาร์ม 1','ฟาร์ม 2','ฟาร์ม 3','ฟาร์ม 4','ฟาร์ม 5'];
@@ -2518,7 +2558,7 @@ function renderClosuresSummary(tabs){
             ${closures.map(c=>`
               <tr data-open-closure-pond="${c.pondId||''}" data-open-closure-farm="${c.farmId||''}" data-open-closure-id="${c.id}" class="${c.diseaseType ? 'has-disease' : ''}" style="cursor:pointer;">
                 <td>
-                  <div style="font-weight:700;color:var(--heading);font-family:'Taviraj',serif;">
+                  <div style="font-weight:700;color:var(--heading);font-family:var(--font-heading);">
                     ${escapeHtml(c.pondName||'-')}${(c.farmName && closuresFarmFilter==='all') ? `<span style="font-weight:400;font-size:11px;color:var(--ink-faint);font-family:inherit;margin-left:6px;">${escapeHtml(c.farmName)}</span>` : ''}
                   </div>
                   ${speciesShortLabel(c.species) ? `<div style="margin-top:3px;"><span class="species-tag">${escapeHtml(speciesShortLabel(c.species))}</span></div>` : ''}
@@ -3725,7 +3765,7 @@ function renderPondDetail(){
         <div style="display:flex; align-items:center; gap:12px;">
           <div style="flex:1; text-align:center;">
             <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลผลิตโดยประมาณ</div>
-            <div id="yield-value" style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg!==null ? estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-'}</div>
+            <div id="yield-value" style="font-size:24px;font-weight:700;color:var(--heading);font-family:var(--font-heading);margin-top:4px;">${estimatedYieldKg!==null ? estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-'}</div>
             <div id="yield-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${estimatedYieldKg!==null ? (totalHarvestedCount>0 ? `จำนวนปล่อย × อัตรารอด ${last.survivalRate}% − แบ่งจับสะสม ${totalHarvestedCount.toLocaleString('th-TH')} ตัว` : `คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด`) : 'ใส่อัตรารอดด้านล่างเพื่อคำนวณผลผลิตโดยประมาณ'}</div>
           </div>
           <div style="flex-shrink:0; width:104px; background:var(--surface-hi); border-radius:var(--radius-sm); padding:10px 8px; text-align:center;">
@@ -3953,7 +3993,7 @@ function renderHarvestForm(){
           </div>
           <div style="background:var(--surface-hi);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:13px;text-align:center;">
             <div style="font-size:11px;color:var(--ink-faint);">หลังแบ่งจับนี้ คาดว่าจะเหลือ</div>
-            <div id="harvest-preview-remaining" style="font-size:20px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:3px;">-</div>
+            <div id="harvest-preview-remaining" style="font-size:20px;font-weight:700;color:var(--heading);font-family:var(--font-heading);margin-top:3px;">-</div>
             <div id="harvest-preview-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">ใส่น้ำหนักและไซส์ที่จับเพื่อคำนวณ</div>
           </div>
           <div class="btn-row">
@@ -4052,7 +4092,7 @@ function renderTransferForm(){
           </div>
           <div style="background:var(--surface-hi);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:13px;text-align:center;">
             <div style="font-size:11px;color:var(--ink-faint);">หลังย้ายนี้ คาดว่าจะเหลือ</div>
-            <div id="transfer-preview-remaining" style="font-size:20px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:3px;">-</div>
+            <div id="transfer-preview-remaining" style="font-size:20px;font-weight:700;color:var(--heading);font-family:var(--font-heading);margin-top:3px;">-</div>
             <div id="transfer-preview-caption" style="font-size:11px;color:var(--ink-faint);margin-top:2px;">ใส่จำนวนกุ้งที่ย้ายเพื่อคำนวณ</div>
           </div>
           <div class="btn-row">
@@ -4540,7 +4580,7 @@ function renderBatchDetail(){
 
       <div class="card" style="text-align:center; padding:14px 16px;">
         <div style="font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;font-weight:600;">ผลผลิตโดยประมาณ</div>
-        <div style="font-size:24px;font-weight:700;color:var(--heading);font-family:'Taviraj',serif;margin-top:4px;">${estimatedYieldKg!==null ? estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-'}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--heading);font-family:var(--font-heading);margin-top:4px;">${estimatedYieldKg!==null ? estimatedYieldKg.toLocaleString('th-TH',{maximumFractionDigits:1})+' กก.' : '-'}</div>
         <div style="font-size:11px;color:var(--ink-faint);margin-top:2px;">${estimatedYieldKg!==null ? `คำนวณจากจำนวนปล่อย × อัตรารอด ${last.survivalRate}% × ไซส์ล่าสุด` : 'ไม่มีข้อมูลอัตรารอดในรุ่นนี้'}</div>
       </div>
 
@@ -5051,6 +5091,13 @@ function renderThemePanel(){
       <h3>สีธีมของแอป</h3>
       <div class="accent-swatch-row" style="margin-top:10px;">
         ${ACCENT_THEMES.map(t=>`<button type="button" class="accent-swatch ${accentTheme===t.id?'active':''}" data-accent-theme="${t.id}" style="background:${t.swatch}" title="${escapeHtml(t.label)}" aria-label="${escapeHtml(t.label)}"></button>`).join('')}
+      </div>
+      <h3 style="margin-top:20px;">รูปแบบตัวอักษร</h3>
+      <div class="font-option-row" style="margin-top:10px;">
+        ${FONT_THEMES.map(t=>`
+          <button type="button" class="font-option ${fontTheme===t.id?'active':''}" data-font-theme="${t.id}" style="font-family:'${t.heading}', ${t.fallback}">
+            ${escapeHtml(t.label)}
+          </button>`).join('')}
       </div>
       <div class="btn-row" style="margin-top:14px">
         <button class="btn btn-secondary" type="button" id="btn-close-theme" style="width:100%">ปิด</button>
@@ -5610,6 +5657,13 @@ function bindDashboardEvents(){
   document.querySelectorAll('[data-accent-theme]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       setAccentTheme(btn.getAttribute('data-accent-theme'));
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-font-theme]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      setFontTheme(btn.getAttribute('data-font-theme'));
       render();
     });
   });
@@ -6531,6 +6585,7 @@ function bindDashboardEvents(){
 
 /* ---------------- Go ---------------- */
 loadAccentTheme();
+loadFontTheme();
 boot();
 initWeather();
 </script>
