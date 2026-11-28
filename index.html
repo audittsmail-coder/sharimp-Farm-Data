@@ -56,6 +56,26 @@
     --shadow-lg:0 8px 16px rgba(0,0,0,.28), 0 24px 48px rgba(0,0,0,.4);
     --ease:cubic-bezier(.25,.8,.35,1);
   }
+  :root[data-accent="indigo"]{
+    --teal-900:#0B1020; --teal-700:#3730A3; --teal-600:#4F46E5; --teal-500:#6366F1; --teal-400:#818CF8;
+    --heading:#A5B4FC; --teal-100:rgba(99,102,241,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(99,102,241,.14), transparent 60%);
+  }
+  :root[data-accent="green"]{
+    --teal-900:#052016; --teal-700:#0E7A5F; --teal-600:#0FA37A; --teal-500:#19B894; --teal-400:#4FD1A5;
+    --heading:#86EFC9; --teal-100:rgba(16,185,129,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(16,185,129,.14), transparent 60%);
+  }
+  :root[data-accent="purple"]{
+    --teal-900:#140A26; --teal-700:#5B21B6; --teal-600:#7C3AED; --teal-500:#8B5CF6; --teal-400:#A78BFA;
+    --heading:#C4B5FD; --teal-100:rgba(139,92,246,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(139,92,246,.14), transparent 60%);
+  }
+  :root[data-accent="rose"]{
+    --teal-900:#240A14; --teal-700:#9D174D; --teal-600:#DB2777; --teal-500:#EC4899; --teal-400:#F472B6;
+    --heading:#FBCFE8; --teal-100:rgba(236,72,153,.16);
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, rgba(236,72,153,.14), transparent 60%);
+  }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -821,6 +841,18 @@
 
   .panel-card{ border-color:var(--teal-500); box-shadow:0 0 0 3px rgba(46,147,203,.14), var(--shadow-sm); }
 
+  .accent-swatch-row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+  .accent-swatch{
+    width:36px; height:36px; border-radius:50%; border:2px solid transparent; cursor:pointer;
+    padding:0; position:relative; transition:transform .15s var(--ease), border-color .15s var(--ease);
+  }
+  .accent-swatch:hover{ transform:scale(1.08); }
+  .accent-swatch.active{ border-color:var(--ink); }
+  .accent-swatch.active::after{
+    content:'✓'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:15px; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+
   .batch-list{ display:flex; flex-direction:column; gap:2px; }
   .batch-row{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -1014,6 +1046,33 @@ const ICONS = {
   trash: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6h14z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   archive: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="4" rx="1" stroke="currentColor" stroke-width="1.7"/><path d="M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8M10 13h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
 };
+
+/* ---------------- Accent theme (device-local display preference, not synced) ---------------- */
+const ACCENT_THEMES = [
+  { id:'teal', label:'ฟ้าน้ำทะเล', swatch:'#2E93CB' },
+  { id:'indigo', label:'น้ำเงินคราม', swatch:'#6366F1' },
+  { id:'green', label:'เขียวมรกต', swatch:'#19B894' },
+  { id:'purple', label:'ม่วง', swatch:'#8B5CF6' },
+  { id:'rose', label:'ชมพู', swatch:'#EC4899' },
+];
+const ACCENT_THEME_STORAGE_KEY = 'shrimpfarm_accent_theme_v1';
+let accentTheme = 'teal';
+function applyAccentTheme(theme){
+  document.documentElement.setAttribute('data-accent', theme);
+}
+function loadAccentTheme(){
+  try{
+    const saved = localStorage.getItem(ACCENT_THEME_STORAGE_KEY);
+    if(saved && ACCENT_THEMES.some(t=>t.id===saved)) accentTheme = saved;
+  }catch(e){ /* localStorage unavailable (private mode etc.) — fall back to default */ }
+  applyAccentTheme(accentTheme);
+}
+function setAccentTheme(theme){
+  if(!ACCENT_THEMES.some(t=>t.id===theme)) return;
+  accentTheme = theme;
+  applyAccentTheme(theme);
+  try{ localStorage.setItem(ACCENT_THEME_STORAGE_KEY, theme); }catch(e){}
+}
 
 const FARM_SEED = ['ฟาร์ม 1','ฟาร์ม 2','ฟาร์ม 3','ฟาร์ม 4','ฟาร์ม 5'];
 const SPECIES_OPTIONS = ['กุ้งขาว (Vannamei)','กุ้งกุลาดำ (Black Tiger)','อื่นๆ'];
@@ -4921,7 +4980,13 @@ function renderSettingsPanel(){
         เมื่อกลับมาออนไลน์ ข้อมูลที่แก้ไขระหว่างออฟไลน์จะซิงก์ขึ้นอัตโนมัติ<br>
         <b>หมายเหตุ:</b> แอปนี้ไม่มีรหัสผ่านป้องกัน ใครก็ตามที่มีลิงก์เข้าดู/แก้ไขข้อมูลได้
       </p>
-      <div class="btn-row" style="margin-top:10px">
+      <div style="margin-top:14px">
+        <label style="display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:4px;">สีธีมของแอป</label>
+        <div class="accent-swatch-row">
+          ${ACCENT_THEMES.map(t=>`<button type="button" class="accent-swatch ${accentTheme===t.id?'active':''}" data-accent-theme="${t.id}" style="background:${t.swatch}" title="${escapeHtml(t.label)}" aria-label="${escapeHtml(t.label)}"></button>`).join('')}
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:14px">
         <button class="btn btn-secondary" type="button" id="btn-close-settings" style="flex:1">ปิด</button>
         <button class="btn btn-secondary" type="button" id="btn-clear-data" style="flex:2">ลบข้อมูลทั้งหมด</button>
       </div>
@@ -5448,6 +5513,13 @@ function bindDashboardEvents(){
     showPathogenHistoryFull = !showPathogenHistoryFull;
     render();
   };
+
+  document.querySelectorAll('[data-accent-theme]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      setAccentTheme(btn.getAttribute('data-accent-theme'));
+      render();
+    });
+  });
 
   document.querySelectorAll('[data-closure-farm-filter]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -6365,6 +6437,7 @@ function bindDashboardEvents(){
 })();
 
 /* ---------------- Go ---------------- */
+loadAccentTheme();
 boot();
 initWeather();
 </script>
